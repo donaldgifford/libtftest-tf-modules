@@ -96,7 +96,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up mise (for git-cliff)
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v4
         with:
           experimental: true
 
