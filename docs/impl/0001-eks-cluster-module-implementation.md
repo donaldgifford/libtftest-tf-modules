@@ -200,34 +200,28 @@ The only `data.aws_*` block remaining in the module after this phase should be
 
 #### Tasks
 
-- [ ] Remove `data.aws_region.this` — replaced by `var.region` everywhere it's
+- [x] Remove `data.aws_region.this` — replaced by `var.region` everywhere it's
       referenced.
-- [ ] Remove `data.aws_iam_account_alias.this` and the
+- [x] Remove `data.aws_iam_account_alias.this` and the
       `var.aws_account_alias_enabled` toggle — `var.tags.Account` carries the
       account alias (post-`dev-` trim) from Boilerplate.
-- [ ] Remove `var.account_alias` and `var.aws_account_alias_enabled` from
+- [x] Remove `var.account_alias` and `var.aws_account_alias_enabled` from
       `variables.tf`.
-- [ ] Remove the `local.tags` aggregation block from `locals.tf`. Tags arrive
+- [x] Remove the `local.tags` aggregation block from `locals.tf`. Tags arrive
       pre-formed via `var.tags`.
-- [ ] Remove `data.aws_vpc.this` (tag-based discovery). Replace with:
-      ```hcl
-      data "terraform_remote_state" "vpc" {
-        backend = "s3"
-        config = {
-          bucket = var.remote_state_bucket
-          key    = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
-          region = var.region
-        }
-      }
-      ```
-- [ ] Remove `data.aws_subnets.private` and `data.aws_subnets.public`. Replace
-      references with
-      `data.terraform_remote_state.vpc.outputs.private_subnet_ids` and
-      `.public_subnet_ids`.
-- [ ] Keep `data.aws_caller_identity.current` — ADR-0001 identity-class
-      carve-out. Used in the KMS resource policy.
-- [ ] Update all resource tag arguments to `var.tags` directly. Per-resource
-      overrides happen at the Terragrunt layer if needed.
+- [x] Remove `data.aws_vpc.this` (tag-based discovery). Replace with
+      `data.terraform_remote_state.vpc` (S3 backend) in new file
+      `modules/eks/cluster/data.tf`.
+- [x] Remove `data.aws_subnets.private` and `data.aws_subnets.public`.
+      References will use
+      `data.terraform_remote_state.vpc.outputs.private_subnet_ids` /
+      `.public_subnet_ids` once Phase 4/5 wire them up.
+- [x] Keep `data.aws_caller_identity.current` — ADR-0001 identity-class
+      carve-out. Moved to `data.tf` alongside the remote-state read.
+- [x] Update all resource tag arguments to `var.tags` directly. (No
+      resources yet — applied as resources land in Phases 3-7.)
+- [x] Drive-by: moved data sources out of `variables.tf` into dedicated
+      `data.tf`. Variables and data sources don't belong in the same file.
 
 #### Success Criteria
 
