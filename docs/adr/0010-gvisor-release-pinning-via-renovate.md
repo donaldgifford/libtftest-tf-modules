@@ -11,7 +11,6 @@ created: 2026-05-13
 # 0010. gVisor release pinning via Renovate
 
 <!--toc:start-->
-
 - [Status](#status)
 - [Context](#context)
 - [Decision](#decision)
