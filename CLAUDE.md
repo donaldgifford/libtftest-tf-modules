@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. As of this writing the repo is in a **scaffold state**: `modules/eks/cluster` is the only module with concrete Terraform code (variables, locals, data sources, outputs referring to not-yet-written resources), and the other four directories (`addons`, `ecr-pull-through-cache`, `managed-node-group`, `pod-identity-access`) contain only docs/tooling stubs. The 55 KB `modules/eks/managed-node-group/NOTES.md` is the source spec for that module.
+A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing the repo is in a **scaffold state**: `modules/eks/cluster` is the only module with concrete Terraform code (variables, locals, data sources, outputs referring to not-yet-written resources), and the other four directories (`addons`, `ecr-pull-through-cache`, `managed-node-group`, `pod-identity-access`) contain only docs/tooling stubs. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0012) and `docs/design/` (DESIGN-0001..0004).
 
 ## Tooling
 
@@ -49,17 +49,48 @@ Each `modules/eks/<name>/` directory is a self-contained Terraform module with t
 
 When adding a new module, copy these scaffolding files verbatim — they're uniform across modules by convention.
 
-### Cluster module shape
+### Cross-module composition: remote state, not module inputs
 
-`modules/eks/cluster/variables.tf` declares the inputs (`eks_version`, `name`, SSO access toggles, account-alias data source toggle) and defines four data sources that the rest of the module assumes:
+Modules in this repo do **not** consume each other via direct Terraform module composition. Cross-module data (cluster name, endpoint, CA, node SG, KMS key, controller role ARNs, etc.) flows through `data.terraform_remote_state` against an S3 backend, using this key convention:
+
+```hcl
+data "terraform_remote_state" "eks" {
+  backend = "s3"
+  config = {
+    bucket = var.remote_state_bucket
+    key    = "${var.region}/eks/${var.cluster_name}/terraform.tfstate"
+    region = var.region
+  }
+}
+```
+
+Every consumer module therefore takes `remote_state_bucket`, `region`, and `cluster_name` as inputs and reads the rest. The cluster module (DESIGN-0002) is the source-of-truth state file; its outputs are a stable contract — renaming or removing one breaks every downstream module. This matches the **Gruntwork live-repo model** (infrastructure-modules + infrastructure-live, scaffolded with Gruntwork Boilerplate) that the parent org already runs.
+
+**Reference at the use site, not via aliasing locals.** Use `data.terraform_remote_state.eks.outputs.cluster_endpoint` directly where it's consumed; don't add `locals { cluster_endpoint = data.terraform_remote_state.eks.outputs.cluster_endpoint }`. Locals are reserved for meaningful computation (conditionals, multi-source combinations, derivations). The framing: modules behave as close to pure functions as Terraform allows, and remote state is the last-known-good ground truth (drift gets fixed at the source, never papered over). See ADR-0001 for the full rationale.
+
+### Pod Identity Agent lives on the addons module
+
+The `eks-pod-identity-agent` managed addon is installed by the **addons module**, alongside VPC CNI / kube-proxy / CoreDNS / EBS CSI. Inside the addons module, the agent's `aws_eks_addon` resource is applied first and every other addon `depends_on` it — the "agent before associations" invariant is intra-module ordering. The cluster module installs zero addons. Reason: the fleet's operational order is cluster → nodes → addons → pod-identity, and addon DaemonSets need a schedulable node to reach `ACTIVE` — so all addons must apply after node groups. See ADR-0003.
+
+### Terraform manages AWS API resources only
+
+Modules in this repo do **not** create Kubernetes-API objects. The `kubernetes`, `kubectl`, and `helm` Terraform providers are not used anywhere in the fleet. Pod Identity Associations look Kubernetes-y but are AWS API objects (`aws_eks_pod_identity_association`); EKS managed addons are also AWS API objects (`aws_eks_addon`) — both stay in Terraform. The boundary is "is this an AWS API call or a Kubernetes API call?", not "does this conceptually relate to Kubernetes?"
+
+Cluster-scoped Kubernetes manifests (`RuntimeClass`, `NetworkPolicy`, admission webhook configs, Gatekeeper templates, etc.) are delivered **out-of-band** via `kubectl apply` (homelab / dev) or Argo CD + Kustomize (production GitOps). When a module needs such an object to exist for it to function (the secure node group's gVisor `RuntimeClass` is the current example), the module's README documents the manifest plus copy-paste examples for both delivery mechanisms; the module itself does not create it. See ADR-0011.
+
+### Cluster module shape (transition state)
+
+`modules/eks/cluster/variables.tf` declares the inputs (`eks_version`, `name`, SSO access toggles, account-alias data source toggle) and defines four live AWS data sources that the rest of the module currently assumes:
 
 - `data.aws_iam_account_alias.this` — gated by `var.aws_account_alias_enabled`; otherwise the caller passes `var.account_alias`
 - `data.aws_vpc.this` — **discovered by tag** `Account == local.tags.Account` (the alias minus the `dev-` prefix). The module will not work in an environment that doesn't tag its VPC with `Account`.
 - `data.aws_subnets.private` / `data.aws_subnets.public` — discovered by tag `Network = "Private"` / `"Public"` on the same VPC
 
-`outputs.tf` already exports five IAM role ARNs (`cluster-autoscaler_arn`, `pod_cw_metrics_arn`, `pod_fluentd_logs_arn`, `alb_role_arn`, `external_dns_arn`) — those resources need to be defined in `main.tf` (currently a stub) before `terraform validate` will pass.
+The `variables.tf` carries inline TODO comments earmarking the VPC / subnet discovery blocks for replacement by `data.terraform_remote_state.vpc` reads per ADR-0001 (cross-module composition through remote state, not live data sources). `data.aws_iam_account_alias` / `data.aws_region` will drop out when tags hoist to Boilerplate-generated Terragrunt input objects (DESIGN-0002). `data.aws_caller_identity` is the deliberate carve-out (identity, not state) — see ADR-0001 Alternatives Considered.
 
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+`outputs.tf` already exports five IAM role ARNs (`cluster-autoscaler_arn`, `pod_cw_metrics_arn`, `pod_fluentd_logs_arn`, `alb_role_arn`, `external_dns_arn`) — those resources need to be defined in `main.tf` (currently a stub) before `terraform validate` will pass. The trust policy for all five is the universal Pod Identity trust policy (ADR-0002 / ADR-0004).
+
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`. The full design lives in DESIGN-0002.
 
 ## CI caveat
 
