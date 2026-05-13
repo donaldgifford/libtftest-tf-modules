@@ -1,0 +1,184 @@
+---
+# $schema=https://schemastore.org/https://www.schemastore.org/github-action.json
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+  issues: read
+  pull-requests: read
+
+jobs:
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.version }}
+      skipped: ${{ steps.bump.outputs.skipped }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: jefflinse/pr-semver-bump@v1.7.4
+        id: bump
+        name: Bump and Tag Version
+        with:
+          mode: bump
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          require-release-notes: false
+          major-label: major
+          minor-label: minor
+          patch-label: patch
+          noop-labels: "dont-release"
+          release-notes-prefix: "### RELEASE NOTES"
+          with-v: true
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: bump-version
+    if: needs.bump-version.outputs.skipped != 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.bump-version.outputs.tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v7
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
+
+  changelog-sync:
+    # Regenerate CHANGELOG.md after the tag is pushed so the new
+    # version's section lands without a one-cycle lag. cliff.toml's
+    # `^chore\(changelog\)` skip parser handles the loop guard — the
+    # commit this job creates is invisible to the next git-cliff run.
+    name: Changelog Sync
+    runs-on: ubuntu-latest
+    needs: [bump-version, release]
+    if: needs.bump-version.outputs.skipped != 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df  # v2.18.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v6
+        with:
+          # Land the regen commit on main HEAD, not the freshly created
+          # tag — the tag's tree should match what was merged.
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up mise (for git-cliff)
+        uses: jdx/mise-action@v3
+        with:
+          experimental: true
+
+      - name: Regenerate CHANGELOG.md
+        run: |
+          git fetch --tags origin
+          git-cliff -o CHANGELOG.md
+
+      - name: Commit and push if changed
+        run: |-
+          if git diff --quiet CHANGELOG.md; then
+            echo "CHANGELOG.md is up to date — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(changelog): sync ${{ needs.bump-version.outputs.tag }}"
+          git push origin HEAD:main
+
+  docker:
+    name: Docker (multi-arch + cosign)
+    runs-on: ubuntu-latest
+    needs: [bump-version, release]
+    if: needs.bump-version.outputs.skipped != 'true'
+    permissions:
+      contents: read
+      packages: write
+      # Required for cosign keyless signing (OIDC token).
+      id-token: write
+    outputs:
+      digest: ${{ steps.bake.outputs.metadata }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/donaldgifford/sneakystack
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.bump-version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.bump-version.outputs.tag }}
+            type=raw,value=latest
+
+      - name: Build and push Docker images
+        id: bake
+        uses: docker/bake-action@v7
+        with:
+          targets: release
+          source: .
+          files: |
+            docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file-tags }}
+            ${{ steps.meta.outputs.bake-file-labels }}
+          set: |-
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            *.output=type=registry
+
+      - name: Sign image with cosign (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |-
+          for tag in $(echo '${{ steps.meta.outputs.tags }}' | tr '\n' ' '); do
+            cosign sign --yes "$tag"
+          done

@@ -1,0 +1,52 @@
+---
+formatter: "mb tbl"  # this is required
+
+version: ">=0.18"
+
+header-from: main.tf
+footer-from: ""
+
+recursive:
+  enabled: false
+  path: modules
+  include-main: true
+
+sections:
+  hide: []
+  show: []
+
+  hide-all: false  # deprecated in v0.13.0, removed in v0.15.0
+  show-all: true  # deprecated in v0.13.0, removed in v0.15.0
+
+content: ""
+
+output:
+  file: "USAGE.md"
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+output-values:
+  enabled: false
+  from: ""
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  anchor: false
+  color: true
+  default: true
+  description: false
+  escape: true
+  hide-empty: false
+  html: false
+  indent: 2
+  lockfile: true
+  read-comments: true
+  required: true
+  sensitive: true
+  type: true

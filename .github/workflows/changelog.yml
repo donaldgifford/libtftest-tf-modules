@@ -1,0 +1,28 @@
+---
+# $schema=https://schemastore.org/https://www.schemastore.org/github-action.json
+name: Changelog Drift Check
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up mise
+        uses: jdx/mise-action@v3
+        with:
+          experimental: true
+      - name: Generate fresh CHANGELOG
+        run: git-cliff -o CHANGELOG.generated.md
+      - name: Diff against committed CHANGELOG
+        run: |-
+          if ! diff -q CHANGELOG.md CHANGELOG.generated.md > /dev/null; then
+            echo "::error::CHANGELOG.md is stale. Run 'git-cliff -o CHANGELOG.md' and commit."
+            diff CHANGELOG.md CHANGELOG.generated.md || true
+            exit 1
+          fi
