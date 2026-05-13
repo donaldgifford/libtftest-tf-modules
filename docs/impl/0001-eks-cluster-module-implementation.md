@@ -1,7 +1,7 @@
 ---
 id: IMPL-0001
 title: "EKS Cluster Module Implementation"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-05-13
 ---
@@ -9,7 +9,7 @@ created: 2026-05-13
 
 # IMPL 0001: EKS Cluster Module Implementation
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-05-13
 
@@ -21,13 +21,29 @@ created: 2026-05-13
 - [Supersedes](#supersedes)
 - [Implementation Phases](#implementation-phases)
   - [Phase 1: Variable surface and module skeleton](#phase-1-variable-surface-and-module-skeleton)
-  - [Phase 2: Hoist tags, region, account_alias, VPC discovery](#phase-2-hoist-tags-region-account_alias-vpc-discovery)
+    - [Tasks](#tasks)
+    - [Success Criteria](#success-criteria)
+  - [Phase 2: Hoist tags, region, account_alias, VPC discovery](#phase-2-hoist-tags-region-accountalias-vpc-discovery)
+    - [Tasks](#tasks-1)
+    - [Success Criteria](#success-criteria-1)
   - [Phase 3: KMS envelope encryption](#phase-3-kms-envelope-encryption)
-  - [Phase 4: Cluster IAM role and `aws_eks_cluster`](#phase-4-cluster-iam-role-and-aws_eks_cluster)
+    - [Tasks](#tasks-2)
+    - [Success Criteria](#success-criteria-2)
+  - [Phase 4: Cluster IAM role and awsekscluster](#phase-4-cluster-iam-role-and-awsekscluster)
+    - [Tasks](#tasks-3)
+    - [Success Criteria](#success-criteria-3)
   - [Phase 5: Shared node security group](#phase-5-shared-node-security-group)
+    - [Tasks](#tasks-4)
+    - [Success Criteria](#success-criteria-4)
   - [Phase 6: SSO Access Entry](#phase-6-sso-access-entry)
-  - [Phase 7: Outputs and `USAGE.md` generation](#phase-7-outputs-and-usagemd-generation)
+    - [Tasks](#tasks-5)
+    - [Success Criteria](#success-criteria-5)
+  - [Phase 7: Outputs and USAGE.md generation](#phase-7-outputs-and-usagemd-generation)
+    - [Tasks](#tasks-6)
+    - [Success Criteria](#success-criteria-6)
   - [Phase 8: libtftest scaffolding and tests](#phase-8-libtftest-scaffolding-and-tests)
+    - [Tasks](#tasks-7)
+    - [Success Criteria](#success-criteria-7)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -119,21 +135,21 @@ each subsequent phase, and delete the five stale workload-IAM outputs.
 
 #### Tasks
 
-- [ ] **Delete** the five existing outputs from
+- [x] **Delete** the five existing outputs from
       `modules/eks/cluster/outputs.tf`: `cluster-autoscaler_arn`,
       `pod_cw_metrics_arn`, `pod_fluentd_logs_arn`, `alb_role_arn`,
       `external_dns_arn`. They re-home under DESIGN-0004. Leave the file
       empty (or with only a header comment) until Phase 7 adds the real
       cluster outputs.
-- [ ] Add `variable "kms_key_arn"` (default `null`).
-- [ ] Add `variable "endpoint_private_access"` (default `true`).
-- [ ] Add `variable "endpoint_public_access"` (default `true`, per Resolved
+- [x] Add `variable "kms_key_arn"` (default `null`).
+- [x] Add `variable "endpoint_private_access"` (default `true`).
+- [x] Add `variable "endpoint_public_access"` (default `true`, per Resolved
       Q11).
-- [ ] Add `variable "enabled_cluster_log_types"` (default
+- [x] Add `variable "enabled_cluster_log_types"` (default
       `["api", "audit", "authenticator"]`).
-- [ ] Add `variable "kms_deletion_window_in_days"` (default `30`).
-- [ ] Add `variable "cluster_log_retention_in_days"` (default `30`).
-- [ ] Add `variable "tags"` as a **typed object** per DESIGN-0002
+- [x] Add `variable "kms_deletion_window_in_days"` (default `30`).
+- [x] Add `variable "cluster_log_retention_in_days"` (default `30`).
+- [x] Add `variable "tags"` as a **typed object** per DESIGN-0002
       §"Tags (hoisted to Boilerplate)":
       ```hcl
       variable "tags" {
@@ -147,17 +163,22 @@ each subsequent phase, and delete the five stale workload-IAM outputs.
         })
       }
       ```
-- [ ] Add `variable "region"` (string, required) — the AWS region; also feeds
+- [x] Add `variable "region"` (string, required) — the AWS region; also feeds
       the remote-state key convention.
-- [ ] Add `variable "remote_state_bucket"` (string, required) — S3 bucket
+- [x] Add `variable "remote_state_bucket"` (string, required) — S3 bucket
       backing the VPC stack's remote state.
-- [ ] Add `variable "vpc_name"` (string, required) — used in the remote-state
+- [x] Add `variable "vpc_name"` (string, required) — used in the remote-state
       key for the VPC stack.
-- [ ] Remove `variable "external_dns_zone_ids"` from the planning list — it
+- [x] Remove `variable "external_dns_zone_ids"` from the planning list — it
       belongs in DESIGN-0004's IMPL alongside the external-dns role itself.
-- [ ] Create empty `kms.tf`, `access_entries.tf`, and `security_group.tf`
+- [x] Create empty `kms.tf`, `access_entries.tf`, and `security_group.tf`
       with section-header comment blocks. **Do not** create `controllers.tf`
       — there are no controller roles in this module.
+- [x] Drive-by fix: `sso_cluster_policy` validation `contains()` had broken
+      signature (only one argument). Fixed inline since Phase 1 success
+      requires `terraform validate` to pass.
+- [x] Drive-by fix: added missing `description` to `eks_version` to clear the
+      `terraform_documented_variables` notice.
 
 #### Success Criteria
 

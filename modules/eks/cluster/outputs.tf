@@ -1,19 +1,9 @@
-output "cluster-autoscaler_arn" {
-  value = aws_iam_role.eks_ca.arn
-}
-
-output "pod_cw_metrics_arn" {
-  value = aws_iam_role.pod_cw_metrics.arn
-}
-
-output "pod_fluentd_logs_arn" {
-  value = aws_iam_role.pod_fluentd_logs.arn
-}
-
-output "alb_role_arn" {
-  value = aws_iam_role.alb_role.arn
-}
-
-output "external_dns_arn" {
-  value = aws_iam_role.external_dns.arn
-}
+#--------------------------------------------------------------
+# Outputs
+#--------------------------------------------------------------
+#
+# Cluster contract outputs are populated in Phase 7 of IMPL-0001.
+# The five workload-tier IAM role outputs that previously lived here
+# (cluster-autoscaler_arn, pod_cw_metrics_arn, pod_fluentd_logs_arn,
+# alb_role_arn, external_dns_arn) re-home under DESIGN-0004 per
+# IMPL-0001 §Supersedes.

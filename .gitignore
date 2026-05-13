@@ -37,3 +37,12 @@ build/
 # Claude Code session-local state (skills/agents themselves are committed)
 .claude/donald-loop.local.md
 .claude/*.local.md
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+# .terraform.lock.hcl is committed; it pins provider versions
