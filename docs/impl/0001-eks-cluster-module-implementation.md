@@ -274,23 +274,17 @@ role this module owns.**
 
 #### Tasks
 
-- [ ] Add `aws_iam_role.cluster` to `main.tf` with an `eks.amazonaws.com`
+- [x] Add `aws_iam_role.cluster` to `main.tf` with an `eks.amazonaws.com`
       service-principal trust policy.
-- [ ] Add `aws_iam_role_policy_attachment.cluster_policy` attaching
-      `arn:aws:iam::aws:policy/AmazonEKSClusterPolicy`.
-- [ ] Add `aws_cloudwatch_log_group.cluster` named
+- [x] Add `aws_iam_role_policy_attachment.cluster` attaching
+      `arn:aws:iam::aws:policy/AmazonEKSClusterPolicy`. (Renamed from
+      `cluster_policy` to clear `terraform_tautological_naming`.)
+- [x] Add `aws_cloudwatch_log_group.cluster` named
       `/aws/eks/${var.name}/cluster` with
       `retention_in_days = var.cluster_log_retention_in_days` (default 30).
-- [ ] Add `aws_eks_cluster.this`:
-  - `name = var.name`
-  - `version = var.eks_version`
-  - `role_arn = aws_iam_role.cluster.arn`
-  - `enabled_cluster_log_types = var.enabled_cluster_log_types`
-  - `vpc_config { subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids, endpoint_private_access = var.endpoint_private_access, endpoint_public_access = var.endpoint_public_access }`
-  - `encryption_config { resources = ["secrets"], provider { key_arn = local.kms_key_arn } }`
-  - `access_config { authentication_mode = "API_AND_CONFIG_MAP" }`
-  - `depends_on = [aws_cloudwatch_log_group.cluster, aws_iam_role_policy_attachment.cluster_policy]`
-- [ ] Tag the cluster, role, and log group with `var.tags`.
+- [x] Add `aws_eks_cluster.this` with all blocks (access_config,
+      vpc_config, encryption_config) and `depends_on` ordering.
+- [x] Tag the cluster, role, and log group with `var.tags`.
 
 #### Success Criteria
 
