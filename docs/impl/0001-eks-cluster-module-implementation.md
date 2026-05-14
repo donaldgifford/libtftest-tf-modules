@@ -241,21 +241,21 @@ and exported for the node group's EBS encryption.
 
 #### Tasks
 
-- [ ] Add `aws_kms_key.cluster[0]` to `kms.tf`, gated on
+- [x] Add `aws_kms_key.cluster[0]` to `kms.tf`, gated on
       `var.kms_key_arn == null`.
-- [ ] Add `aws_kms_alias.cluster[0]` aliasing `alias/eks/${var.tags.ClusterName}`
+- [x] Add `aws_kms_alias.cluster[0]` aliasing `alias/eks/${var.tags.ClusterName}`
       (gated identically).
-- [ ] Set `deletion_window_in_days = var.kms_deletion_window_in_days`
+- [x] Set `deletion_window_in_days = var.kms_deletion_window_in_days`
       (default 30).
-- [ ] Set `enable_key_rotation = true`.
-- [ ] Write the resource policy: account root
+- [x] Set `enable_key_rotation = true`.
+- [x] Write the resource policy: account root
       (`arn:aws:iam::${data.aws_caller_identity.current.account_id}:root`)
       gets full key admin; no service principals (EKS uses the IAM caller,
       not a service principal, to encrypt secrets).
-- [ ] Compute
+- [x] Compute
       `local.kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.cluster[0].arn, null))`
       in `locals.tf` so downstream resources reference a single value.
-- [ ] Tag the key with `var.tags`.
+- [x] Tag the key with `var.tags`.
 
 #### Success Criteria
 

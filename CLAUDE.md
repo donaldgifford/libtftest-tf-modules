@@ -78,19 +78,16 @@ Modules in this repo do **not** create Kubernetes-API objects. The `kubernetes`,
 
 Cluster-scoped Kubernetes manifests (`RuntimeClass`, `NetworkPolicy`, admission webhook configs, Gatekeeper templates, etc.) are delivered **out-of-band** via `kubectl apply` (homelab / dev) or Argo CD + Kustomize (production GitOps). When a module needs such an object to exist for it to function (the secure node group's gVisor `RuntimeClass` is the current example), the module's README documents the manifest plus copy-paste examples for both delivery mechanisms; the module itself does not create it. See ADR-0011.
 
-### Cluster module shape (transition state)
+### Cluster module shape
 
-`modules/eks/cluster/variables.tf` declares the inputs (`eks_version`, `name`, SSO access toggles, account-alias data source toggle) and defines four live AWS data sources that the rest of the module currently assumes:
+Under active implementation per IMPL-0001 (`docs/impl/0001-eks-cluster-module-implementation.md`, status: In Progress). Phases 1-2 are landed:
 
-- `data.aws_iam_account_alias.this` — gated by `var.aws_account_alias_enabled`; otherwise the caller passes `var.account_alias`
-- `data.aws_vpc.this` — **discovered by tag** `Account == local.tags.Account` (the alias minus the `dev-` prefix). The module will not work in an environment that doesn't tag its VPC with `Account`.
-- `data.aws_subnets.private` / `data.aws_subnets.public` — discovered by tag `Network = "Private"` / `"Public"` on the same VPC
+- **Phase 1** — variable surface: typed `var.tags` object, KMS / endpoint / log-retention inputs, remote-state inputs (`var.region`, `var.remote_state_bucket`, `var.vpc_name`). Empty `kms.tf` / `security_group.tf` / `access_entries.tf` stubs. Five stale workload-IAM outputs deleted.
+- **Phase 2** — hoist: removed `data.aws_region`, `data.aws_iam_account_alias`, `data.aws_vpc`, `data.aws_subnets.*`, `local.tags`, and the `account_alias` / `aws_account_alias_enabled` variables. Replaced with `data.terraform_remote_state.vpc` in new `data.tf`. The only `data.aws_*` block left is `data.aws_caller_identity.current` (ADR-0001 identity carve-out).
 
-The `variables.tf` carries inline TODO comments earmarking the VPC / subnet discovery blocks for replacement by `data.terraform_remote_state.vpc` reads per ADR-0001 (cross-module composition through remote state, not live data sources). `data.aws_iam_account_alias` / `data.aws_region` will drop out when tags hoist to Boilerplate-generated Terragrunt input objects (DESIGN-0002). `data.aws_caller_identity` is the deliberate carve-out (identity, not state) — see ADR-0001 Alternatives Considered.
+**IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) move out of the cluster module into DESIGN-0004 (`pod-identity-access`) — each role lives next to the workload that consumes it. The cluster module's only IAM role is the EKS service role for the control plane. See IMPL-0001 §Supersedes + §Follow-ups (DESIGN-0002 and DESIGN-0004 both need post-IMPL amendments).
 
-`outputs.tf` already exports five IAM role ARNs (`cluster-autoscaler_arn`, `pod_cw_metrics_arn`, `pod_fluentd_logs_arn`, `alb_role_arn`, `external_dns_arn`) — those resources need to be defined in `main.tf` (currently a stub) before `terraform validate` will pass. The trust policy for all five is the universal Pod Identity trust policy (ADR-0002 / ADR-0004).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`. The full design lives in DESIGN-0002.
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`. The full design lives in DESIGN-0002 (read alongside IMPL-0001 §Supersedes for the controller-IAM rebalancing).
 
 ## CI caveat
 
