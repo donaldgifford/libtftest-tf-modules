@@ -310,18 +310,15 @@ launch template to. Uses granular `aws_vpc_security_group_*_rule` resources.
 
 #### Tasks
 
-- [ ] Add `aws_security_group.nodes` to `security_group.tf`:
-  - `vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id`
-  - `name = "${var.name}-nodes"`
-  - description: `Shared node SG for EKS cluster ${var.name}`
-  - tags from `var.tags`
-- [ ] Add `aws_vpc_security_group_ingress_rule.nodes_from_cluster` —
-      ingress from `aws_eks_cluster.this.vpc_config[0].cluster_security_group_id`
-      on all ports (EKS uses ephemeral ports for kubelet + webhook traffic).
-- [ ] Add `aws_vpc_security_group_ingress_rule.nodes_from_self` — ingress
+- [x] Add `aws_security_group.nodes` to `security_group.tf`.
+- [x] Add `aws_vpc_security_group_ingress_rule.nodes_from_cluster` — ingress
+      from `aws_eks_cluster.this.vpc_config[0].cluster_security_group_id`,
+      all protocols.
+- [x] Add `aws_vpc_security_group_ingress_rule.nodes_from_self` — ingress
       from this SG to itself for pod ↔ pod traffic.
-- [ ] Add `aws_vpc_security_group_egress_rule.nodes_egress_all` — egress to
-      `0.0.0.0/0` for outbound workloads.
+- [x] Add `aws_vpc_security_group_egress_rule.nodes_all` — egress to
+      `0.0.0.0/0` for outbound workloads. (Renamed from `nodes_egress_all` to
+      clear `terraform_tautological_naming`.)
 
 #### Success Criteria
 
