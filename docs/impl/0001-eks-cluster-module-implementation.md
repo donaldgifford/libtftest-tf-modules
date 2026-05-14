@@ -340,18 +340,14 @@ verbatim.
 
 #### Tasks
 
-- [ ] Add `data.aws_iam_roles.sso` filtered by
+- [x] Add `data.aws_iam_roles.sso` filtered by
       `name_regex = "AWSReservedSSO_${var.sso_role_name}_.*"` — gated on
       `var.sso_access_enabled`.
-- [ ] Add `aws_eks_access_entry.sso[0]` (count = sso enabled ? 1 : 0):
-  - `cluster_name = aws_eks_cluster.this.name`
-  - `principal_arn` = resolved SSO role ARN
-  - `kubernetes_groups`, `user_name`, `type` from `var.sso_eks_access_entry`
-- [ ] Add `aws_eks_access_policy_association.sso[0]`:
-  - `policy_arn = "arn:aws:eks::aws:cluster-access-policy/${var.sso_cluster_policy}"`
-  - `access_scope { type = var.sso_cluster_policy_access_scope }`
-- [ ] Confirm `aws_eks_cluster.this.access_config.authentication_mode` is set
-      to `"API_AND_CONFIG_MAP"` in Phase 4 — Access Entries require it.
+- [x] Add `aws_eks_access_entry.sso[0]` (count = sso enabled ? 1 : 0).
+      Resolved principal via `one(data.aws_iam_roles.sso[0].arns)` — fails
+      cleanly if regex matches zero or multiple roles.
+- [x] Add `aws_eks_access_policy_association.sso[0]`.
+- [x] Confirmed `authentication_mode = "API_AND_CONFIG_MAP"` in Phase 4.
 
 #### Success Criteria
 
