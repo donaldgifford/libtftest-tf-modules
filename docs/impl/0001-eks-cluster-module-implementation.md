@@ -367,26 +367,20 @@ five stale outputs) and regenerate the docs.
 
 #### Tasks
 
-- [ ] Add `output "cluster_name"` = `aws_eks_cluster.this.name`.
-- [ ] Add `output "cluster_endpoint"` = `aws_eks_cluster.this.endpoint`.
-- [ ] Add `output "cluster_ca_data"` =
-      `aws_eks_cluster.this.certificate_authority[0].data`.
-- [ ] Add `output "cluster_oidc_issuer_url"` =
-      `aws_eks_cluster.this.identity[0].oidc[0].issuer` — escape hatch for
-      non-Pod-Identity tooling per DESIGN-0002 §"Still open" #2.
-- [ ] Add `output "node_security_group_id"` =
-      `aws_security_group.nodes.id`.
-- [ ] Add `output "kms_key_arn"` = `local.kms_key_arn` — non-null in both
-      module-managed and external-key modes.
-- [ ] Add `output "cluster_security_group_id"` =
-      `aws_eks_cluster.this.vpc_config[0].cluster_security_group_id` — the
-      EKS-managed cluster SG, useful to downstream stacks that need to peer
-      with it.
-- [ ] Add descriptions to every output (terraform-docs renders them).
-- [ ] Run `terraform-docs .` from the module directory — verify the
-      `<!-- BEGIN_TF_DOCS -->` block in `USAGE.md` regenerates with all new
-      variables and outputs.
-- [ ] Update `README.md` only if new design pointers are needed.
+- [x] Add `output "cluster_name"`.
+- [x] Add `output "cluster_endpoint"`.
+- [x] Add `output "cluster_ca_data"`.
+- [x] Add `output "cluster_oidc_issuer_url"` — escape hatch for
+      non-Pod-Identity tooling.
+- [x] Add `output "node_security_group_id"`.
+- [x] Add `output "kms_key_arn"`.
+- [x] Add `output "cluster_security_group_id"` — the EKS-managed cluster SG.
+- [x] Add descriptions to every output.
+- [x] Drive-by fix: `.terraform-docs.yml` had `formatter: "mb tbl"` (invalid).
+      Changed to `"markdown table"`. terraform-docs now renders USAGE.md.
+- [x] Run `terraform-docs .` — USAGE.md regenerated with all variables,
+      outputs, resources, and data sources.
+- [x] README.md left as-is — already points at DESIGN-0002.
 
 #### Success Criteria
 
