@@ -138,4 +138,11 @@ run "default_plan" {
     condition     = length(aws_eks_cluster.this.vpc_config[0].subnet_ids) == 2
     error_message = "cluster vpc_config.subnet_ids must come from stubbed private_subnet_ids (length 2)"
   }
+
+  # cluster_version flows through as an output (consumed by the addons module
+  # for data.aws_eks_addon_version lookups; IMPL-0001 amendment per IMPL-0003 Q2).
+  assert {
+    condition     = output.cluster_version == aws_eks_cluster.this.version
+    error_message = "output.cluster_version must mirror aws_eks_cluster.this.version"
+  }
 }

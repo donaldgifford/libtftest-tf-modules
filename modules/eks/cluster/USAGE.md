@@ -78,6 +78,7 @@ No modules.
 | cluster\_name | EKS cluster name. |
 | cluster\_oidc\_issuer\_url | OIDC issuer URL. Escape hatch for third-party tooling that does not yet support Pod Identity (ADR-0002 keeps Pod Identity as the primary credential model). |
 | cluster\_security\_group\_id | EKS-managed cluster security group ID. Useful to downstream stacks that need to peer with the cluster control plane. |
+| cluster\_version | EKS cluster Kubernetes version. Consumed by the addons module for data.aws\_eks\_addon\_version lookups; consumed by the managed-node-group module to choose a matching AL2023 AMI. |
 | kms\_key\_arn | KMS CMK ARN used for cluster secret envelope encryption. Non-null in both module-managed and external-key modes. Also exported for managed-node-group EBS encryption. |
 | node\_security\_group\_id | Shared node security group ID. Node group launch templates attach to this SG. |
 <!-- END_TF_DOCS -->

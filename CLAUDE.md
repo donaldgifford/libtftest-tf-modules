@@ -96,7 +96,7 @@ Implementation complete per IMPL-0001 (status: Completed). The module shape is n
   - Module-managed `aws_kms_key.cluster[0]` + alias when `var.kms_key_arn` is null (rotation on, 30d deletion window).
   - `aws_security_group.nodes` + three granular `aws_vpc_security_group_*_rule` resources.
   - Gated `aws_eks_access_entry.sso[0]` + `aws_eks_access_policy_association.sso[0]`.
-- **Outputs** (remote-state contract): `cluster_name`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`.
+- **Outputs** (remote-state contract): `cluster_name`, `cluster_version`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`. (`cluster_version` added post-IMPL-0001 per IMPL-0003 Q2 — consumed by the addons module for `data.aws_eks_addon_version` lookups and by managed-node-group for AMI selection.)
 - **Tests** — cluster is the **side-by-side reference module** per RFC-0001 and carries two test suites until it grows its first apply-time runtime invariant:
   - `modules/eks/cluster/test/` — libtftest v0.2.0 Go suite (plan-only today). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container. ~45s.
   - `modules/eks/cluster/tests/` — `terraform test` HCL suite covering the same plan-time invariants via `override_data` for `data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`. Run with `terraform test` from the module dir. ~1.2s, no LocalStack needed.

@@ -55,7 +55,7 @@ created: 2026-05-15
   - [Q3 — LocalStack fidelity of awsekspodidentityassociation](#q3--localstack-fidelity-of-awsekspodidentityassociation)
   - [Q4 — Association eventual consistency in apply tests](#q4--association-eventual-consistency-in-apply-tests)
   - [Q5 — association_id output vs id](#q5--associationid-output-vs-id)
-  - [Q6 — Cross-account targetaccountarns convenience input (deferred per DESIGN-0004)](#q6--cross-account-targetaccountarns-convenience-input-deferred-per-design-0004)
+  - [Q6 — Cross-account targetaccountarns convenience input](#q6--cross-account-targetaccountarns-convenience-input)
 - [References](#references)
 <!--toc:end-->
 
@@ -503,121 +503,71 @@ state and can ship in any order relative to the workload modules.
 
 ## Open Questions
 
-These need a decision before (or during) implementation. Flag back to design
-review if any are load-bearing.
+All resolved 2026-05-15.
 
 ### Q1 — DESIGN-0004 Mode B is partly stale; should this module own pre-built role bundles?
 
-**Background.** DESIGN-0004 Mode B was originally motivated by the five
-workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD,
-CW metrics) that DESIGN-0002 had the _cluster module_ pre-create. IMPL-0001
-(now Completed) explicitly **moved those five roles OUT of the cluster
-module** and re-homed them to "DESIGN-0004 / pod-identity-access". As of
-2026-05-15 the cluster module's outputs (`modules/eks/cluster/outputs.tf`)
-carry exactly seven outputs — `cluster_name`, `cluster_endpoint`,
-`cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`,
-`node_security_group_id`, `kms_key_arn` — and zero controller role ARNs.
+**Resolved A + C.** Drop `cluster_module_role_output` from the input
+surface entirely (Option A) — Mode B becomes purely "caller passes
+`existing_role_arn`" — and ship the five well-known controllers
+(cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) as
+copy-paste examples in `docs/examples/pod-identity-access/` (Option C).
+The module stays a pure primitive matching DESIGN-0004's "small,
+single-purpose module" framing. Option B (curated policy bundles)
+leaks AWS-side policy churn into the module (AWS LBC's IAM policy
+revises with each release) and would require maintenance per AWS
+provider major.
 
-Mode B's `cluster_module_role_output` indirection therefore has **no
-real callers**. It would dereference an output that doesn't exist.
-
-Three options:
-
-1. **Drop `cluster_module_role_output` from the input surface entirely.**
-   Mode B becomes purely "pass `existing_role_arn`". DESIGN-0004 needs a
-   supersedes note. This is the simplest, smallest module — favored under
-   "fewer features = fewer footguns".
-2. **Add the five controller roles as a `var.well_known_controller` enum
-   input** (`null` | `"cluster-autoscaler"` | `"alb"` | `"external-dns"` |
-   `"fluentd"` | `"cw-metrics"`). When set, Mode A fires with a curated
-   policy bundle for that controller. Trades surface area for caller
-   convenience.
-3. **Document the five controllers in a `docs/examples/` directory** as
-   copy-paste `module "x" { ... }` blocks, using existing Mode A primitives.
-   Module stays pure primitive; the convenience lives in examples, not
-   inputs.
-
-**Recommendation.** Option 1 + Option 3 — drop Mode B's
-`cluster_module_role_output` to keep the module a pure primitive (matches
-the DESIGN-0004 "small, single-purpose module" framing), and ship the
-five controllers as documented examples. Option 2 leaks policy details into
-the module that change over time (e.g., AWS LBC's IAM policy churns with
-each release) and would have to be maintained per AWS provider major.
-
-This Q needs to be resolved before Phase 1 (variable surface).
+**Action.** Phase 1 variable surface drops `cluster_module_role_output`.
+DESIGN-0004 needs a supersedes note in a follow-up PR to flag Mode B's
+trimmed-back shape. Phase 9 / 10 gains a "create examples directory"
+task: `docs/examples/pod-identity-access/{cluster-autoscaler,alb,external-dns,fluentd,cw-metrics}/main.tf`,
+each a 10–20-line `module "this" { ... }` block using the existing Mode
+A primitives.
 
 ### Q2 — Stable input contract for cross-module composition (just `cluster_name`?)
 
-DESIGN-0004's listed required inputs are `remote_state_bucket`, `region`,
-`cluster_name`, `namespace`, `service_account`. The module only _uses_
-`cluster_name` (via remote state) and the SA pair from the input directly.
-
-If we drop `cluster_module_role_output` (Q1 option 1), the remote-state read
-becomes a one-output read (`cluster_name`), at which point we have a
-choice:
-
-- Keep the remote-state read for uniformity with the other modules (CLAUDE.md
-  framing — every consumer takes `remote_state_bucket` / `region` /
-  `cluster_name`).
-- Or simplify: caller passes `cluster_name` directly, drop
-  `remote_state_bucket` and `region` from the surface. The association
-  resource only needs `cluster_name` — and Pod Identity Associations don't
-  actually depend on cluster state at apply time (AWS validates the cluster
-  exists; Terraform doesn't need to know its endpoint / CA / SGs).
-
-**Recommendation.** Keep the remote-state read for fleet uniformity, even
-if it's a one-output read. Future-proofs against this module needing the
-cluster's `kms_key_arn` (e.g., for tags-from-state) or other outputs. The
-cost is one extra `data` block, no runtime overhead.
-
-This Q is non-blocking — defer to Phase 1 implementation; revisit if the
-"one output read" feels actively wrong.
+**Resolved A.** Keep the remote-state read for fleet uniformity even
+though it's now a one-output read (`cluster_name`). Future-proofs
+against this module needing the cluster's `kms_key_arn` or
+`cluster_version` later, matches CLAUDE.md's "every consumer takes
+`remote_state_bucket` / `region` / `cluster_name`" framing, costs one
+extra `data` block at no runtime overhead.
 
 ### Q3 — LocalStack fidelity of `aws_eks_pod_identity_association`
 
-Unknown whether LocalStack Pro 2026.5.0 has full apply-time support for
-`aws_eks_pod_identity_association`. This is a brand-new(-ish) AWS resource;
-LocalStack typically lags 6–12 months on EKS-specific resources.
-
-Two outcomes for the Phase 8 apply suite:
-
-- **It works.** Great — apply assertions land, runtime ≤ 90s.
-- **It doesn't.** The suite captures the gap in `FINDINGS.md` per
-  RFC-0001's gap-discovery framing, and the apply block becomes a
-  documented skip / TODO. This becomes load-bearing backlog for sneakystack
-  / libtftest.
-
-Either outcome is acceptable. This Q resolves at Phase 8 execution time —
-no pre-decision needed.
+**Resolved A — gap-discovery via Phase 8.** Test it; if it works, great;
+if it doesn't, capture in `tests-localstack/FINDINGS.md` as
+sneakystack / libtftest backlog. The gap-discovery is the explicit
+value per RFC-0001 — this brand-new(-ish) AWS resource is the kind of
+surface where LocalStack lag is most likely to surface, and that
+finding becomes load-bearing input into the sneakystack/libtftest
+roadmap.
 
 ### Q4 — Association eventual consistency in apply tests
 
-DESIGN-0004 Caveats note that Pod Identity Associations are eventually
-consistent — there's a window between `apply` returning and the agent
-vending the new credentials. For the LocalStack apply suite, this almost
-certainly doesn't manifest (LocalStack isn't running a real Pod Identity
-Agent), but a real-cluster integration test would need explicit retry /
-backoff on the credential verification step.
-
-Out of scope for this module's tests (DESIGN-0004 marks the integration
-post-deploy test as Out Of Scope here). Flagging only so reviewers don't
-expect it. No action required for this IMPL.
+**Resolved A — gap-discovery callout.** Out-of-scope for this module's
+LocalStack apply tests (LocalStack isn't running a real Pod Identity
+Agent; the propagation window doesn't manifest). The credential-
+propagation retry/backoff is a libtftest backlog item: the right place
+to validate "association exists → agent vends credentials → workload
+SDK consumes them" is a real K8s data plane (kind/k3d) fronted by
+sneakystack — captured in `FINDINGS.md` for libtftest planning.
 
 ### Q5 — `association_id` output vs `id`
 
-AWS provider v6 may expose the resource ID under `id` (the standard
-attribute) and / or a domain-specific `association_id` attribute. Need to
-verify the actual schema at Phase 6 time. If only `id` is exposed,
-`output.association_id = aws_eks_pod_identity_association.this.id` (and
-mention the rename in USAGE.md).
+**Resolved A.** Verify the actual `hashicorp/aws ~> 6.2` schema at
+Phase 6 time. If only `id` is exposed, `output.association_id =
+aws_eks_pod_identity_association.this.id`; if a domain-specific
+`association_id` attribute exists, use it. Either way, USAGE.md
+reflects the actual output value source. Cheap verification at
+implementation time.
 
-Non-blocking — Phase 6 verification.
+### Q6 — Cross-account `target_account_arns` convenience input
 
-### Q6 — Cross-account `target_account_arns` convenience input (deferred per DESIGN-0004)
-
-DESIGN-0004 explicitly defers `var.target_account_arns` as a "still open"
-item. Not implementing in v1 — callers compose the `sts:AssumeRole` chain
-in their inline policy. No change here; just confirming it stays deferred.
+**Resolved A.** Stay deferred per DESIGN-0004 "Still open" item. v1
+callers compose the `sts:AssumeRole` chain in their inline policy
+themselves. Add the convenience input only when a real consumer asks.
 
 ## References
 

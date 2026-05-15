@@ -53,6 +53,12 @@ created: 2026-05-15
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
+  - [Q1 — Shared Pod Identity trust policy location](#q1--shared-pod-identity-trust-policy-location)
+  - [Q2 — cluster_version missing from cluster module outputs](#q2--clusterversion-missing-from-cluster-module-outputs)
+  - [Q3 — Default for podidentityagent_version](#q3--default-for-podidentityagentversion)
+  - [Q4 — LocalStack data.awseksaddon_version fidelity](#q4--localstack-dataawseksaddonversion-fidelity)
+  - [Q5 — PrivateLink endpoint testing](#q5--privatelink-endpoint-testing)
+  - [Q6 — configuration_values JSON testing](#q6--configurationvalues-json-testing)
 - [References](#references)
 <!--toc:end-->
 
@@ -493,61 +499,67 @@ plus the addon-managed PIA pattern.
 
 ## Open Questions
 
-- **Q1: Where does the shared Pod Identity trust policy live?**
-  Every AWS-credentialed addon (VPC CNI, EBS CSI, EFS CSI) needs the
-  same `data.aws_iam_policy_document.pod_identity_trust`. Three
-  options:
-  (a) Inline duplicate in each addon's file — most local, most
-  duplication.
-  (b) Single shared data source in `locals.tf` — DRY, but locals.tf
-  ends up holding non-local data declarations.
-  (c) Dedicated `iam.tf` for shared trust doc — clean semantic
-  separation.
-  Lean (c). Same exact policy shape will reappear in IMPL-0004
-  (pod-identity-access); worth confirming whether IMPL-0004 reads
-  it from this module's remote state or just duplicates the literal.
+All resolved 2026-05-15.
 
-- **Q2: cluster_version is missing from the cluster module's output
-  contract.** DESIGN-0003 §"Cross-module references" reads
-  `cluster_version` to pass to `data.aws_eks_addon_version`. IMPL-0001
-  shipped 7 outputs and **cluster_version is not one of them**.
-  Three paths:
-  (a) Add `cluster_version` to the cluster module's outputs.tf
-  (`aws_eks_cluster.this.version`) — small, additive, ships in a
-  separate PR ahead of IMPL-0003 work. Lean here.
-  (b) Have the addons module take `cluster_version` as a direct
-  input — violates ADR-0001 (data flows through remote state).
-  (c) Have the addons module read `aws_eks_cluster` via a live data
-  source — violates ADR-0001 (last-known-good ground truth).
-  Action: file a follow-up to amend the cluster module output
-  contract before IMPL-0003 implementation begins.
+### Q1 — Shared Pod Identity trust policy location
 
-- **Q3: Default for `pod_identity_agent_version`.** DESIGN-0003 says
-  "no default — Boilerplate-generated Terragrunt passes the pinned
-  value; Renovate bumps it." Should the IMPL ship the variable with
-  no default + a `validation { condition = length(...) > 0 }` block,
-  or resolve via `data.aws_eks_addon_version` for the agent too?
-  Lean: validation block enforcing non-empty. Forces the supply-chain
-  pinning posture ADR-0003 commits to.
+**Resolved B.** Single shared
+`data "aws_iam_policy_document" "pod_identity_trust"` in `locals.tf`,
+referenced by VPC CNI / EBS CSI / EFS CSI addon blocks. One block,
+three references. A dedicated `iam.tf` for one data source is sub-module
+ceremony for no real gain. Phase 1 task list updates: add the trust
+policy data source to `locals.tf` (not `iam.tf` as DESIGN-0003 originally
+suggested).
 
-- **Q4: LocalStack `data.aws_eks_addon_version` fidelity.**
-  This data source queries AWS's published addon catalog
-  (`describe-addon-versions`). It's not clear if LocalStack Pro
-  populates that catalog. Phase 10 will surface this. If empty, the
-  test pins literal versions and files a sneakystack ticket for the
-  catalog data.
+### Q2 — `cluster_version` missing from cluster module outputs
 
-- **Q5: PrivateLink endpoint testing.** `com.amazonaws.<region>.eks-auth`
-  is a hard prerequisite for production but cannot be exercised in
-  LocalStack today. Documented as a prerequisite in the README; not
-  a blocker for this IMPL.
+**Resolved A (already implemented in this branch).** `cluster_version`
+added to `modules/eks/cluster/outputs.tf` as
+`output "cluster_version" { value = aws_eks_cluster.this.version }`,
+and asserted by `modules/eks/cluster/tests/default.tftest.hcl` to
+mirror the upstream resource attribute. CLAUDE.md's "Outputs (remote-
+state contract)" line is updated. IMPL-0003's Phase 7 (Addon version
+resolution) consumes
+`data.terraform_remote_state.eks.outputs.cluster_version` at the use
+site (ADR-0001 — no aliasing local).
 
-- **Q6: configuration_values testing.** Plan-only tests should cover
-  at least one passing-through example (literal JSON forwarded to
-  the addon resource). Malformed JSON validation lives at apply time
-  in AWS; testing it in Phase 10 would require LocalStack to
-  faithfully validate addon configs. Lean: don't test malformed JSON;
-  trust AWS to reject at apply.
+### Q3 — Default for `pod_identity_agent_version`
+
+**Resolved C with override.** Default to
+`data.aws_eks_addon_version.pod_identity_agent` with
+`most_recent = true` — the AWS-idiomatic pattern, gives plan-time
+determinism without hardcoding. Allow explicit override via
+`var.pod_identity_agent_version`: when non-null, the addon resource
+uses the literal; when null, it uses the data-source resolved value.
+Captures the "preferred idiomatic AWS way as default; explicit pin
+available for supply-chain control" posture. Same shape applied to
+every addon-version input (VPC CNI, kube-proxy, CoreDNS, EBS CSI, EFS
+CSI) for consistency.
+
+### Q4 — LocalStack `data.aws_eks_addon_version` fidelity
+
+**Resolved A.** Test in Phase 10 and capture findings — proceed
+regardless. If the catalog is empty, Phase 10 test fixtures pin literal
+versions for the affected runs and `FINDINGS.md` files a sneakystack
+ticket for "populate `describe-addon-versions` catalog response."
+
+### Q5 — PrivateLink endpoint testing
+
+**Resolved A.** `com.amazonaws.<region>.eks-auth` is a VPC-stack
+concern; document as a prerequisite in the module's README. Not
+provisioned by this module. Not exercised in Phase 10.
+
+### Q6 — `configuration_values` JSON testing
+
+**Resolved C.** Don't test the freeform passthrough — `configuration_values`
+is caller-controlled JSON; testing that "what was passed in is what
+shows up in the plan" is uninteresting. Assert only that any
+module-provided **defaults** (if a phase ships one) parse as valid JSON.
+This is the exact gap RFC-0001 is meant to surface: any future need
+to validate addon configuration semantics against the live API
+becomes a libtftest backlog item (apply-time runtime invariant
+against a kind/k3d cluster fronted by sneakystack). Captured in
+`FINDINGS.md` as a libtftest candidate.
 
 ## References
 

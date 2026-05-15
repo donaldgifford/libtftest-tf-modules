@@ -608,159 +608,127 @@ Driven by RFC-0001:
 - **No blocking dependencies on other module implementations.** This
   module is fleet-shared and cluster-agnostic. It can ship in any order
   relative to IMPL-0001 / IMPL-0002 / IMPL-0003 / IMPL-0004.
-- **Open Question Q1 (ADR-0002 amendment) is the only true blocker.**
-  The decision on whether the node-group module attaches the third
-  managed-style policy from this module's `node_pull_through_policy_arn`
-  output must be made before IMPL-0002's Phase 2 (node IAM role)
-  hardens around the "exactly two managed policies" shape currently
-  set by ADR-0002. If Q1 resolves "no", the
-  `enable_node_pull_through_policy` input + IAM resource here become
-  unused — they should be removed, not just defaulted off.
-- **Downstream consumer**: IMPL-0002 (managed-node-group) consumes
-  `node_pull_through_policy_arn` via `var.extra_node_policies` once Q1
-  is resolved.
+- **ADR-0015 (Proposed)** unblocks Phase 6 — the opt-in third
+  managed-style policy on the node role is permitted by amendment to
+  ADR-0002. The opt-in posture (default `true` on
+  `enable_node_pull_through_policy` here; default `[]` on the
+  consumer's `var.extra_node_policies` there) means the policy is
+  emitted in every pull-through-cache instantiation but never reaches
+  a node role without explicit Terragrunt-layer wiring.
+- **Downstream consumer**: IMPL-0002 (managed-node-group) Phase 2 adds
+  `var.extra_node_policies = []` (default empty list); consumers'
+  Terragrunt configs wire
+  `module.ecr_pull_through_cache.node_pull_through_policy_arn` into the
+  list when both modules are instantiated. IMPL-0002 Phase 4 adds the
+  opt-in `var.containerd_pull_through_mirror` (default disabled) for
+  the runtime side per Q8.
 
 ## Open Questions
 
-These need a decision before (or during) implementation. Flag back to
-design review if any are load-bearing.
+All resolved 2026-05-15.
 
 ### Q1 — ADR-0002 tension: does the node role gain a third managed policy?
 
-**Background.** DESIGN-0005 emits `node_pull_through_policy_arn` so the
-node-group module can attach the additional `ecr:CreateRepository` +
-`ecr:BatchImportUpstreamImage` policy. ADR-0002 commits the node role
-to **exactly two** managed policies (`AmazonEKSWorkerNodePolicy` +
-`AmazonEC2ContainerRegistryPullOnly`) and uses Pod Identity for
-everything else.
+**Resolved A — proposed ADR-0015 written.** See
+[ADR-0015](../adr/0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md)
+(status: Proposed). ADR-0015 permits exactly one customer-managed
+policy on the node role with two specific actions
+(`ecr:CreateRepository`, `ecr:BatchImportUpstreamImage`) scoped to
+`arn:aws:ecr:${region}:${account_id}:repository/*`. The grant is
+**opt-in by default** — two stages of consent are required to reach a
+node role: (a) the pull-through cache module is instantiated AND (b)
+the consumer's Terragrunt config passes the emitted ARN into the
+managed-node-group module's `var.extra_node_policies`. Either consent
+alone is a no-op.
 
-Pod Identity is **not** an option here — the puller is containerd /
-kubelet, not a pod with a ServiceAccount.
-
-Three paths forward (from DESIGN-0005 §Open Questions):
-
-1. **Attach a third managed policy on the node role.** Write a new ADR
-   amending ADR-0002 to permit an opt-in third policy specifically for
-   pull-through cache. This is DESIGN-0005's lean.
-2. **Move the permissions to the cluster service role.** Doesn't work
-   — pull-through is invoked from the puller's credentials, not the
-   cluster's.
-3. **Skip pull-through cache entirely.** Accept Docker Hub anonymous
-   rate limits as a reliability concern. Doesn't address DESIGN-0005's
-   primary goal.
-
-**Recommendation.** Path 1. Write an ADR (proposed ADR-0015 — Permit
-opt-in third managed policy on node role for ECR pull-through) before
-implementing Phase 6 / IMPL-0002 Phase 2 hardens. The third policy is
-narrowly scoped (account-and-region-bounded ECR repositories), opt-in
-via a node-group input, and easily auditable in IAM.
-
-This Q is the load-bearing blocker for IMPL-0002 + IMPL-0005 sequencing.
+**Action.** Phase 6's IAM policy stays as drafted (it's the emission
+side). IMPL-0002 Q6 captures the consumer-side `var.extra_node_policies`
+input addition. README in Phase 10 links to ADR-0015.
 
 ### Q2 — Repository creation template: one or many?
 
-DESIGN-0005 ships one template with `prefix = "*"`. If different
-upstreams need different retention (e.g., MCR retained 30d, Docker Hub
-7d), the template needs to be per-upstream. Two paths:
-
-1. **v1 keeps one template** — single global retention setting via
-   `var.untagged_image_retention_days`. Simpler. Lean.
-2. **v1 ships per-upstream templates** — `var.lifecycle_overrides` map
-   keyed by upstream-name. More surface, but cleaner forward path.
-
-**Recommendation.** Path 1 for v1 — wait for an actual workload demand
-for per-upstream differentiation before adding surface. Phase 5
-implements one template; Phase 10 documents the v2 path in README.
+**Resolved A.** v1 keeps one template with `prefix = "*"` and a single
+global `var.untagged_image_retention_days`. Wait for an actual workload
+demand for per-upstream differentiation before adding surface. Phase 10
+README documents the v2 path (`var.lifecycle_overrides` keyed by
+upstream-name) for the future revisit.
 
 ### Q3 — `aws_ecr_repository_creation_template` schema verification
 
-DESIGN-0005's example uses a `scanning_configuration` block (snake-cased)
-and `lifecycle_policy = jsonencode(...)`. The actual AWS provider v6
-schema may differ — `scan_configuration` vs `scanning_configuration`,
-`lifecycle_policy` as string vs typed block, etc.
-
-**Action.** Phase 5 includes a "verify exact attribute names in v6
-schema" line. If the schema diverges from DESIGN-0005's example, follow
-the schema and note the divergence in a USAGE.md PR note. Non-blocking.
+**Resolved A.** Verify exact AWS provider v6 attribute names at Phase 5
+implementation time. If the schema diverges from DESIGN-0005's example
+(`scan_configuration` vs `scanning_configuration`, lifecycle_policy as
+string vs typed block), follow the schema and note the divergence in
+USAGE.md. Cheap inline verification; no preflight `terraform providers
+schema -json` needed.
 
 ### Q4 — `cache_url_prefixes` URL construction reliability
 
-The output computes `cache_url_prefixes` as
-`${account_id}.dkr.ecr.${region}.amazonaws.com/${prefix}`. For
-**non-public** AWS regions (GovCloud, China, ISO/ISOB) this URL shape
-differs (e.g., `amazonaws.com.cn` for China). v1 is implicitly
-public-AWS-only because LocalStack Pro models the public AWS surface;
-this might quietly break for a future GovCloud consumer.
-
-**Action.** Add a NOTE in Phase 10 README documenting the
-public-AWS-only assumption and capture the partition-aware URL
-construction as future work. Non-blocking.
+**Resolved A.** v1 is implicitly public-AWS-only. Document the
+assumption in Phase 10 README. Partition-aware URL construction
+(`amazonaws.com.cn` for China, GovCloud variants) becomes future work
+when a real GovCloud consumer materializes — add `data.aws_partition.current`
+then.
 
 ### Q5 — Secrets Manager auth credential JSON shape across upstreams
 
-DESIGN-0005 §Caveats notes that Docker Hub and GHCR both use
-`{"username","accessToken"}`, but each has different token-minting
-flows and required scopes. Quay uses **robot tokens**, which may need a
-different JSON shape entirely.
-
-**Action.** Phase 3's placeholder is
-`{"username":"REPLACE_ME","accessToken":"REPLACE_ME"}` — the shape ECR
-pull-through expects for Docker Hub / GHCR / Quay. If Quay diverges in
-a future revision, this becomes a per-upstream placeholder. Phase 10
-README documents the per-upstream token-shape requirement.
-Non-blocking for v1.
+**Resolved A.** Single placeholder shape for v1:
+`{"username":"REPLACE_ME","accessToken":"REPLACE_ME"}`. ECR's documented
+credential format is uniform across Docker Hub / GHCR / Quay; verify
+Quay's robot-token shape actually diverges in real testing before
+adding per-upstream placeholders. Phase 10 README documents the
+post-apply `aws secretsmanager put-secret-value` step and points at
+ECR docs for upstream-specific credential format details.
 
 ### Q6 — LocalStack Pro `aws_ecr_repository_creation_template` fidelity
 
-Repository creation templates are a relatively new ECR API (2023+).
-LocalStack Pro likely supports cache rule registration (DESIGN-0005
-notes LocalStack Pro 2026.5.x does), but the creation template is the
-weaker bet.
-
-**Action.** Phase 9 explicitly tests this and captures findings in
-`FINDINGS.md`. If it's stubbed-but-not-persisted, that's a sneakystack
-ticket — RFC-0001 gap-discovery success, not test failure.
+**Resolved A.** Test in Phase 9 and capture findings in `FINDINGS.md`.
+Gap-discovery is the explicit RFC-0001 value: if creation template is
+stubbed-but-not-persisted in LocalStack, that's a sneakystack ticket
+(success of the test infrastructure, not failure of the module). The
+template is a relatively new ECR API (2023+); LocalStack lag is the
+expected case.
 
 ### Q7 — `node_pull_through_policy_arn` attached at Terragrunt layer or at module layer?
 
-DESIGN-0005 says the consumer attaches via `var.extra_node_policies`
-(implied: a Terragrunt-level wiring). Alternative: this module attaches
-directly to the node role via remote-state read of the role name.
+**Resolved A.** Keep policy emission here, attachment at the
+**Terragrunt consumer layer** via the managed-node-group module's
+`var.extra_node_policies` input. Avoids this module having a
+cross-module dependency on the node-group module's outputs; keeps this
+module fleet-shared / cluster-agnostic; matches the existing pattern
+where attachments live with the role owner, not the policy author.
+ADR-0015's "two stages of consent" framing depends on this boundary.
 
-**Recommendation.** Keep the policy emission here and the **attachment
-at the Terragrunt layer**. Reasons:
-(a) avoids this module having a cross-module dependency on the node-
-group module's outputs;
-(b) keeps the module fleet-shared / cluster-agnostic;
-(c) matches the existing pattern where attachments live with the role
-owner, not the policy author.
+### Q8 — Should the cluster actually use the cache?
 
-This Q is implicitly resolved in DESIGN-0005 but worth noting so the
-implementation doesn't drift toward cross-module attachment via remote
-state. Non-blocking.
+**Resolved B with opt-in default.** IMPL-0002 Phase 4 owns the
+containerd mirror config — the launch template user data writes a
+`/etc/containerd/config.toml.d/mirror.toml` snippet redirecting
+configured upstream registries to the cache URL. This is bootstrap-time
+EC2 user-data work (before Kubernetes exists), so ADR-0011 (no K8s API
+manipulation from Terraform) is not violated.
 
-### Q8 — Should the cluster actually _use_ the cache?
+**Off by default / opt-in via the managed-node-group module's
+`var.containerd_pull_through_mirror = { enabled = false, ... }` input.**
+Three reasons for opt-in default:
 
-This is the gap between "Terraform creates the cache" and "the cluster
-actually uses the cache." Two paths:
+1. **Symmetry with the IAM gate from ADR-0015.** Two independent
+   consents — IAM attachment (`var.extra_node_policies`) AND runtime
+   mirror (`var.containerd_pull_through_mirror.enabled`) — match
+   ADR-0015's two-stages-of-consent framing. A cluster can have one
+   without the other.
+2. **Failure mode bias.** A misconfigured mirror silently breaks every
+   pod that starts on the node. Off-by-default keeps the boring path
+   as the default; opt-in flips it for clusters that have validated
+   their cache.
+3. **Brownfield migration.** DESIGN-0005's migration plan is
+   per-upstream / per-workload. The containerd mirror is all-or-nothing
+   at the node level. Opt-in matches the gradual rollout.
 
-- The node-group module's launch template user data writes a
-  `/etc/containerd/config.toml.d/mirror.toml` snippet that redirects
-  Docker Hub pulls through the cache. IMPL-0002 owns this if so.
-- Workloads rewrite image references in their Helm/Kustomize — no
-  containerd-level change required.
-
-DESIGN-0005's Non-Goals explicitly excludes image-reference rewriting,
-suggesting the Helm/Kustomize path. ADR-0011 forbids Kubernetes-API
-manipulation from Terraform, which forbids configmap-via-Terraform —
-but does **not** forbid containerd config via launch-template user
-data, since that runs in the EC2 instance bootstrap before Kubernetes
-exists.
-
-**Action.** Confirm with IMPL-0002 Phase 4 (user data) whether the
-containerd mirror snippet is written into user data, and if so,
-document the dependency in IMPL-0002. No work in this module.
-Non-blocking here.
+**Action.** Cross-reference [IMPL-0002 Q7](0002-managed-node-group-module-implementation.md)
+for the consumer-side input shape (the `containerd_pull_through_mirror`
+object). No work in this module; this Q only confirms the IMPL-0002 +
+IMPL-0005 boundary and the opt-in default.
 
 ## References
 
@@ -786,5 +754,6 @@ Non-blocking here.
   (Phase 8).
 - ADR-0014 — libtftest for apply-time runtime validation without AWS
   (informs Phase 9 framing).
-- Proposed ADR-0015 — Permit opt-in third managed policy on node role
-  for ECR pull-through (blocked on Q1 decision).
+- [ADR-0015 (Proposed)](../adr/0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md) —
+  Permit opt-in third managed policy on node role for ECR pull-through
+  cache (resolves Q1).

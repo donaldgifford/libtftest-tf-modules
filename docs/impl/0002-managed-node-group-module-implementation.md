@@ -47,6 +47,13 @@ created: 2026-05-15
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
+  - [Q1 — Module-scaffolding distribution mechanism](#q1--module-scaffolding-distribution-mechanism)
+  - [Q2 — gVisor SHA-512 verification source](#q2--gvisor-sha-512-verification-source)
+  - [Q3 — Kubelet-join LocalStack fidelity in Phase 8](#q3--kubelet-join-localstack-fidelity-in-phase-8)
+  - [Q4 — gVisor systrap on arm64](#q4--gvisor-systrap-on-arm64)
+  - [Q5 — Renovate pinning UX](#q5--renovate-pinning-ux)
+  - [Q6 — var.extranodepolicies for opt-in ECR pull-through policy](#q6--varextranodepolicies-for-opt-in-ecr-pull-through-policy)
+  - [Q7 — Containerd pull-through registry mirror in user data](#q7--containerd-pull-through-registry-mirror-in-user-data)
 - [References](#references)
 <!--toc:end-->
 
@@ -472,45 +479,104 @@ doesn't serve for managed node groups.
 
 ## Open Questions
 
-- **Q1: Where does `var.architecture` come from in practice?**
-  DESIGN-0001 says it's a typed object hoisted to Boilerplate-
-  generated Terragrunt config. The module accepts the object as-is.
-  Should the IMPL include any examples of what the Boilerplate
-  template produces, or is that out of scope for the module and
-  documented in infrastructure-live? Lean: out of scope here.
-- **Q2: gVisor SHA-512 verification — where do the published hashes
-  live?**  DESIGN-0001 says "verify SHA-512 using upstream-published
-  hashes." gVisor publishes `runsc.sha512` and
-  `containerd-shim-runsc-v1.sha512` files next to each binary in
-  Google Cloud Storage. The user data downloads both binary +
-  signature and runs `sha512sum -c`. Confirmation needed: should we
-  hardcode a known-good SHA-512 for the pinned `gvisor_release` (and
-  bust the cache on Renovate bump) — or always download the signature
-  file from upstream at runtime?  Latter is simpler; former is one
-  more layer of supply-chain defense. Lean: download at runtime;
-  Renovate-pinned release version is the supply-chain anchor.
-- **Q3: kubelet-join validation in Phase 8.** Can LocalStack Pro
-  actually simulate the kubelet handshake enough that
-  `aws_eks_node_group.status` transitions to `ACTIVE`?  Per the
-  earlier RFC-0001 discussion, likely not — LocalStack EKS fakes the
-  registration but not the data-plane handshake. If `status` never
-  reaches `ACTIVE`, Phase 8's apply-LocalStack should assert on
-  whatever status LocalStack does return and document it as a
-  libtftest-harness ticket per RFC-0001 §Phase 3.
-- **Q4: gVisor systrap on arm64 in Phase 8.** The user data downloads
-  arm64 gVisor binaries — but those don't actually run in the
-  LocalStack test (the EC2 instance is not provisioned, only its
-  launch template config). Validation that gVisor actually
-  initializes on a real Graviton node lives in the post-deploy
-  Terragrunt-unit integration tests, **not** in this IMPL's scope.
-  Worth restating in the README.
-- **Q5: Renovate pinning UX.** ADR-0010 commits to Renovate-managed
-  bumps of `var.gvisor_release`. Should the module's `variables.tf`
-  ship a `default = "release/20260101.0"` (or whatever the current
-  pin is at the time of IMPL completion) so a fresh consumer has a
-  working default — or should `default = null` force the consumer to
-  pin explicitly?  Lean: `default = null` + validation that the
-  value is set, so Renovate has a target.
+All resolved 2026-05-15.
+
+### Q1 — Module-scaffolding distribution mechanism
+
+**Resolved.** Defer to a separate workstream. Boilerplate templates went
+crusty in prior projects; copy-paste-from-cluster-module continues to
+work through the four-module fleet. The longer-term shape is a top-level
+`tmpl/` directory + a `just tf new <module-path>` recipe that copies the
+canonical scaffolding into a new module dir, plus a CI smoke test that
+verifies every module under `modules/eks/*` has `.tflint.hcl`,
+`.terraform-docs.yml`, `versions.tf`, and `USAGE.md` with the
+`<!-- BEGIN_TF_DOCS -->` markers. Tracked as separate work (likely an
+INV doc); does not block this implementation. Phase 1 references the
+`just tf new` recipe with a copy-paste fallback if it doesn't yet exist.
+
+### Q2 — gVisor SHA-512 verification source
+
+**Resolved A.** Hardcode the digest as a `var.gvisor_sha512` input that
+Renovate updates alongside `var.gvisor_version`. Downloading
+`runsc.sha512` from the same GCS bucket at install time is
+supply-chain self-certification and defeats the purpose of pinning. The
+Renovate manager config (handled by infrastructure-live, not this repo)
+keeps both fields lockstep on each gVisor release bump.
+
+### Q3 — Kubelet-join LocalStack fidelity in Phase 8
+
+**Resolved A.** Test it at Phase 8 and capture findings — proceed
+regardless. If `aws_eks_node_group.status` never reaches `ACTIVE`
+because LocalStack fakes registration without the data-plane
+handshake, that's the explicit gap-discovery signal per RFC-0001:
+captured in `tests-localstack/FINDINGS.md` as sneakystack /
+libtftest backlog, and Phase 8 assertions are loosened to whatever
+status LocalStack does return.
+
+### Q4 — gVisor systrap on arm64
+
+**Resolved A.** systrap on both architectures per DESIGN-0001 and
+ADR-0006. systrap on arm64 is upstream-supported; the conservative
+`--platform=ptrace` fallback adds complexity for an unmeasured concern.
+Validation that gVisor actually initializes on a real Graviton node
+lives in the post-deploy Terragrunt-unit integration tests, **not** in
+this IMPL's scope — restated in the README per DESIGN-0001.
+
+### Q5 — Renovate pinning UX
+
+**Resolved A.** Pin a default for `var.gvisor_version` (e.g.,
+`"release-20250915.0"` at IMPL-completion time) and Renovate manages
+the bump in this repo. Matches the "module is mostly a pure function"
+framing — callers override only when they want to. `null` default plus
+caller-side mandatory-pinning trades fleet-wide consistency for marginal
+explicitness; not worth it.
+
+### Q6 — `var.extra_node_policies` for opt-in ECR pull-through policy
+
+Added during IMPL-0005 review: the managed-node-group module needs a
+`var.extra_node_policies = []` input that consumers wire to
+`module.ecr_pull_through_cache.node_pull_through_policy_arn` to attach
+the opt-in third managed policy per [ADR-0015](../adr/0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md).
+**Default `[]`** — empty list, no extra attachments unless the
+consumer's Terragrunt config explicitly opts in.
+
+Mechanism: in `iam.tf`, add `resource "aws_iam_role_policy_attachment"
+"extra"` with `for_each = toset(var.extra_node_policies)`,
+`role = aws_iam_role.this.name`, `policy_arn = each.value`. Phase 2
+acceptance criteria gain: with `var.extra_node_policies = []` the plan
+contains exactly 2 (or 3 with `enable_ssm = true`) managed-policy
+attachments; with one ARN passed in, exactly one additional attachment
+appears.
+
+### Q7 — Containerd pull-through registry mirror in user data
+
+Added during IMPL-0005 review (Q8 cross-reference). When opted in,
+Phase 4's user data writes
+`/etc/containerd/config.toml.d/mirror.toml` redirecting configured
+upstream registries (Docker Hub, Quay, etc.) to the pull-through cache
+URL. **Off by default / opt-in** to match the IAM gate from ADR-0015 —
+no scenario where you want the mirror without the IAM, and there are
+scenarios where you want the IAM without the mirror (cache-only ECR
+public migration; brownfield cluster validating the cache before
+redirecting real traffic).
+
+Input shape:
+```hcl
+variable "containerd_pull_through_mirror" {
+  description = "When enabled, user data writes a containerd config dropin redirecting the listed upstream registries to cache_url_prefix. Requires the corresponding ECR pull-through cache module to be instantiated and the matching node IAM policy attached via var.extra_node_policies."
+  type = object({
+    enabled          = bool
+    cache_url_prefix = optional(string)  # e.g. "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+    upstreams        = optional(list(object({ host = string, prefix = string })), [])
+  })
+  default = { enabled = false }
+}
+```
+
+Plan-time validation: when `enabled = true`, `cache_url_prefix` must be
+non-null and `upstreams` non-empty. Failure mode: misconfigured mirror
+silently breaks every pod that starts on that node — opt-in default is
+the failure-mode-bias-correct choice.
 
 ## References
 
