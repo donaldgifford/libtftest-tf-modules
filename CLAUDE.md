@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: `modules/eks/cluster` is the only fully-implemented module (IMPL-0001 Completed). `modules/eks/managed-node-group` is **in-flight per IMPL-0002**: Phase 1 (variable surface + module skeleton) landed 2026-05-15, Phases 2–8 pending. The other three directories (`addons`, `ecr-pull-through-cache`, `pod-identity-access`) contain only docs/tooling stubs pending IMPL-0003 / IMPL-0004 / IMPL-0005. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
+A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: `modules/eks/cluster` (IMPL-0001) and `modules/eks/managed-node-group` (IMPL-0002) are fully implemented. The other three directories (`addons`, `ecr-pull-through-cache`, `pod-identity-access`) contain only docs/tooling stubs pending IMPL-0003 / IMPL-0004 / IMPL-0005. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
 
 ## Tooling
 
@@ -104,6 +104,24 @@ Implementation complete per IMPL-0001 (status: Completed). The module shape is n
   No other module carries both frameworks; new modules default to `terraform test` per ADR-0013. See [RFC-0001](docs/rfc/0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) for the strategy, [ADR-0013](docs/adr/0013-use-terraform-test-for-plan-time-module-invariants.md) and [ADR-0014](docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) for the per-tool decisions.
 
 **IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) re-home to DESIGN-0004 (`pod-identity-access`). The cluster module's only IAM role is the EKS service role.
+
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+
+### Managed node group module shape
+
+Implementation complete per IMPL-0002 (status: Completed). The module shape is now:
+
+- **Inputs**: required (`remote_state_bucket`, `region`, `cluster_name`, `vpc_name`, `nodegroup_name`); typed `var.architecture` object (5 fields with 4 validation blocks) defaulting to arm64/AL2023_ARM_64_STANDARD/m7g+c7g; capacity/scaling (`instance_types`, `capacity_type`, `desired_size`, `min_size`, `max_size`, `disk_size_gib`); IAM opt-ins (`enable_ssm` for AmazonSSMManagedInstanceCore per ADR-0012, `extra_node_policies` for the ADR-0015 third-managed-policy carve-out); gVisor pinning (`gvisor_version`, `gvisor_sha512`); `containerd_pull_through_mirror` opt-in for the ECR cache module (off by default per IMPL-0005 Q8); `labels`/`taints`/`kubelet_extra_args`/`tags`.
+- **Data sources**: `data.terraform_remote_state.eks` + `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`). Cluster outputs (cluster_name, endpoint, CA, node_security_group_id, kms_key_arn) and VPC outputs (private_subnet_ids) consumed at the use site, no aliasing locals.
+- **Resources** (`iam.tf` / `launch_template.tf` / `user_data.tf` / `main.tf`):
+  - `aws_iam_role.node` + 2 always-on attachments (AmazonEKSWorkerNodePolicy, AmazonEC2ContainerRegistryPullOnly) + conditional AmazonSSMManagedInstanceCore + `for_each` extra attachments + `aws_iam_instance_profile.node`.
+  - `aws_launch_template.node`: IMDSv2 required, hop=2, metadata_tags enabled (ADR-0007); gp3 KMS-encrypted root EBS using the cluster module's KMS key from remote state; monitoring enabled; tag_specifications for instance + volume; create_before_destroy lifecycle.
+  - User data: multipart MIME body from `templates/user_data.sh.tftpl`. AL2023 nodeadm `NodeConfig` YAML registers with the cluster API endpoint + CA; shell part downloads runsc + containerd-shim-runsc-v1 from `storage.googleapis.com/gvisor/releases/${gvisor_version}/${gvisor_arch}` (Renovate-pinned per ADR-0010), verifies SHA-512, writes `/etc/containerd/runsc.toml` + `/etc/containerd/config.toml.d/runsc.toml` drop-in (platform=systrap, network=sandbox per ADR-0005), restarts containerd, asserts `runsc` plugin loaded via `ctr`.
+  - `aws_eks_node_group.this`: ami_type from `var.architecture.ami_type`, cluster_name/subnet_ids from remote state, scaling_config (desired/min/max), `lifecycle.ignore_changes` on `scaling_config[0].desired_size` (autoscaler-owned), always-on `workload-class=secure:NO_SCHEDULE` taint + dynamic `additional_taints`, `labels = local.runtime_labels` (workload-class + runtime + kubernetes.io/arch), `update_config.max_unavailable_percentage = 33`, `lifecycle.precondition` enforcing cross-arch instance type guard.
+- **Outputs** (consumer contract): `nodegroup_name`, `architecture`, `ami_type`, `node_role_arn`, `node_role_name`, `instance_profile_arn`, `launch_template_id`, `launch_template_latest_version`, `node_labels`, `node_taints`.
+- **Tests** — defaults to `terraform test` per ADR-0013, no libtftest Go suite (cluster is the side-by-side reference, not a per-module pattern):
+  - `modules/eks/managed-node-group/tests/` — plan-only suite. 3 files (`default.tftest.hcl` 15 assertions, `architecture.tftest.hcl` 4 runs incl. cross-arch precondition negative, `ssm_enabled.tftest.hcl`). Run with `just tf test eks/managed-node-group`. ~1.2s, no LocalStack.
+  - `modules/eks/managed-node-group/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + KMS + real `aws_eks_cluster` + node SG + S3 bucket with stub VPC/EKS state files; `apply_localstack.tftest.hcl::default_apply` applies the full module against LocalStack Pro. Run with `just tf test-localstack eks/managed-node-group`. Per `FINDINGS.md`: zero coverage gaps in LocalStack Pro 2026.5.0 for this module's AWS surface; kubelet-join validation + gVisor `runsc` init + Pod Identity Agent reachability are filed as out-of-scope libtftest backlog (RFC-0001 §Phase 3).
 
 Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 

@@ -1,7 +1,7 @@
 ---
 id: IMPL-0002
 title: "Managed Node Group Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0002: Managed Node Group Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -388,31 +388,31 @@ doesn't serve for managed node groups.
 
 #### Tasks
 
-- [ ] `tests-localstack/fixtures/setup/main.tf`: VPC + subnets + S3
+- [x] `tests-localstack/fixtures/setup/main.tf`: VPC + subnets + S3
       bucket + stub `eks` remote state + stub `vpc` remote state.
       The stub `eks` state contains placeholder cluster outputs
       (`cluster_name`, `cluster_endpoint`, `cluster_ca_data`,
       `cluster_oidc_issuer_url`, `cluster_security_group_id`,
       `node_security_group_id`, `kms_key_arn`).
-- [ ] `tests-localstack/apply_localstack.tftest.hcl`: AWS provider
+- [x] `tests-localstack/apply_localstack.tftest.hcl`: AWS provider
       configured with LocalStack endpoints (cluster module's v6-valid
       shape). `command = apply` runs:
       - `setup` — applies the fixture, produces cluster + VPC stub
         state files in LocalStack S3.
       - `default_apply` — applies the managed node group module.
-- [ ] Apply-time assertions on returned values:
+- [x] Apply-time assertions on returned values:
       - `aws_iam_role.node.arn` populated.
       - `aws_iam_instance_profile.node.arn` populated.
       - `aws_launch_template.node.id` populated.
       - `aws_eks_node_group.this.arn` populated.
       - `aws_eks_node_group.this.status` (whatever LocalStack
         returns — finding documented inline).
-- [ ] Document findings inline per RFC-0001's gap-discovery loop:
+- [x] Document findings inline per RFC-0001's gap-discovery loop:
       - Does LocalStack Pro fully implement `aws_eks_node_group`
         (registration, status transitions)?
       - Does the user_data base64 round-trip work?
       - Does `aws_iam_instance_profile` propagation work as expected?
-- [ ] Verify the apply-LocalStack mode runs via
+- [x] Verify the apply-LocalStack mode runs via
       `just tf test-localstack eks/managed-node-group`.
 
 #### Success Criteria
@@ -453,15 +453,15 @@ doesn't serve for managed node groups.
 
 ## Testing Plan
 
-- [ ] `terraform validate` clean after each phase.
-- [ ] `tflint` clean after each phase.
-- [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform-docs .` produces a non-empty USAGE.md after Phase 6.
-- [ ] `just tf test eks/managed-node-group` — every plan-time invariant
+- [x] `terraform validate` clean after each phase.
+- [x] `tflint` clean after each phase.
+- [x] `terraform fmt -check -recursive` clean.
+- [x] `terraform-docs .` produces a non-empty USAGE.md after Phase 6.
+- [x] `just tf test eks/managed-node-group` — every plan-time invariant
       from DESIGN-0001 §Testing Strategy covered.
-- [ ] `just tf test-localstack eks/managed-node-group` — apply against
+- [x] `just tf test-localstack eks/managed-node-group` — apply against
       LocalStack succeeds; any gaps captured inline.
-- [ ] Post-deploy integration checks (`kubectl get nodes`, gVisor
+- [x] Post-deploy integration checks (`kubectl get nodes`, gVisor
       banner, IMDS smoke test) — deferred to the consumer Terragrunt
       stack in infrastructure-live per RFC-0001's out-of-scope clause.
 
