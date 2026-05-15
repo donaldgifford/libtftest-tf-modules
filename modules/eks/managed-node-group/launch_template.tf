@@ -21,9 +21,9 @@ resource "aws_launch_template" "node" {
   description            = "Launch template for ${var.nodegroup_name} secure node group"
   update_default_version = true
   vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]
-  # Placeholder user data — Phase 4 wires the rendered AL2023 nodeadm
-  # + gVisor install + containerd drop-in multipart MIME body.
-  user_data = base64encode("placeholder")
+  # AL2023 nodeadm + gVisor install + containerd drop-in multipart MIME
+  # body, rendered by templatefile() in user_data.tf at the use site.
+  user_data = base64encode(local.user_data_body)
   tags      = var.tags
 
   iam_instance_profile {

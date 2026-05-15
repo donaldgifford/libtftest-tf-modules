@@ -243,24 +243,24 @@ Land the multipart MIME user data per DESIGN-0001 §"User data
 
 #### Tasks
 
-- [ ] `templates/user_data.sh.tftpl` — AL2023 nodeadm bootstrap +
+- [x] `templates/user_data.sh.tftpl` — AL2023 nodeadm bootstrap +
       gVisor install + containerd drop-in.
-- [ ] Template variables: `cluster_name`, `cluster_endpoint`,
+- [x] Template variables: `cluster_name`, `cluster_endpoint`,
       `cluster_ca_data`, `gvisor_arch` (derived from
       `var.architecture`), `gvisor_release`, `extra_kubelet_args`.
-- [ ] gVisor download flow: `runsc` + `containerd-shim-runsc-v1`
+- [x] gVisor download flow: `runsc` + `containerd-shim-runsc-v1`
       from `https://storage.googleapis.com/gvisor/releases/<release>/<arch>`,
       SHA-512 verification using upstream-published hashes.
-- [ ] containerd drop-in at `/etc/containerd/config.d/runsc.toml`
+- [x] containerd drop-in at `/etc/containerd/config.d/runsc.toml`
       registering the `runsc` runtime handler.
-- [ ] `/etc/containerd/runsc.toml` with `platform = "systrap"`,
+- [x] `/etc/containerd/runsc.toml` with `platform = "systrap"`,
       `network = "sandbox"` per ADR-0005.
-- [ ] containerd restart + assertion that the `runsc` plugin is
+- [x] containerd restart + assertion that the `runsc` plugin is
       loaded.
-- [ ] `user_data.tf`: `templatefile(...)` invocation wired into
+- [x] `user_data.tf`: `templatefile(...)` invocation wired into
       `aws_launch_template.node.user_data` (replacing the Phase 3
       placeholder).
-- [ ] Document the GoogleAPIs storage release URL pattern + Renovate
+- [x] Document the GoogleAPIs storage release URL pattern + Renovate
       bump policy in the user data file's header comment.
 
 #### Success Criteria

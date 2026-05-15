@@ -173,7 +173,6 @@ variable "extra_node_policies" {
 # digests for the platform binaries. The default is a known-good pin
 # at IMPL-completion time; consumers may pin to a different release.
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "gvisor_version" {
   description = "gVisor release identifier, e.g. \"release-20260101.0\". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010."
   type        = string
@@ -185,7 +184,6 @@ variable "gvisor_version" {
   nullable = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "gvisor_sha512" {
   description = "SHA-512 digests for the gVisor binaries matching var.gvisor_version and var.architecture.gvisor_arch. Keys: \"runsc\", \"containerd_shim_runsc_v1\". Renovate updates this map alongside gvisor_version. Empty defaults are placeholders — wired to a real verification step in Phase 4."
   type = object({
@@ -208,7 +206,6 @@ variable "gvisor_sha512" {
 # A misconfigured mirror silently breaks every pod that starts on the node,
 # so off-by-default keeps the boring path as the default.
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "containerd_pull_through_mirror" {
   description = "When enabled, user data writes a containerd config drop-in redirecting upstream registries to cache_url_prefix. Requires the corresponding ECR pull-through cache module to be instantiated and the matching node IAM policy attached via var.extra_node_policies."
   type = object({
@@ -255,7 +252,6 @@ variable "additional_taints" {
   default = []
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "extra_kubelet_args" {
   description = "Extra kubelet command-line arguments appended at AL2023 nodeadm bootstrap. Empty by default."
   type        = string
