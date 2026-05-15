@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing the repo is in a **scaffold state**: `modules/eks/cluster` is the only module with concrete Terraform code (variables, locals, data sources, outputs referring to not-yet-written resources), and the other four directories (`addons`, `ecr-pull-through-cache`, `managed-node-group`, `pod-identity-access`) contain only docs/tooling stubs. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0012) and `docs/design/` (DESIGN-0001..0004).
+A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: `modules/eks/cluster` is the only fully-implemented module (IMPL-0001 Completed). `modules/eks/managed-node-group` is **in-flight per IMPL-0002**: Phase 1 (variable surface + module skeleton) landed 2026-05-15, Phases 2–8 pending. The other three directories (`addons`, `ecr-pull-through-cache`, `pod-identity-access`) contain only docs/tooling stubs pending IMPL-0003 / IMPL-0004 / IMPL-0005. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
 
 ## Tooling
 

@@ -137,28 +137,28 @@ resource-free configuration.
 
 #### Tasks
 
-- [ ] Create `modules/eks/managed-node-group/` with the standard
+- [x] Create `modules/eks/managed-node-group/` with the standard
       scaffolding: `versions.tf`, `variables.tf`, `locals.tf`,
       `data.tf`, `main.tf`, `outputs.tf`, `README.md`, `USAGE.md`
       (placeholder), `.terraform-docs.yml`, `.tflint.hcl`.
-- [ ] `versions.tf`: `terraform >= 1.1`, `hashicorp/aws ~> 6.2`.
-- [ ] `variables.tf`: required inputs (`remote_state_bucket`,
+- [x] `versions.tf`: `terraform >= 1.1`, `hashicorp/aws ~> 6.2`.
+- [x] `variables.tf`: required inputs (`remote_state_bucket`,
       `region`, `cluster_name`, `vpc_name`, `nodegroup_name`) and
       typed optionals (`architecture` object per DESIGN-0001 with
       validation, `instance_types`, `capacity_type`, `desired_size`/
       `min_size`/`max_size`, `disk_size_gib`, `enable_ssm`,
       `gvisor_release`, `additional_labels`, `additional_taints`,
       `extra_kubelet_args`, `tags`).
-- [ ] `data.tf`: `data.terraform_remote_state.eks` + `.vpc` with
+- [x] `data.tf`: `data.terraform_remote_state.eks` + `.vpc` with
       `use_path_style = true` per cluster module's drive-by fix.
-- [ ] `locals.tf`: minimal — `local.runtime_labels` (the
+- [x] `locals.tf`: minimal — `local.runtime_labels` (the
       `runtime=gvisor`, `workload-class=secure` standard label pair
       merged with `var.additional_labels`).
-- [ ] `main.tf`: header comment only at this phase.
-- [ ] `outputs.tf`: empty at this phase; finalized in Phase 6.
-- [ ] `.tflint.hcl`: copy from cluster module.
-- [ ] `.terraform-docs.yml`: copy from cluster module.
-- [ ] `terraform init -backend=false && terraform validate` clean.
+- [x] `main.tf`: header comment only at this phase.
+- [x] `outputs.tf`: empty at this phase; finalized in Phase 6.
+- [x] `.tflint.hcl`: copy from cluster module.
+- [x] `.terraform-docs.yml`: copy from cluster module.
+- [x] `terraform init -backend=false && terraform validate` clean.
 
 #### Success Criteria
 
