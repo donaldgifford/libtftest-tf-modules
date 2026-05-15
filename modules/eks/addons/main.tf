@@ -12,4 +12,33 @@
 # ADR-0004 — the PIA lifecycle is tied to the addon, not a
 # separate resource.
 #
-# Phase 4 will land kube_proxy + coredns resources here.
+# kube-proxy and CoreDNS operate against the Kubernetes API only
+# and need no AWS credentials, but still depends_on the agent to
+# keep the dependency graph regular per DESIGN-0003.
+
+resource "aws_eks_addon" "kube_proxy" {
+  cluster_name  = data.terraform_remote_state.eks.outputs.cluster_name
+  addon_name    = "kube-proxy"
+  addon_version = var.kube_proxy_version
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "PRESERVE"
+
+  tags = var.tags
+
+  depends_on = [aws_eks_addon.pod_identity_agent]
+}
+
+resource "aws_eks_addon" "coredns" {
+  cluster_name         = data.terraform_remote_state.eks.outputs.cluster_name
+  addon_name           = "coredns"
+  addon_version        = var.coredns_version
+  configuration_values = var.coredns_configuration_values
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "PRESERVE"
+
+  tags = var.tags
+
+  depends_on = [aws_eks_addon.pod_identity_agent]
+}

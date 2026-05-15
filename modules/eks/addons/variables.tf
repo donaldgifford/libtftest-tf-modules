@@ -53,14 +53,12 @@ variable "vpc_cni_version" {
   default     = null
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "kube_proxy_version" {
   description = "kube-proxy addon version. Null resolves via data.aws_eks_addon_version (Phase 7)."
   type        = string
   default     = null
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "coredns_version" {
   description = "coredns addon version. Null resolves via data.aws_eks_addon_version (Phase 7)."
   type        = string
@@ -91,7 +89,6 @@ variable "vpc_cni_configuration_values" {
   default     = null
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "coredns_configuration_values" {
   description = "Free-form JSON string passed through as aws_eks_addon.coredns.configuration_values."
   type        = string

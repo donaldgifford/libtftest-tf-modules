@@ -246,13 +246,13 @@ to keep the dependency graph regular.
 
 #### Tasks
 
-- [ ] `main.tf`: `aws_eks_addon.kube_proxy` and
+- [x] `main.tf`: `aws_eks_addon.kube_proxy` and
       `aws_eks_addon.coredns`.
-- [ ] Both with `addon_version` (null → resolved via Phase 7),
+- [x] Both with `addon_version` (null → resolved via Phase 7),
       conflict resolution OVERWRITE/PRESERVE, `depends_on =
       [aws_eks_addon.eks_pod_identity_agent]`, `tags = var.tags`.
-- [ ] CoreDNS: `configuration_values = var.coredns_configuration_values`.
-- [ ] Neither addon has a `pod_identity_association` block.
+- [x] CoreDNS: `configuration_values = var.coredns_configuration_values`.
+- [x] Neither addon has a `pod_identity_association` block.
 
 #### Success Criteria
 
