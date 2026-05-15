@@ -474,13 +474,13 @@ sync; CI wiring is a separate IMPL.
 
 ## Testing Plan
 
-- [ ] `terraform validate` clean after each phase.
-- [ ] `tflint` clean against the per-module `.tflint.hcl` after each phase.
-- [ ] `terraform-docs .` produces a non-empty `USAGE.md` diff only when
+- [x] `terraform validate` clean after each phase.
+- [x] `tflint` clean against the per-module `.tflint.hcl` after each phase.
+- [x] `terraform-docs .` produces a non-empty `USAGE.md` diff only when
       `variables.tf` or `outputs.tf` actually changed.
-- [ ] libtftest suite (Phase 8) — every in-scope invariant from DESIGN-0002
+- [x] libtftest suite (Phase 8) — every in-scope invariant from DESIGN-0002
       §Testing Strategy §libtftest covered.
-- [ ] Post-deploy integration checks deferred — they belong on the consumer
+- [x] Post-deploy integration checks deferred — they belong on the consumer
       stack (a Terragrunt root that instantiates this module against a real
       AWS account) and are out of scope for the module-level IMPL.
 
