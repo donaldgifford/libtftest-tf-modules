@@ -13,45 +13,45 @@ apply-time runtime invariant, at which point the `tests/` suite
 retires per RFC-0001's retirement criterion. No other module carries
 both frameworks.
 
-### `terraform test` suite — `tests/*.tftest.hcl`
+### `terraform test` suite — two modes, two directories
 
-Two modes. Both default-on with a single `terraform test` invocation.
-
-**Plan-only files** (`default.tftest.hcl`, `kms_external.tftest.hcl`,
-`sso.tftest.hcl`) — `command = plan` with `override_data` stubs for
-`data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`.
-No LocalStack required. ~1.2s total. The fast CI gate.
+**Default mode: plan-only** (`tests/*.tftest.hcl`). No LocalStack, no
+env vars, no setup. The fast CI gate.
 
 ```bash
 cd modules/eks/cluster
 terraform init -backend=false
-terraform test -filter=tests/default.tftest.hcl \
-               -filter=tests/kms_external.tftest.hcl \
-               -filter=tests/sso.tftest.hcl
+terraform test
 ```
 
-**Apply-against-LocalStack file** (`apply_localstack.tftest.hcl`) —
-`command = apply` against LocalStack Pro. Exercises IAM, KMS,
-CloudWatch Logs, EKS, EC2 SGs. The gap-discovery mode per RFC-0001:
-every LocalStack 501 / coverage gap surfaces here as a concrete apply
-failure → sneakystack ticket.
+Runtime: ~1.2s. 4 run blocks (default plan, KMS external, SSO
+disabled, SSO enabled). Uses `override_data` to stub
+`data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`.
 
-Requires a running LocalStack Pro container on `:4566`. Also requires
-env vars in the parent shell (the s3 backend of
-`data.terraform_remote_state.vpc` uses its own AWS SDK independent of
-the provider's `endpoints` block):
+**Opt-in mode: apply-against-LocalStack** (`tests-localstack/*.tftest.hcl`).
+The gap-discovery mode per RFC-0001 — `command = apply` against
+LocalStack Pro to exercise IAM, KMS, CloudWatch Logs, EKS, EC2 SGs.
+Setup fixture creates a real VPC + subnets + S3 bucket + stub
+`terraform.tfstate` so the cluster's `data.terraform_remote_state.vpc`
+resolves naturally.
+
+Requires (a) a running LocalStack Pro container on `:4566`, and
+(b) env vars in the parent shell — the s3 backend of
+`data.terraform_remote_state` uses its own AWS SDK independent of
+the provider's `endpoints` block, so `AWS_ENDPOINT_URL` is mandatory
+even though the provider has explicit endpoints:
 
 ```bash
 cd modules/eks/cluster
-terraform init -backend=false
+terraform init -backend=false -test-directory=tests-localstack
 AWS_ENDPOINT_URL=http://localhost:4566 \
 AWS_ACCESS_KEY_ID=test \
 AWS_SECRET_ACCESS_KEY=test \
 AWS_REGION=us-east-1 \
-  terraform test
+  terraform test -test-directory=tests-localstack
 ```
 
-Runtime: ~80s (the apply-against-LocalStack run dominates).
+Runtime: ~75s.
 
 ### libtftest suite — `test/*_test.go`
 

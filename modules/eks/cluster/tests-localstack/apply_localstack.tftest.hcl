@@ -40,6 +40,13 @@
 #   When new modules surface them, they get filed as named sneakystack
 #   tickets per RFC-0001 §`terraform test` as the gap-discovery tool.
 
+# LocalStack provider — comprehensive endpoints block following LocalStack's
+# documented pattern. Note s3 uses the s3.localhost.localstack.cloud DNS
+# (resolves to 127.0.0.1, supports virtual-hosted style) so we don't need
+# s3_use_path_style on the provider. The s3 backend of
+# data.terraform_remote_state.vpc is independent of this provider block
+# (uses its own AWS SDK) — that one still needs AWS_ENDPOINT_URL env var
+# in the parent shell.
 provider "aws" {
   region                      = "us-east-1"
   access_key                  = "test"
@@ -47,7 +54,6 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
-  s3_use_path_style           = true
 
   endpoints {
     cloudwatchlogs = "http://localhost:4566"
@@ -55,7 +61,7 @@ provider "aws" {
     eks            = "http://localhost:4566"
     iam            = "http://localhost:4566"
     kms            = "http://localhost:4566"
-    s3             = "http://localhost:4566"
+    s3             = "http://s3.localhost.localstack.cloud:4566"
     sts            = "http://localhost:4566"
   }
 }
@@ -97,7 +103,7 @@ run "setup" {
   }
 
   module {
-    source = "./tests/fixtures/setup"
+    source = "./tests-localstack/fixtures/setup"
   }
 }
 
