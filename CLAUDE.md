@@ -12,20 +12,25 @@ All tool versions are pinned in `mise.toml`. Bootstrap with `mise install` befor
 
 ## Common commands
 
-`justfile` is intentionally minimal — currently only docs lint targets exist:
+`justfile` recipes (run `just` to list, `just --list` for the full menu):
 
-- `just` — list available recipes
-- `just docs lint` — markdownlint over `docs/**/*.md` and root `*.md`
-- `just docs fix` — markdownlint --fix
-- `just docs fmt` — markdownlint --format
+- `just docs lint|fix|fmt` — markdownlint over `docs/**/*.md` and root `*.md`
+- `just tf <action> <module>` — per-module Terraform ops. `<module>` is the path under `modules/` (e.g. `eks/cluster`). Actions:
+  - `validate` — `terraform init -backend=false && terraform validate`
+  - `fmt` — `terraform fmt -check -recursive`
+  - `lint` — `tflint --init && tflint`
+  - `docs` — `terraform-docs .` (regenerates `USAGE.md`)
+  - `test` — plan-only `terraform test` over `tests/*.tftest.hcl`. No LocalStack, no env vars, ~1.2s.
+  - `test-localstack` — opt-in `terraform test -test-directory=tests-localstack` with `AWS_ENDPOINT_URL`/key/secret/region env vars pre-wired. Requires a LocalStack Pro container on `:4566`. ~75s.
+  - `all` — runs validate + lint + fmt + test in order.
 
-There is **no Makefile and no Go code** in this repo, despite the inherited `.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI caveat" section below.
-
-For per-module Terraform work, run commands from inside the module directory:
+Direct invocation still works (and is what the recipes call under the hood):
 
 - `terraform init && terraform validate` — validate a module
 - `tflint --init && tflint` — lint a module (each module has its own `.tflint.hcl`)
-- `terraform-docs .` — regenerate that module's `USAGE.md` (terraform-docs is configured with `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->` markers)
+- `terraform-docs .` — regenerate `USAGE.md` (terraform-docs is configured with `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->` markers)
+
+There is **no Makefile and no Go code** at the repo root, despite the inherited `.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI caveat" section below.
 
 ## Documentation lifecycle
 
