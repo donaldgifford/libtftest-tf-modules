@@ -43,4 +43,6 @@ docz create adr "Your ADR Title"
 | ADR-0010 | gVisor release pinning via Renovate | Accepted | 2026-05-13 | Donald Gifford | [0010-gvisor-release-pinning-via-renovate.md](0010-gvisor-release-pinning-via-renovate.md) |
 | ADR-0011 | RuntimeClass delivered out-of-band, not by Terraform | Accepted | 2026-05-13 | Donald Gifford | [0011-runtimeclass-delivered-out-of-band-not-by-terraform.md](0011-runtimeclass-delivered-out-of-band-not-by-terraform.md) |
 | ADR-0012 | SSM access on the node role | Accepted | 2026-05-13 | Donald Gifford | [0012-ssm-access-on-the-node-role.md](0012-ssm-access-on-the-node-role.md) |
+| ADR-0013 | Use terraform test for plan-time module invariants | Proposed | 2026-05-15 | Donald Gifford | [0013-use-terraform-test-for-plan-time-module-invariants.md](0013-use-terraform-test-for-plan-time-module-invariants.md) |
+| ADR-0014 | Use libtftest for apply-time runtime validation without AWS | Proposed | 2026-05-15 | Donald Gifford | [0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md](0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) |
 <!-- END DOCZ AUTO-GENERATED -->

@@ -37,3 +37,15 @@ build/
 # Claude Code session-local state (skills/agents themselves are committed)
 .claude/donald-loop.local.md
 .claude/*.local.md
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+# Lock files are owned by the consumer (Terragrunt unit in infrastructure-live).
+# Atlantis runs init from there, so a module-level lock is invisible to prod
+# and only adds PR noise / drift risk.
+**/.terraform.lock.hcl

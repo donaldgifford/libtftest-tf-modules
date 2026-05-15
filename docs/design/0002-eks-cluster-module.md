@@ -13,7 +13,6 @@ created: 2026-05-13
 **Status:** Accepted **Author:** Donald Gifford **Date:** 2026-05-13
 
 <!--toc:start-->
-
 - [Overview](#overview)
 - [Goals and Non-Goals](#goals-and-non-goals)
   - [Goals](#goals)
@@ -48,7 +47,7 @@ created: 2026-05-13
   - [ADRs that constrain this module](#adrs-that-constrain-this-module)
   - [Sibling designs](#sibling-designs)
   - [External](#external)
-  <!--toc:end-->
+<!--toc:end-->
 
 ## Overview
 

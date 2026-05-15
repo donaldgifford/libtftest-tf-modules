@@ -12,20 +12,25 @@ All tool versions are pinned in `mise.toml`. Bootstrap with `mise install` befor
 
 ## Common commands
 
-`justfile` is intentionally minimal — currently only docs lint targets exist:
+`justfile` recipes (run `just` to list, `just --list` for the full menu):
 
-- `just` — list available recipes
-- `just docs lint` — markdownlint over `docs/**/*.md` and root `*.md`
-- `just docs fix` — markdownlint --fix
-- `just docs fmt` — markdownlint --format
+- `just docs lint|fix|fmt` — markdownlint over `docs/**/*.md` and root `*.md`
+- `just tf <action> <module>` — per-module Terraform ops. `<module>` is the path under `modules/` (e.g. `eks/cluster`). Actions:
+  - `validate` — `terraform init -backend=false && terraform validate`
+  - `fmt` — `terraform fmt -check -recursive`
+  - `lint` — `tflint --init && tflint`
+  - `docs` — `terraform-docs .` (regenerates `USAGE.md`)
+  - `test` — plan-only `terraform test` over `tests/*.tftest.hcl`. No LocalStack, no env vars, ~1.2s.
+  - `test-localstack` — opt-in `terraform test -test-directory=tests-localstack` with `AWS_ENDPOINT_URL`/key/secret/region env vars pre-wired. Requires a LocalStack Pro container on `:4566`. ~75s.
+  - `all` — runs validate + lint + fmt + test in order.
 
-There is **no Makefile and no Go code** in this repo, despite the inherited `.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI caveat" section below.
-
-For per-module Terraform work, run commands from inside the module directory:
+Direct invocation still works (and is what the recipes call under the hood):
 
 - `terraform init && terraform validate` — validate a module
 - `tflint --init && tflint` — lint a module (each module has its own `.tflint.hcl`)
-- `terraform-docs .` — regenerate that module's `USAGE.md` (terraform-docs is configured with `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->` markers)
+- `terraform-docs .` — regenerate `USAGE.md` (terraform-docs is configured with `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->` markers)
+
+There is **no Makefile and no Go code** at the repo root, despite the inherited `.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI caveat" section below.
 
 ## Documentation lifecycle
 
@@ -78,19 +83,29 @@ Modules in this repo do **not** create Kubernetes-API objects. The `kubernetes`,
 
 Cluster-scoped Kubernetes manifests (`RuntimeClass`, `NetworkPolicy`, admission webhook configs, Gatekeeper templates, etc.) are delivered **out-of-band** via `kubectl apply` (homelab / dev) or Argo CD + Kustomize (production GitOps). When a module needs such an object to exist for it to function (the secure node group's gVisor `RuntimeClass` is the current example), the module's README documents the manifest plus copy-paste examples for both delivery mechanisms; the module itself does not create it. See ADR-0011.
 
-### Cluster module shape (transition state)
+### Cluster module shape
 
-`modules/eks/cluster/variables.tf` declares the inputs (`eks_version`, `name`, SSO access toggles, account-alias data source toggle) and defines four live AWS data sources that the rest of the module currently assumes:
+Implementation complete per IMPL-0001 (status: Completed). The module shape is now:
 
-- `data.aws_iam_account_alias.this` — gated by `var.aws_account_alias_enabled`; otherwise the caller passes `var.account_alias`
-- `data.aws_vpc.this` — **discovered by tag** `Account == local.tags.Account` (the alias minus the `dev-` prefix). The module will not work in an environment that doesn't tag its VPC with `Account`.
-- `data.aws_subnets.private` / `data.aws_subnets.public` — discovered by tag `Network = "Private"` / `"Public"` on the same VPC
+- **Inputs**: typed `var.tags` object; cluster endpoint/log retention/KMS inputs; remote-state composition inputs (`var.region`, `var.remote_state_bucket`, `var.vpc_name`); preserved SSO Access Entry input surface.
+- **Data sources**: `data.aws_caller_identity.current` (ADR-0001 identity carve-out) + `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`) — that's it.
+- **Resources** (`main.tf` / `kms.tf` / `security_group.tf` / `access_entries.tf`):
+  - `aws_iam_role.cluster` + AmazonEKSClusterPolicy attachment.
+  - `aws_cloudwatch_log_group.cluster` with 30d retention.
+  - `aws_eks_cluster.this` with envelope encryption against `local.kms_key_arn`, `endpoint_public_access = true`, `authentication_mode = "API_AND_CONFIG_MAP"`.
+  - Module-managed `aws_kms_key.cluster[0]` + alias when `var.kms_key_arn` is null (rotation on, 30d deletion window).
+  - `aws_security_group.nodes` + three granular `aws_vpc_security_group_*_rule` resources.
+  - Gated `aws_eks_access_entry.sso[0]` + `aws_eks_access_policy_association.sso[0]`.
+- **Outputs** (remote-state contract): `cluster_name`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`.
+- **Tests** — cluster is the **side-by-side reference module** per RFC-0001 and carries two test suites until it grows its first apply-time runtime invariant:
+  - `modules/eks/cluster/test/` — libtftest v0.2.0 Go suite (plan-only today). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container. ~45s.
+  - `modules/eks/cluster/tests/` — `terraform test` HCL suite covering the same plan-time invariants via `override_data` for `data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`. Run with `terraform test` from the module dir. ~1.2s, no LocalStack needed.
 
-The `variables.tf` carries inline TODO comments earmarking the VPC / subnet discovery blocks for replacement by `data.terraform_remote_state.vpc` reads per ADR-0001 (cross-module composition through remote state, not live data sources). `data.aws_iam_account_alias` / `data.aws_region` will drop out when tags hoist to Boilerplate-generated Terragrunt input objects (DESIGN-0002). `data.aws_caller_identity` is the deliberate carve-out (identity, not state) — see ADR-0001 Alternatives Considered.
+  No other module carries both frameworks; new modules default to `terraform test` per ADR-0013. See [RFC-0001](docs/rfc/0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) for the strategy, [ADR-0013](docs/adr/0013-use-terraform-test-for-plan-time-module-invariants.md) and [ADR-0014](docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) for the per-tool decisions.
 
-`outputs.tf` already exports five IAM role ARNs (`cluster-autoscaler_arn`, `pod_cw_metrics_arn`, `pod_fluentd_logs_arn`, `alb_role_arn`, `external_dns_arn`) — those resources need to be defined in `main.tf` (currently a stub) before `terraform validate` will pass. The trust policy for all five is the universal Pod Identity trust policy (ADR-0002 / ADR-0004).
+**IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) re-home to DESIGN-0004 (`pod-identity-access`). The cluster module's only IAM role is the EKS service role.
 
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`. The full design lives in DESIGN-0002.
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 
 ## CI caveat
 

@@ -7,7 +7,77 @@
 <!-- prettier-ignore-end -->
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
 
-{{ .Content }}
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | 6.44.0 |
+| terraform | n/a |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_cloudwatch_log_group.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_eks_access_entry.sso](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_entry) | resource |
+| [aws_eks_access_policy_association.sso](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_policy_association) | resource |
+| [aws_eks_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster) | resource |
+| [aws_iam_role.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_kms_alias.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_key.cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
+| [aws_security_group.nodes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_vpc_security_group_egress_rule.nodes_all](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule) | resource |
+| [aws_vpc_security_group_ingress_rule.nodes_from_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
+| [aws_vpc_security_group_ingress_rule.nodes_from_self](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.cluster_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.kms_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_roles.sso](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_roles) | data source |
+| [terraform_remote_state.vpc](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| cluster\_log\_retention\_in\_days | CloudWatch Logs retention for the cluster log group (/aws/eks/<name>/cluster). | `number` | `30` | no |
+| eks\_version | EKS control-plane version. Matches the kubelet floor on managed node groups. | `string` | `"1.35"` | no |
+| enabled\_cluster\_log\_types | Control plane log types to ship to CloudWatch. EKS supports: api, audit, authenticator, controllerManager, scheduler. | `list(string)` | ```[ "api", "audit", "authenticator" ]``` | no |
+| endpoint\_private\_access | Enable private API server endpoint inside the VPC. | `bool` | `true` | no |
+| endpoint\_public\_access | Enable public API server endpoint. Combined with the private endpoint so VPC traffic uses the private path and external operators reach the cluster over the public path. | `bool` | `true` | no |
+| kms\_deletion\_window\_in\_days | Pending-deletion window for the module-managed KMS CMK. Ignored when var.kms\_key\_arn is set. | `number` | `30` | no |
+| kms\_key\_arn | ARN of an externally-managed KMS CMK to use for cluster secret encryption. When null the module creates and manages its own CMK. | `string` | `null` | no |
+| name | Cluster Name. | `string` | `"libtftest"` | no |
+| region | AWS region. Also feeds the remote-state key convention <region>/eks/<cluster\_name>/terraform.tfstate. | `string` | n/a | yes |
+| remote\_state\_bucket | S3 bucket holding the VPC stack's remote state, read for VPC ID and subnet IDs. | `string` | n/a | yes |
+| sso\_access\_enabled | AWS SSO access to cluster via EKS Access Entry enabled. | `bool` | `false` | no |
+| sso\_cluster\_policy | Policy to attach to SSO EKS Access Entry | `string` | n/a | yes |
+| sso\_cluster\_policy\_access\_scope | Policy to attach to SSO EKS Access scope. | `string` | `"cluster"` | no |
+| sso\_eks\_access\_entry | Object mapping for EKS Access Entry | ```object({ kubernetes_groups = list(string) user_name = string type = string })``` | ```{ "kubernetes_groups": [ "dev:readonly" ], "type": "STANDARD", "user_name": "dev:sso-readonly:{{SessionName}}" }``` | no |
+| sso\_role\_name | AWS SSO Permission Set to Allow | `string` | `"Developer"` | no |
+| tags | Standard tag set. Generated by Boilerplate from the live-repo Terragrunt config. | ```object({ Account = string ClusterName = string ClusterType = string Environment = string Region = string })``` | n/a | yes |
+| vpc\_name | VPC stack name used in the remote-state key for the VPC stack: <region>/vpc/<vpc\_name>/terraform.tfstate. | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| cluster\_ca\_data | Cluster CA certificate (base64). Consumed by node group user data and kubeconfig generation. |
+| cluster\_endpoint | EKS API server endpoint URL. Consumed by node group user data. |
+| cluster\_name | EKS cluster name. |
+| cluster\_oidc\_issuer\_url | OIDC issuer URL. Escape hatch for third-party tooling that does not yet support Pod Identity (ADR-0002 keeps Pod Identity as the primary credential model). |
+| cluster\_security\_group\_id | EKS-managed cluster security group ID. Useful to downstream stacks that need to peer with the cluster control plane. |
+| kms\_key\_arn | KMS CMK ARN used for cluster secret envelope encryption. Non-null in both module-managed and external-key modes. Also exported for managed-node-group EBS encryption. |
+| node\_security\_group\_id | Shared node security group ID. Node group launch templates attach to this SG. |
 <!-- END_TF_DOCS -->

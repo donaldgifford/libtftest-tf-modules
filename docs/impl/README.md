@@ -32,4 +32,5 @@ docz create impl "Your Implementation Title"
 
 | ID | Title | Status | Date | Author | Link |
 |----|-------|--------|------|--------|------|
+| IMPL-0001 | EKS Cluster Module Implementation | Completed | 2026-05-13 | Donald Gifford | [0001-eks-cluster-module-implementation.md](0001-eks-cluster-module-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->
