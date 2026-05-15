@@ -281,23 +281,23 @@ Land the node group resource per DESIGN-0001 §"EKS node group".
 
 #### Tasks
 
-- [ ] `main.tf`: `aws_eks_node_group.this`.
-- [ ] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
-- [ ] `node_role_arn = aws_iam_role.node.arn`.
-- [ ] `subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids`.
-- [ ] `ami_type = var.architecture.ami_type`.
-- [ ] `instance_types = length(var.instance_types) > 0 ? var.instance_types : var.architecture.default_instance_types`.
-- [ ] `capacity_type = var.capacity_type` (default `ON_DEMAND`).
-- [ ] `scaling_config` with `desired_size`, `min_size`, `max_size`.
-- [ ] `launch_template { id = aws_launch_template.node.id, version = aws_launch_template.node.latest_version }`.
-- [ ] `taint { key = "workload-class", value = "secure", effect = "NO_SCHEDULE" }` (always).
-- [ ] Additional taints merged from `var.additional_taints`.
-- [ ] `labels` set from `local.runtime_labels` (merged
+- [x] `main.tf`: `aws_eks_node_group.this`.
+- [x] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
+- [x] `node_role_arn = aws_iam_role.node.arn`.
+- [x] `subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids`.
+- [x] `ami_type = var.architecture.ami_type`.
+- [x] `instance_types = length(var.instance_types) > 0 ? var.instance_types : var.architecture.default_instance_types`.
+- [x] `capacity_type = var.capacity_type` (default `ON_DEMAND`).
+- [x] `scaling_config` with `desired_size`, `min_size`, `max_size`.
+- [x] `launch_template { id = aws_launch_template.node.id, version = aws_launch_template.node.latest_version }`.
+- [x] `taint { key = "workload-class", value = "secure", effect = "NO_SCHEDULE" }` (always).
+- [x] Additional taints merged from `var.additional_taints`.
+- [x] `labels` set from `local.runtime_labels` (merged
       `workload-class=secure` + `runtime=gvisor` + arch label +
       `var.additional_labels`).
-- [ ] `update_config { max_unavailable_percentage = ... }`.
-- [ ] `lifecycle { ignore_changes = [scaling_config[0].desired_size] }`.
-- [ ] `tags = var.tags`.
+- [x] `update_config { max_unavailable_percentage = ... }`.
+- [x] `lifecycle { ignore_changes = [scaling_config[0].desired_size] }`.
+- [x] `tags = var.tags`.
 
 #### Success Criteria
 

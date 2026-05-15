@@ -83,14 +83,12 @@ variable "architecture" {
 # Capacity, scaling, storage
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "instance_types" {
   description = "Override list of instance types. Empty (default) falls back to var.architecture.default_instance_types. Instance-type-vs-architecture compatibility is asserted in Phase 5 / Phase 7."
   type        = list(string)
   default     = []
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "capacity_type" {
   description = "Node group capacity type. ON_DEMAND default per ADR-0009; SPOT permitted for explicitly batch / non-critical workloads."
   type        = string
@@ -102,7 +100,6 @@ variable "capacity_type" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "desired_size" {
   description = "Initial desired size. After create, drift is ignored via lifecycle.ignore_changes so a cluster autoscaler can manage it without Terraform fighting back."
   type        = number
@@ -114,7 +111,6 @@ variable "desired_size" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "min_size" {
   description = "Minimum node group size."
   type        = number
@@ -126,7 +122,6 @@ variable "min_size" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "max_size" {
   description = "Maximum node group size."
   type        = number
@@ -241,7 +236,6 @@ variable "additional_labels" {
   default     = {}
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "additional_taints" {
   description = "Extra taints to apply on top of the always-on workload-class=secure:NO_SCHEDULE taint."
   type = list(object({

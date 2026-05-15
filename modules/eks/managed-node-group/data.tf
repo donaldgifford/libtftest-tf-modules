@@ -11,7 +11,6 @@
 # etc.) without virtual-host DNS dependence. Matches the cluster
 # module's drive-by fix.
 
-# tflint-ignore: terraform_unused_declarations  # consumed in IMPL-0002 Phases 3-5
 data "terraform_remote_state" "eks" {
   backend = "s3"
 
@@ -23,7 +22,6 @@ data "terraform_remote_state" "eks" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in IMPL-0002 Phase 5
 data "terraform_remote_state" "vpc" {
   backend = "s3"
 

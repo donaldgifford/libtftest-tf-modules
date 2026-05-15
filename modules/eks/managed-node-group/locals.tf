@@ -12,7 +12,6 @@ locals {
   # RuntimeClass) land here. runtime=gvisor advertises the syscall
   # sandbox per ADR-0005. kubernetes.io/arch is the standard arch
   # label; matched against pod nodeAffinity in mixed-arch clusters.
-  # tflint-ignore: terraform_unused_declarations  # consumed in IMPL-0002 Phase 5
   runtime_labels = merge(
     {
       "workload-class"     = "secure"
