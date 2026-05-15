@@ -1,0 +1,10 @@
+# libtftest artifacts
+_libtftest_*
+libtftest.plan
+
+# Terraform state from the scratch workspace
+terraform.tfstate
+terraform.tfstate.backup
+
+# Go test binaries
+*.test

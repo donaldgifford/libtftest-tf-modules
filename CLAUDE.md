@@ -80,14 +80,23 @@ Cluster-scoped Kubernetes manifests (`RuntimeClass`, `NetworkPolicy`, admission 
 
 ### Cluster module shape
 
-Under active implementation per IMPL-0001 (`docs/impl/0001-eks-cluster-module-implementation.md`, status: In Progress). Phases 1-2 are landed:
+Implementation complete per IMPL-0001 (status: Completed). The module shape is now:
 
-- **Phase 1** — variable surface: typed `var.tags` object, KMS / endpoint / log-retention inputs, remote-state inputs (`var.region`, `var.remote_state_bucket`, `var.vpc_name`). Empty `kms.tf` / `security_group.tf` / `access_entries.tf` stubs. Five stale workload-IAM outputs deleted.
-- **Phase 2** — hoist: removed `data.aws_region`, `data.aws_iam_account_alias`, `data.aws_vpc`, `data.aws_subnets.*`, `local.tags`, and the `account_alias` / `aws_account_alias_enabled` variables. Replaced with `data.terraform_remote_state.vpc` in new `data.tf`. The only `data.aws_*` block left is `data.aws_caller_identity.current` (ADR-0001 identity carve-out).
+- **Inputs**: typed `var.tags` object; cluster endpoint/log retention/KMS inputs; remote-state composition inputs (`var.region`, `var.remote_state_bucket`, `var.vpc_name`); preserved SSO Access Entry input surface.
+- **Data sources**: `data.aws_caller_identity.current` (ADR-0001 identity carve-out) + `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`) — that's it.
+- **Resources** (`main.tf` / `kms.tf` / `security_group.tf` / `access_entries.tf`):
+  - `aws_iam_role.cluster` + AmazonEKSClusterPolicy attachment.
+  - `aws_cloudwatch_log_group.cluster` with 30d retention.
+  - `aws_eks_cluster.this` with envelope encryption against `local.kms_key_arn`, `endpoint_public_access = true`, `authentication_mode = "API_AND_CONFIG_MAP"`.
+  - Module-managed `aws_kms_key.cluster[0]` + alias when `var.kms_key_arn` is null (rotation on, 30d deletion window).
+  - `aws_security_group.nodes` + three granular `aws_vpc_security_group_*_rule` resources.
+  - Gated `aws_eks_access_entry.sso[0]` + `aws_eks_access_policy_association.sso[0]`.
+- **Outputs** (remote-state contract): `cluster_name`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`.
+- **Tests** at `modules/eks/cluster/test/` use libtftest v0.2.0 (per-package `harness.Run`). Cover plan-time invariants (no addons, exactly one IAM role, KMS envelope, endpoint defaults, auth mode, log retention, KMS rotation, remote-state-driven VPC, SSO disabled/enabled, output contract). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container.
 
-**IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) move out of the cluster module into DESIGN-0004 (`pod-identity-access`) — each role lives next to the workload that consumes it. The cluster module's only IAM role is the EKS service role for the control plane. See IMPL-0001 §Supersedes + §Follow-ups (DESIGN-0002 and DESIGN-0004 both need post-IMPL amendments).
+**IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) re-home to DESIGN-0004 (`pod-identity-access`). The cluster module's only IAM role is the EKS service role.
 
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`. The full design lives in DESIGN-0002 (read alongside IMPL-0001 §Supersedes for the controller-IAM rebalancing).
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 
 ## CI caveat
 

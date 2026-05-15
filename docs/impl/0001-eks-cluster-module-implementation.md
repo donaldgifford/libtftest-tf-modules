@@ -1,7 +1,7 @@
 ---
 id: IMPL-0001
 title: "EKS Cluster Module Implementation"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-05-13
 ---
@@ -9,7 +9,7 @@ created: 2026-05-13
 
 # IMPL 0001: EKS Cluster Module Implementation
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-13
 
@@ -405,42 +405,43 @@ sync; CI wiring is a separate IMPL.
 
 #### Tasks
 
-- [ ] Run the `/tftest:scaffold` skill (or equivalent) to generate `test/`,
-      `go.mod`, `TestMain` with `harness.Run`, a starter test file, and
-      `.gitignore` entries.
-- [ ] Investigate the SSO path's actual AWS calls — confirm whether
-      `data.aws_iam_roles` with a `name_regex` filter is satisfied by a plain
-      seeded IAM role in LocalStack or requires Identity Center / sneakystack.
-      Document findings in the test file's package comment. (Resolved Q7 leans
-      toward "seed and look at what we need.")
-- [ ] Test: **VPC remote-state read.** Seed a stub VPC stack's tfstate in
-      LocalStack S3 with `private_subnet_ids` / `public_subnet_ids` / `vpc_id`
-      outputs; assert `aws_eks_cluster.this.vpc_config[0].subnet_ids` matches
-      the seeded private subnet IDs.
-- [ ] Test: **No addons.** Assert the plan contains zero `aws_eks_addon`
-      resources (ADR-0003 invariant).
-- [ ] Test: **No workload IAM.** Assert the plan contains exactly one
-      `aws_iam_role` (the cluster service role) — guards against accidental
-      regression toward the old controller-IAM scaffold.
-- [ ] Test: **KMS envelope encryption.** Assert
-      `encryption_config[0].resources` includes `"secrets"` and
-      `encryption_config[0].provider[0].key_arn` is non-empty.
-- [ ] Test: **Endpoint defaults.** Assert
-      `vpc_config[0].endpoint_public_access == true` and
-      `endpoint_private_access == true` when inputs are omitted.
-- [ ] Test: **Auth mode.** Assert
-      `access_config[0].authentication_mode == "API_AND_CONFIG_MAP"`.
-- [ ] Test: **Log retention.** Assert
-      `aws_cloudwatch_log_group.cluster.retention_in_days == 30`.
-- [ ] Test: **SSO disabled.** With `sso_access_enabled = false`, assert zero
-      `aws_eks_access_entry` and zero `aws_eks_access_policy_association` in
-      the plan.
-- [ ] Test: **SSO enabled.** With `sso_access_enabled = true` (plus
-      `sso_cluster_policy`), assert exactly one of each, using whichever
-      seeding strategy the investigation step landed on.
-- [ ] Test: **Outputs contract.** After apply, assert all seven outputs from
-      Phase 7 exist and are non-empty — protects against accidental output
-      renames.
+- [x] Hand-rolled scaffold under `modules/eks/cluster/test/`: `go.mod`
+      pinned to `libtftest v0.2.0`, `main_test.go` with `harness.Run` +
+      `LIBTFTEST_CONTAINER_URL` opt-out path, `helpers_test.go` for VPC
+      remote-state stub, `cluster_test.go` + `sso_test.go` for the
+      assertions, `.gitignore` for libtftest artifacts.
+- [x] **SSO path investigation.** A plain `aws_iam_role` matching the
+      `AWSReservedSSO_<permset>_*` regex (seeded by `seedSSORole`) is
+      enough for `data.aws_iam_roles` to resolve under LocalStack Pro.
+      No sneakystack needed. Documented in `sso_test.go` package comment.
+- [x] Test: VPC remote-state read — `node_sg_uses_remote_state_vpc`
+      subtest asserts `aws_security_group.nodes.vpc_id == stubVPCID`.
+- [x] Test: No addons — `no_eks_addons`.
+- [x] Test: No workload IAM — `only_cluster_service_iam_role`.
+- [x] Test: KMS envelope encryption — `kms_envelope_encryption`.
+- [x] Test: Endpoint defaults — `endpoint_defaults` (public=true,
+      private=true).
+- [x] Test: Auth mode — `authentication_mode_api_and_config_map`.
+- [x] Test: Log retention — `log_retention_30_days`.
+- [x] Test: KMS rotation + deletion window — `kms_key_rotation_enabled`.
+- [x] Test: SSO disabled — `TestCluster_SSO_Disabled`.
+- [x] Test: SSO enabled — `TestCluster_SSO_Enabled`.
+- [x] Test: KMS external mode — `TestCluster_KMS_External`.
+- [x] Test: Outputs contract — `outputs_contract` subtest checks all
+      seven module outputs are declared in the plan configuration.
+- [x] Drive-by: added `use_path_style = true` to
+      `data.terraform_remote_state.vpc.config`. Required for LocalStack
+      (no virtual-hosted-bucket DNS) and a reasonable production default
+      for any non-DNS-compliant bucket name.
+- [x] Drive-by: tests honor `LIBTFTEST_CONTAINER_URL` env var to reuse
+      an external LocalStack container (libtftest v0.2.0 doesn't
+      implement the env var in `harness.Run`). LocalStack Pro 2026.x
+      handles AWS provider 6.x SigV4 signing correctly; LocalStack
+      Community 4.4 / 3.8 returns 403 on every STS GetCallerIdentity.
+- [x] Drive-by: tests `t.Setenv("AWS_ENDPOINT_URL", edgeURL)` so the
+      s3 backend of `data.terraform_remote_state.vpc` (uses its own
+      AWS SDK, independent of the aws provider) reaches LocalStack STS
+      for its own credential validation.
 
 #### Success Criteria
 
