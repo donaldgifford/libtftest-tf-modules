@@ -45,4 +45,7 @@ build/
 *.tfplan
 crash.log
 crash.*.log
-# .terraform.lock.hcl is committed; it pins provider versions
+# Lock files are owned by the consumer (Terragrunt unit in infrastructure-live).
+# Atlantis runs init from there, so a module-level lock is invisible to prod
+# and only adds PR noise / drift risk.
+**/.terraform.lock.hcl
