@@ -178,16 +178,16 @@ ADR-0012.
 
 #### Tasks
 
-- [ ] `iam.tf`: `data.aws_iam_policy_document.node_assume_role`
+- [x] `iam.tf`: `data.aws_iam_policy_document.node_assume_role`
       trusting `ec2.amazonaws.com`.
-- [ ] `aws_iam_role.node` named `${var.nodegroup_name}-node`.
-- [ ] `aws_iam_role_policy_attachment.worker_node` →
+- [x] `aws_iam_role.node` named `${var.nodegroup_name}-node`.
+- [x] `aws_iam_role_policy_attachment.worker_node` →
       `AmazonEKSWorkerNodePolicy`.
-- [ ] `aws_iam_role_policy_attachment.ecr_pull_only` →
+- [x] `aws_iam_role_policy_attachment.ecr_pull_only` →
       `AmazonEC2ContainerRegistryPullOnly`.
-- [ ] `aws_iam_role_policy_attachment.ssm[0]` →
+- [x] `aws_iam_role_policy_attachment.ssm[0]` →
       `AmazonSSMManagedInstanceCore`, gated on `var.enable_ssm`.
-- [ ] `aws_iam_instance_profile.node` bound to `aws_iam_role.node`.
+- [x] `aws_iam_instance_profile.node` bound to `aws_iam_role.node`.
 
 #### Success Criteria
 

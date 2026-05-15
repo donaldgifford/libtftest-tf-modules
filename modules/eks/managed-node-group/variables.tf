@@ -26,7 +26,6 @@ variable "vpc_name" {
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations
 variable "nodegroup_name" {
   description = "Logical name of this node group. Combined with cluster_name for the IAM role + node group name."
   type        = string
@@ -155,14 +154,12 @@ variable "disk_size_gib" {
 # IAM additions (opt-in per ADR-0012 and ADR-0015)
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "enable_ssm" {
   description = "Attach AmazonSSMManagedInstanceCore to the node role for Session Manager break-glass access. Off by default per ADR-0012."
   type        = bool
   default     = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "extra_node_policies" {
   description = "Additional managed-style IAM policy ARNs to attach to the node role. Reserved for opt-in ECR pull-through cache policy per ADR-0015. Default empty — no extra attachments unless the consumer's Terragrunt config explicitly opts in. Each ARN is attached via aws_iam_role_policy_attachment."
   type        = list(string)
@@ -266,7 +263,6 @@ variable "extra_kubelet_args" {
   default     = ""
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "tags" {
   description = "AWS resource tags applied to every resource in the module."
   type        = map(string)
