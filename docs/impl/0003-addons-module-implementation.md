@@ -367,7 +367,7 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl`:
+- [x] `tests/default.tftest.hcl`:
       - `override_data` for `data.terraform_remote_state.eks`, the
         five `data.aws_eks_addon_version.*`, and
         `data.aws_caller_identity.current`.
@@ -389,15 +389,15 @@ compatible version against the cluster's K8s version.
         - Each IAM role's trust policy includes
           `pods.eks.amazonaws.com` with
           `sts:AssumeRole`+`sts:TagSession`.
-- [ ] `tests/efs_csi_enabled.tftest.hcl`:
+- [x] `tests/efs_csi_enabled.tftest.hcl`:
       - With `efs_csi_enabled = true`, plan adds 1 addon, 1 IAM role,
         1 policy attachment, 1 PIA block.
-- [ ] `tests/version_resolution.tftest.hcl`:
+- [x] `tests/version_resolution.tftest.hcl`:
       - With `vpc_cni_version = "v1.18.0-eksbuild.1"`, addon's
         resolved version is the pinned literal.
       - With `vpc_cni_version = null`, addon's resolved version
         comes from `data.aws_eks_addon_version.vpc_cni.version`.
-- [ ] `tests/agent_version_required.tftest.hcl`:
+- [x] `tests/agent_version_required.tftest.hcl`:
       - `pod_identity_agent_version = ""` rejected at variable
         validation.
 
