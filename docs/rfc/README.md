@@ -33,5 +33,5 @@ docz create rfc "Your RFC Title"
 
 | ID | Title | Status | Date | Author | Link |
 |----|-------|--------|------|--------|------|
-| RFC-0001 | Module Testing Strategy: terraform test as baseline, libtftest for runtime | Draft | 2026-05-14 | Donald Gifford | [0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md](0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) |
+| RFC-0001 | Module Testing Strategy: terraform test as baseline, libtftest for runtime | Draft | 2026-05-15 | Donald Gifford | [0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md](0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) |
 <!-- END DOCZ AUTO-GENERATED -->

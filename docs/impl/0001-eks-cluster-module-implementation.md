@@ -44,6 +44,9 @@ created: 2026-05-13
   - [Phase 8: libtftest scaffolding and tests](#phase-8-libtftest-scaffolding-and-tests)
     - [Tasks](#tasks-7)
     - [Success Criteria](#success-criteria-7)
+  - [Phase 9: terraform test side-by-side suite (RFC-0001 reference)](#phase-9-terraform-test-side-by-side-suite-rfc-0001-reference)
+    - [Tasks](#tasks-8)
+    - [Success Criteria](#success-criteria-8)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -454,6 +457,73 @@ sync; CI wiring is a separate IMPL.
 
 ---
 
+### Phase 9: terraform test side-by-side suite (RFC-0001 reference)
+
+Per RFC-0001 §Where cluster sits, cluster is the deliberate side-by-side
+reference module for the two-framework testing strategy. Phase 8 (libtftest)
+stays; this phase adds a `tests/*.tftest.hcl` suite covering the same
+plan-time invariants in HCL. Purpose: produce the apples-to-apples data
+(line count, runtime, ergonomics, what each framework catches that the
+other doesn't) that grounds the RFC's migration trigger in evidence rather
+than speculation.
+
+**This is the only module that will carry both frameworks long-term**
+(until cluster grows its first apply-time runtime invariant, at which
+point the `tests/` suite retires per RFC-0001's retirement criterion).
+Every other module ships with `terraform test` alone.
+
+#### Tasks
+
+- [x] Add `modules/eks/cluster/tests/` directory.
+- [x] `tests/default.tftest.hcl`: default-config plan with `override_data`
+      for `data.terraform_remote_state.vpc` and
+      `data.aws_caller_identity.current`. Assertions mirroring Phase 8's
+      `TestCluster_DefaultPlan` subtests: no addons, exactly one IAM
+      role, KMS envelope encryption, endpoint defaults
+      (public=true, private=true), `authentication_mode = "API_AND_CONFIG_MAP"`,
+      log retention 30d, KMS rotation + 30d deletion window, node SG
+      `vpc_id` from stubbed remote state, SSO Access Entry count 0,
+      subnets from stubbed remote state.
+- [x] `tests/kms_external.tftest.hcl`: assertion that no
+      `aws_kms_key.cluster` is created when `var.kms_key_arn` is set,
+      plus encryption_config provider.key_arn references the input ARN.
+- [x] `tests/sso.tftest.hcl`: two `run` blocks — SSO disabled (count 0)
+      and SSO enabled (count 1, principal_arn from stubbed
+      `data.aws_iam_roles.sso[0].arns`, policy_arn references
+      `var.sso_cluster_policy`).
+- [x] Verify `terraform test` runs clean from
+      `modules/eks/cluster/` with no AWS contact and no LocalStack
+      requirement (plan-only, `override_data` for both data sources).
+      4 run blocks pass; full suite ~1.2s.
+- [x] Capture comparison data and feed back into the PR description.
+      Phase 8 (libtftest): 566 lines Go + 351 lines go.mod/go.sum,
+      ~45s runtime against LocalStack Pro. Phase 9 (terraform test):
+      326 lines HCL, ~1.2s, no LocalStack. One real ergonomics finding:
+      `aws_eks_cluster.encryption_config[].resources` is a typed set
+      in HCL (no index access) while the JSON plan represents it as a
+      list — required `contains(...)` in HCL where Go index-walks
+      worked. Documented inline in `tests/default.tftest.hcl`. No
+      RFC/ADR claim contradicted.
+- [x] Update `modules/eks/cluster/README.md` to document both test
+      suites and how to run each.
+- [x] Update CLAUDE.md "Cluster module shape" section to note both
+      suites coexist by RFC-0001 design.
+
+#### Success Criteria
+
+- `terraform test` in `modules/eks/cluster/` passes with no AWS contact
+  and no LocalStack container required.
+- Every plan-time invariant Phase 8 asserts has a corresponding
+  `assert` block in the `tests/` suite.
+- RFC-0001 / ADR-0013 / ADR-0014 are revised before merge if Phase 9
+  surfaces a claim that doesn't hold (e.g., an invariant the HCL
+  `assert` block cannot express).
+- The side-by-side comparison data (Phase 8 vs Phase 9 line count,
+  runtime, what each catches) is recorded in the PR description so the
+  RFC's claims are supported by evidence at review time.
+
+---
+
 ## File Changes
 
 | File                                            | Action | Description                                                             |
@@ -468,6 +538,7 @@ sync; CI wiring is a separate IMPL.
 | `modules/eks/cluster/USAGE.md`                  | Regen  | `terraform-docs .` after Phase 7                                        |
 | `test/`                                         | Create | libtftest Go suite (Phase 8)                                            |
 | `go.mod` / `go.sum`                             | Create | At repo root, via `tftest:scaffold`                                     |
+| `tests/`                                        | Create | `terraform test` HCL suite side-by-side with `test/` (Phase 9, RFC-0001 reference) |
 
 **Not created (intentionally):** `modules/eks/cluster/controllers.tf`,
 `modules/eks/cluster/iam-policies/`. Workload-IAM moves to DESIGN-0004.
@@ -480,6 +551,8 @@ sync; CI wiring is a separate IMPL.
       `variables.tf` or `outputs.tf` actually changed.
 - [x] libtftest suite (Phase 8) — every in-scope invariant from DESIGN-0002
       §Testing Strategy §libtftest covered.
+- [x] `terraform test` suite (Phase 9) — same plan-time invariants in HCL,
+      side-by-side reference per RFC-0001.
 - [x] Post-deploy integration checks deferred — they belong on the consumer
       stack (a Terragrunt root that instantiates this module against a real
       AWS account) and are out of scope for the module-level IMPL.

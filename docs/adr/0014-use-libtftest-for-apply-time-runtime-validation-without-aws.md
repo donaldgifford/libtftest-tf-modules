@@ -14,7 +14,7 @@ created: 2026-05-15
 - [Context](#context)
 - [Decision](#decision)
   - [Scope: what libtftest owns](#scope-what-libtftest-owns)
-  - [Scope: what libtftest does *not* own](#scope-what-libtftest-does-not-own)
+  - [Scope: what libtftest does not own](#scope-what-libtftest-does-not-own)
   - [The harness shim: LocalStack + kind/k3d + sneakystack](#the-harness-shim-localstack--kindk3d--sneakystack)
   - [When a module migrates into libtftest](#when-a-module-migrates-into-libtftest)
 - [Consequences](#consequences)

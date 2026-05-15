@@ -92,7 +92,11 @@ Implementation complete per IMPL-0001 (status: Completed). The module shape is n
   - `aws_security_group.nodes` + three granular `aws_vpc_security_group_*_rule` resources.
   - Gated `aws_eks_access_entry.sso[0]` + `aws_eks_access_policy_association.sso[0]`.
 - **Outputs** (remote-state contract): `cluster_name`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`.
-- **Tests** at `modules/eks/cluster/test/` use libtftest v0.2.0 (per-package `harness.Run`). Cover plan-time invariants (no addons, exactly one IAM role, KMS envelope, endpoint defaults, auth mode, log retention, KMS rotation, remote-state-driven VPC, SSO disabled/enabled, output contract). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container.
+- **Tests** — cluster is the **side-by-side reference module** per RFC-0001 and carries two test suites until it grows its first apply-time runtime invariant:
+  - `modules/eks/cluster/test/` — libtftest v0.2.0 Go suite (plan-only today). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container. ~45s.
+  - `modules/eks/cluster/tests/` — `terraform test` HCL suite covering the same plan-time invariants via `override_data` for `data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`. Run with `terraform test` from the module dir. ~1.2s, no LocalStack needed.
+
+  No other module carries both frameworks; new modules default to `terraform test` per ADR-0013. See [RFC-0001](docs/rfc/0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) for the strategy, [ADR-0013](docs/adr/0013-use-terraform-test-for-plan-time-module-invariants.md) and [ADR-0014](docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) for the per-tool decisions.
 
 **IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) re-home to DESIGN-0004 (`pod-identity-access`). The cluster module's only IAM role is the EKS service role.
 

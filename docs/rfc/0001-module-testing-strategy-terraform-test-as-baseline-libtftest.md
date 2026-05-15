@@ -22,6 +22,7 @@ created: 2026-05-15
   - [Capability matrix](#capability-matrix)
   - [Migration trigger](#migration-trigger)
   - [Workflow diagram](#workflow-diagram)
+  - [terraform test as the gap-discovery tool](#terraform-test-as-the-gap-discovery-tool)
   - [Where cluster sits](#where-cluster-sits)
 - [Alternatives Considered](#alternatives-considered)
 - [Implementation Phases](#implementation-phases)
