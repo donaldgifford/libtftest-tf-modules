@@ -210,20 +210,20 @@ the rendered user data body.
 
 #### Tasks
 
-- [ ] `launch_template.tf`: `aws_launch_template.node`.
-- [ ] `metadata_options`: `http_tokens = "required"`,
+- [x] `launch_template.tf`: `aws_launch_template.node`.
+- [x] `metadata_options`: `http_tokens = "required"`,
       `http_put_response_hop_limit = 2`,
       `instance_metadata_tags = "enabled"` (per ADR-0007).
-- [ ] `block_device_mappings` for the root volume: `gp3`,
+- [x] `block_device_mappings` for the root volume: `gp3`,
       `encrypted = true`, `kms_key_id` from
       `data.terraform_remote_state.eks.outputs.kms_key_arn`,
       `delete_on_termination = true`, `volume_size = var.disk_size_gib`.
-- [ ] `monitoring { enabled = true }`.
-- [ ] `vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]`.
-- [ ] `iam_instance_profile { arn = aws_iam_instance_profile.node.arn }`.
-- [ ] `tag_specifications` for `instance` and `volume`.
-- [ ] `lifecycle { create_before_destroy = true }`.
-- [ ] `user_data` is a placeholder for Phase 4
+- [x] `monitoring { enabled = true }`.
+- [x] `vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]`.
+- [x] `iam_instance_profile { arn = aws_iam_instance_profile.node.arn }`.
+- [x] `tag_specifications` for `instance` and `volume`.
+- [x] `lifecycle { create_before_destroy = true }`.
+- [x] `user_data` is a placeholder for Phase 4
       (`base64encode("placeholder")` so plan succeeds).
 
 #### Success Criteria

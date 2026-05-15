@@ -138,7 +138,6 @@ variable "max_size" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0002 phase
 variable "disk_size_gib" {
   description = "Root EBS volume size in GiB. gp3, KMS-encrypted with the cluster module's KMS key (read from remote state)."
   type        = number
