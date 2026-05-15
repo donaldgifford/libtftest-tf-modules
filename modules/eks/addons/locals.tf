@@ -35,4 +35,5 @@ data "aws_iam_policy_document" "pod_identity_trust" {
 
 locals {
   vpc_cni_role_name = "${substr(var.cluster_name, 0, 56)}-vpc-cni"
+  ebs_csi_role_name = "${substr(var.cluster_name, 0, 56)}-ebs-csi"
 }

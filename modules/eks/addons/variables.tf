@@ -65,7 +65,6 @@ variable "coredns_version" {
   default     = null
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "ebs_csi_version" {
   description = "aws-ebs-csi-driver addon version. Null resolves via data.aws_eks_addon_version (Phase 7)."
   type        = string

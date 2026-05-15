@@ -268,7 +268,7 @@ Mirror of Phase 3 for EBS CSI.
 
 #### Tasks
 
-- [ ] `ebs_csi.tf`:
+- [x] `ebs_csi.tf`:
       - `aws_iam_role.ebs_csi` named `${cluster_name}-ebs-csi`.
       - `aws_iam_role_policy_attachment.ebs_csi` →
         `AmazonEBSCSIDriverPolicy`.
