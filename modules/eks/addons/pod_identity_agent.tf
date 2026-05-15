@@ -19,7 +19,7 @@
 resource "aws_eks_addon" "pod_identity_agent" {
   cluster_name  = data.terraform_remote_state.eks.outputs.cluster_name
   addon_name    = "eks-pod-identity-agent"
-  addon_version = var.pod_identity_agent_version
+  addon_version = coalesce(var.pod_identity_agent_version, data.aws_eks_addon_version.pod_identity_agent.version)
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"

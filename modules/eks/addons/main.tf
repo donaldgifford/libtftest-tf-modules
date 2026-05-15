@@ -19,7 +19,7 @@
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name  = data.terraform_remote_state.eks.outputs.cluster_name
   addon_name    = "kube-proxy"
-  addon_version = var.kube_proxy_version
+  addon_version = coalesce(var.kube_proxy_version, data.aws_eks_addon_version.kube_proxy.version)
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
@@ -32,7 +32,7 @@ resource "aws_eks_addon" "kube_proxy" {
 resource "aws_eks_addon" "coredns" {
   cluster_name         = data.terraform_remote_state.eks.outputs.cluster_name
   addon_name           = "coredns"
-  addon_version        = var.coredns_version
+  addon_version        = coalesce(var.coredns_version, data.aws_eks_addon_version.coredns.version)
   configuration_values = var.coredns_configuration_values
 
   resolve_conflicts_on_create = "OVERWRITE"

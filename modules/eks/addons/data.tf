@@ -21,3 +21,56 @@ data "terraform_remote_state" "eks" {
     use_path_style = true
   }
 }
+
+#--------------------------------------------------------------
+# Addon-version data sources (IMPL-0003 Q3)
+#--------------------------------------------------------------
+#
+# Per addon: if var.<name>_version is non-null, the literal pin
+# wins; if null, the addon resource consumes the latest version
+# AWS publishes as compatible with the cluster's K8s version.
+# Each addon's addon_version is set via
+# coalesce(var, data.<>.version) at the use site.
+#
+# most_recent = true makes the data source pick the latest
+# release rather than the oldest. The "compatible with K8s
+# version X" filter is what cluster_version (from remote state)
+# applies.
+
+data "aws_eks_addon_version" "pod_identity_agent" {
+  addon_name         = "eks-pod-identity-agent"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "vpc_cni" {
+  addon_name         = "vpc-cni"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "kube_proxy" {
+  addon_name         = "kube-proxy"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "coredns" {
+  addon_name         = "coredns"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "ebs_csi" {
+  addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}
+
+data "aws_eks_addon_version" "efs_csi" {
+  count = var.efs_csi_enabled ? 1 : 0
+
+  addon_name         = "aws-efs-csi-driver"
+  kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version
+  most_recent        = true
+}

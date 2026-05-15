@@ -317,14 +317,14 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `data.aws_eks_addon_version.vpc_cni` with `addon_name = "vpc-cni"`,
+- [x] `data.aws_eks_addon_version.vpc_cni` with `addon_name = "vpc-cni"`,
       `kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version`.
       **See Open Question Q2 — cluster_version is not currently
       output by the cluster module; needs to be added before this
       phase begins.**
-- [ ] Similar data sources for kube-proxy, coredns, aws-ebs-csi-driver,
+- [x] Similar data sources for kube-proxy, coredns, aws-ebs-csi-driver,
       aws-efs-csi-driver (gated).
-- [ ] Replace direct `var.<name>_version` references in each addon
+- [x] Replace direct `var.<name>_version` references in each addon
       with `coalesce(var.<name>_version, data.aws_eks_addon_version.<name>.version)`.
 
 #### Success Criteria

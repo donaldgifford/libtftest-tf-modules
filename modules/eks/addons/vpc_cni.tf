@@ -25,7 +25,7 @@ resource "aws_iam_role_policy_attachment" "vpc_cni" {
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name         = data.terraform_remote_state.eks.outputs.cluster_name
   addon_name           = "vpc-cni"
-  addon_version        = var.vpc_cni_version
+  addon_version        = coalesce(var.vpc_cni_version, data.aws_eks_addon_version.vpc_cni.version)
   configuration_values = var.vpc_cni_configuration_values
 
   resolve_conflicts_on_create = "OVERWRITE"
