@@ -47,7 +47,6 @@ variable "pod_identity_agent_version" {
   }
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "vpc_cni_version" {
   description = "vpc-cni addon version. Null resolves via data.aws_eks_addon_version (Phase 7)."
   type        = string
@@ -86,7 +85,6 @@ variable "efs_csi_version" {
 # Addon configuration_values passthroughs
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "vpc_cni_configuration_values" {
   description = "Free-form JSON string passed through as aws_eks_addon.vpc_cni.configuration_values. Per DESIGN-0003 the schema is owned by AWS; the module only forwards it."
   type        = string

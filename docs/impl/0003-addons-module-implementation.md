@@ -207,7 +207,7 @@ pattern.
 
 #### Tasks
 
-- [ ] `vpc_cni.tf`:
+- [x] `vpc_cni.tf`:
       - `data.aws_iam_policy_document.pod_identity_trust` —
         `pods.eks.amazonaws.com` with
         `["sts:AssumeRole", "sts:TagSession"]`. Shared by all
