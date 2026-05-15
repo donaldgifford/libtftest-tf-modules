@@ -343,7 +343,7 @@ suite. No LocalStack, no env vars, fast CI gate.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl`: default-config plan with
+- [x] `tests/default.tftest.hcl`: default-config plan with
       `override_data` for `data.terraform_remote_state.eks` and `.vpc`.
       Provider config with `skip_credentials_validation = true` so
       no AWS contact. Assertions from DESIGN-0001 §"Static
@@ -359,15 +359,15 @@ suite. No LocalStack, no env vars, fast CI gate.
       - Node group `labels` include `runtime=gvisor` +
         `workload-class=secure`.
       - All 10 outputs declared.
-- [ ] `tests/architecture_validation.tftest.hcl`: variable validation
+- [x] `tests/architecture_validation.tftest.hcl`: variable validation
       runs.
       - `architecture.name = "x86"` rejected (only `arm64`/`amd64`).
       - `architecture.name = "amd64"` accepted; `ami_type =
         AL2023_x86_64_STANDARD`.
       - `capacity_type = "FOO"` rejected (only `ON_DEMAND`/`SPOT`).
-- [ ] `tests/ssm_enabled.tftest.hcl`: `enable_ssm = true` adds the
+- [x] `tests/ssm_enabled.tftest.hcl`: `enable_ssm = true` adds the
       third managed attachment.
-- [ ] All runs pass with `terraform test` from the module dir.
+- [x] All runs pass with `terraform test` from the module dir.
 
 #### Success Criteria
 
