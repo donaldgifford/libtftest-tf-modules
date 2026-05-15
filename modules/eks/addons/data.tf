@@ -11,7 +11,6 @@
 # so the data source works against any S3 endpoint (production,
 # LocalStack, etc.) without virtual-host DNS dependence.
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 data "terraform_remote_state" "eks" {
   backend = "s3"
 

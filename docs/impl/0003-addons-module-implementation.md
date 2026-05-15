@@ -176,17 +176,17 @@ Per ADR-0003, this is the first thing the module installs.
 
 #### Tasks
 
-- [ ] `pod_identity_agent.tf`: `aws_eks_addon.eks_pod_identity_agent`.
-- [ ] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
-- [ ] `addon_name = "eks-pod-identity-agent"`.
-- [ ] `addon_version = var.pod_identity_agent_version`.
-- [ ] `resolve_conflicts_on_create = "OVERWRITE"`.
-- [ ] `resolve_conflicts_on_update = "PRESERVE"`.
-- [ ] **No** `pod_identity_association` block (agent uses node-role
+- [x] `pod_identity_agent.tf`: `aws_eks_addon.eks_pod_identity_agent`.
+- [x] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
+- [x] `addon_name = "eks-pod-identity-agent"`.
+- [x] `addon_version = var.pod_identity_agent_version`.
+- [x] `resolve_conflicts_on_create = "OVERWRITE"`.
+- [x] `resolve_conflicts_on_update = "PRESERVE"`.
+- [x] **No** `pod_identity_association` block (agent uses node-role
       `eks-auth:AssumeRoleForPodIdentity` per ADR-0002 / ADR-0003).
-- [ ] **No** `aws_iam_role` for the agent.
-- [ ] `tags = var.tags`.
-- [ ] Add a header comment to `pod_identity_agent.tf` documenting
+- [x] **No** `aws_iam_role` for the agent.
+- [x] `tags = var.tags`.
+- [x] Add a header comment to `pod_identity_agent.tf` documenting
       that this addon is the foundation every other addon
       `depends_on` per ADR-0003.
 
