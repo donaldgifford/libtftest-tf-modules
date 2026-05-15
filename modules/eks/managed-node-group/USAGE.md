@@ -7,7 +7,78 @@
 <!-- prettier-ignore-end -->
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
 
-{{ .Content }}
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | 6.45.0 |
+| terraform | n/a |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_eks_node_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_node_group) | resource |
+| [aws_iam_instance_profile.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
+| [aws_iam_role.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.ecr_pull_only](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.extra](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.worker_node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_launch_template.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template) | resource |
+| [aws_iam_policy_document.node_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [terraform_remote_state.eks](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
+| [terraform_remote_state.vpc](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| additional\_labels | Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class labels. | `map(string)` | `{}` | no |
+| additional\_taints | Extra taints to apply on top of the always-on workload-class=secure:NO\_SCHEDULE taint. | ```list(object({ key = string value = string effect = string }))``` | `[]` | no |
+| architecture | Architecture object: name (arm64\|amd64), ami\_type, gvisor\_arch (aarch64\|x86\_64), k8s\_arch (arm64\|amd64), and default\_instance\_types. Boilerplate-derived per DESIGN-0001. | ```object({ name = string ami_type = string gvisor_arch = string k8s_arch = string default_instance_types = list(string) })``` | ```{ "ami_type": "AL2023_ARM_64_STANDARD", "default_instance_types": [ "m7g.large", "m7g.xlarge", "c7g.large", "c7g.xlarge" ], "gvisor_arch": "aarch64", "k8s_arch": "arm64", "name": "arm64" }``` | no |
+| capacity\_type | Node group capacity type. ON\_DEMAND default per ADR-0009; SPOT permitted for explicitly batch / non-critical workloads. | `string` | `"ON_DEMAND"` | no |
+| cluster\_name | EKS cluster name. Used as the remote-state key fragment and as aws\_eks\_node\_group.cluster\_name (read from the cluster's remote state output at the use site, ADR-0001). | `string` | n/a | yes |
+| containerd\_pull\_through\_mirror | When enabled, user data writes a containerd config drop-in redirecting upstream registries to cache\_url\_prefix. Requires the corresponding ECR pull-through cache module to be instantiated and the matching node IAM policy attached via var.extra\_node\_policies. | ```object({ enabled = bool cache_url_prefix = optional(string) upstreams = optional(list(object({ host = string prefix = string })), []) })``` | ```{ "enabled": false }``` | no |
+| desired\_size | Initial desired size. After create, drift is ignored via lifecycle.ignore\_changes so a cluster autoscaler can manage it without Terraform fighting back. | `number` | `1` | no |
+| disk\_size\_gib | Root EBS volume size in GiB. gp3, KMS-encrypted with the cluster module's KMS key (read from remote state). | `number` | `100` | no |
+| enable\_ssm | Attach AmazonSSMManagedInstanceCore to the node role for Session Manager break-glass access. Off by default per ADR-0012. | `bool` | `false` | no |
+| extra\_kubelet\_args | Extra kubelet command-line arguments appended at AL2023 nodeadm bootstrap. Empty by default. | `string` | `""` | no |
+| extra\_node\_policies | Additional managed-style IAM policy ARNs to attach to the node role. Reserved for opt-in ECR pull-through cache policy per ADR-0015. Default empty — no extra attachments unless the consumer's Terragrunt config explicitly opts in. Each ARN is attached via aws\_iam\_role\_policy\_attachment. | `list(string)` | `[]` | no |
+| gvisor\_sha512 | SHA-512 digests for the gVisor binaries matching var.gvisor\_version and var.architecture.gvisor\_arch. Keys: "runsc", "containerd\_shim\_runsc\_v1". Renovate updates this map alongside gvisor\_version. Empty defaults are placeholders — wired to a real verification step in Phase 4. | ```object({ runsc = string containerd_shim_runsc_v1 = string })``` | ```{ "containerd_shim_runsc_v1": "", "runsc": "" }``` | no |
+| gvisor\_version | gVisor release identifier, e.g. "release-20260101.0". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010. | `string` | `"release-20260101.0"` | no |
+| instance\_types | Override list of instance types. Empty (default) falls back to var.architecture.default\_instance\_types. Instance-type-vs-architecture compatibility is asserted in Phase 5 / Phase 7. | `list(string)` | `[]` | no |
+| max\_size | Maximum node group size. | `number` | `10` | no |
+| min\_size | Minimum node group size. | `number` | `0` | no |
+| nodegroup\_name | Logical name of this node group. Combined with cluster\_name for the IAM role + node group name. | `string` | n/a | yes |
+| region | AWS region. Used in the remote-state key prefix and for AWS API calls. | `string` | n/a | yes |
+| remote\_state\_bucket | S3 bucket holding the cluster module's and VPC stack's remote state. Used by data.terraform\_remote\_state.eks and .vpc per ADR-0001. | `string` | n/a | yes |
+| tags | AWS resource tags applied to every resource in the module. | `map(string)` | `{}` | no |
+| vpc\_name | VPC stack name. Used in the VPC remote-state key fragment. | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| ami\_type | AL2023 AMI type selected by EKS based on var.architecture.ami\_type (e.g., AL2023\_ARM\_64\_STANDARD). |
+| architecture | Echo of var.architecture for downstream tooling (e.g., per-arch workload selectors). |
+| instance\_profile\_arn | ARN of the EC2 instance profile bound to the node role. |
+| launch\_template\_id | ID of the launch template used by the node group. |
+| launch\_template\_latest\_version | Latest version of the launch template — bumps on every change to user\_data, metadata\_options, etc. |
+| node\_labels | Kubernetes node labels applied to every node (workload-class=secure, runtime=gvisor, kubernetes.io/arch, plus var.additional\_labels). |
+| node\_role\_arn | ARN of the node IAM role. Consumed by the ECR pull-through cache module's Terragrunt wiring to attach the opt-in third policy per ADR-0015. |
+| node\_role\_name | Name of the node IAM role. Useful for downstream IAM lookups. |
+| node\_taints | Kubernetes node taints applied to every node — the always-on workload-class=secure:NO\_SCHEDULE plus var.additional\_taints. |
+| nodegroup\_name | EKS managed node group name. Stable identifier; matches var.nodegroup\_name. |
 <!-- END_TF_DOCS -->

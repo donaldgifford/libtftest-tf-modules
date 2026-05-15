@@ -161,3 +161,83 @@ spec:
 
 Multi-arch container images schedule on either architecture in mixed-arch
 clusters without an arch nodeSelector.
+
+## Per-architecture instantiation
+
+This module is single-arch per instantiation (ADR-0006). To run both `arm64` and
+`amd64` secure node groups on the same cluster, instantiate twice with
+different `var.architecture` and `var.nodegroup_name`.
+
+```hcl
+module "node_group_arm64" {
+  source = "../../modules/eks/managed-node-group"
+
+  remote_state_bucket = var.remote_state_bucket
+  region              = var.region
+  cluster_name        = var.cluster_name
+  vpc_name            = var.vpc_name
+  nodegroup_name      = "secure-arm64"
+
+  # architecture defaults to the arm64 shape; explicit for clarity:
+  architecture = {
+    name                   = "arm64"
+    ami_type               = "AL2023_ARM_64_STANDARD"
+    gvisor_arch            = "aarch64"
+    k8s_arch               = "arm64"
+    default_instance_types = ["m7g.large", "m7g.xlarge", "c7g.large", "c7g.xlarge"]
+  }
+}
+
+module "node_group_amd64" {
+  source = "../../modules/eks/managed-node-group"
+
+  remote_state_bucket = var.remote_state_bucket
+  region              = var.region
+  cluster_name        = var.cluster_name
+  vpc_name            = var.vpc_name
+  nodegroup_name      = "secure-amd64"
+
+  architecture = {
+    name                   = "amd64"
+    ami_type               = "AL2023_x86_64_STANDARD"
+    gvisor_arch            = "x86_64"
+    k8s_arch               = "amd64"
+    default_instance_types = ["m7i.large", "m7i.xlarge", "c7i.large", "c7i.xlarge"]
+  }
+}
+```
+
+The Boilerplate-generated Terragrunt config (DESIGN-0001) computes the
+arch-derived fields from a single `architecture = "arm64"` choice and passes
+the fully-formed object in.
+
+## Wiring the optional ECR pull-through cache policy
+
+Per ADR-0015, the ECR pull-through cache module emits a managed-style IAM
+policy ARN that consumers opt into by passing it through
+`var.extra_node_policies`. **Two stages of consent**: instantiating the cache
+module emits the policy; passing the ARN here attaches it. Either alone is a
+no-op.
+
+```hcl
+module "node_group" {
+  source = "../../modules/eks/managed-node-group"
+  # ...
+
+  extra_node_policies = [
+    module.ecr_pull_through_cache.node_pull_through_policy_arn,
+  ]
+
+  containerd_pull_through_mirror = {
+    enabled          = true
+    cache_url_prefix = module.ecr_pull_through_cache.cache_url_prefixes["docker-hub"]
+    upstreams = [
+      { host = "registry-1.docker.io", prefix = "docker-hub" },
+    ]
+  }
+}
+```
+
+The `containerd_pull_through_mirror` block is separately opt-in per
+IMPL-0005 Q8 — independent from the IAM gate so callers can attach the
+policy without redirecting runtime traffic (e.g., during validation).

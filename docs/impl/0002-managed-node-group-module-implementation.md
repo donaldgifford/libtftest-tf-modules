@@ -317,12 +317,12 @@ Land the output contract and regenerate the module docs.
 
 #### Tasks
 
-- [ ] `outputs.tf`: `nodegroup_name`, `architecture` (echoed),
+- [x] `outputs.tf`: `nodegroup_name`, `architecture` (echoed),
       `ami_type`, `node_role_arn`, `node_role_name`,
       `instance_profile_arn`, `launch_template_id`,
       `launch_template_latest_version`, `node_labels`, `node_taints`.
-- [ ] Run `terraform-docs .` to regenerate `USAGE.md`.
-- [ ] Update `README.md` with: pointer to USAGE.md, `RuntimeClass`
+- [x] Run `terraform-docs .` to regenerate `USAGE.md`.
+- [x] Update `README.md` with: pointer to USAGE.md, `RuntimeClass`
       manifest (kubectl + Argo+Kustomize delivery examples per
       ADR-0011), how to instantiate per arch.
 
