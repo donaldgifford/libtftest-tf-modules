@@ -341,15 +341,15 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `outputs.tf`:
+- [x] `outputs.tf`:
       - `pod_identity_agent_addon_arn`.
       - `pod_identity_agent_addon_id`.
       - `vpc_cni_role_arn`.
       - `ebs_csi_role_arn`.
       - `efs_csi_role_arn` (null when disabled).
       - `addon_versions` map.
-- [ ] `terraform-docs .` regenerates `USAGE.md`.
-- [ ] `README.md` documents:
+- [x] `terraform-docs .` regenerates `USAGE.md`.
+- [x] `README.md` documents:
       - PrivateLink endpoint prerequisite (`com.amazonaws.<region>.eks-auth`).
       - Cross-stack operational ordering (cluster → nodes → addons →
         pod-identity-access).

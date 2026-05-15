@@ -7,7 +7,75 @@
 <!-- prettier-ignore-end -->
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
 
-{{ .Content }}
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | 6.45.0 |
+| terraform | n/a |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_eks_addon.coredns](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.ebs_csi_driver](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.efs_csi_driver](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.kube_proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.pod_identity_agent](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.vpc_cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_iam_role.ebs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.efs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.vpc_cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.ebs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.efs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.vpc_cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_eks_addon_version.coredns](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_eks_addon_version.ebs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_eks_addon_version.efs_csi](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_eks_addon_version.kube_proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_eks_addon_version.pod_identity_agent](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_eks_addon_version.vpc_cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon_version) | data source |
+| [aws_iam_policy_document.pod_identity_trust](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [terraform_remote_state.eks](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| cluster\_name | EKS cluster name. Used as the remote-state key fragment and as aws\_eks\_addon.cluster\_name (read from cluster remote state output at the use site, ADR-0001). | `string` | n/a | yes |
+| coredns\_configuration\_values | Free-form JSON string passed through as aws\_eks\_addon.coredns.configuration\_values. | `string` | `null` | no |
+| coredns\_version | coredns addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). | `string` | `null` | no |
+| ebs\_csi\_version | aws-ebs-csi-driver addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). | `string` | `null` | no |
+| efs\_csi\_enabled | Install the aws-efs-csi-driver addon, its IAM role, and its Pod Identity Association. Off by default — most clusters don't need EFS-backed PVs. | `bool` | `false` | no |
+| efs\_csi\_version | aws-efs-csi-driver addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). Ignored when efs\_csi\_enabled is false. | `string` | `null` | no |
+| kube\_proxy\_version | kube-proxy addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). | `string` | `null` | no |
+| pod\_identity\_agent\_version | eks-pod-identity-agent addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). A non-empty literal pins the version explicitly. | `string` | `null` | no |
+| region | AWS region. Also feeds the remote-state key convention <region>/eks/<cluster\_name>/terraform.tfstate. | `string` | n/a | yes |
+| remote\_state\_bucket | S3 bucket holding the cluster module's remote state. Used by data.terraform\_remote\_state.eks per ADR-0001. | `string` | n/a | yes |
+| tags | Standard tag set. Generated by Boilerplate from the live-repo Terragrunt config. | ```object({ Account = string ClusterName = string ClusterType = string Environment = string Region = string })``` | n/a | yes |
+| vpc\_cni\_configuration\_values | Free-form JSON string passed through as aws\_eks\_addon.vpc\_cni.configuration\_values. Per DESIGN-0003 the schema is owned by AWS; the module only forwards it. | `string` | `null` | no |
+| vpc\_cni\_version | vpc-cni addon version. Null resolves via data.aws\_eks\_addon\_version (Phase 7). | `string` | `null` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| addon\_versions | Resolved addon versions, keyed by addon\_name. Useful for drift detection in downstream observability. |
+| ebs\_csi\_role\_arn | ARN of the EBS CSI Pod Identity role (assumed by ebs-csi-controller-sa in kube-system). |
+| efs\_csi\_role\_arn | ARN of the EFS CSI Pod Identity role. null when var.efs\_csi\_enabled is false. |
+| pod\_identity\_agent\_addon\_arn | ARN of the eks-pod-identity-agent addon. Foundation every other addon in this module depends\_on per ADR-0003. |
+| pod\_identity\_agent\_addon\_id | ID of the eks-pod-identity-agent addon. |
+| vpc\_cni\_role\_arn | ARN of the VPC CNI Pod Identity role (assumed by aws-node in kube-system). |
 <!-- END_TF_DOCS -->
