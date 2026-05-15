@@ -15,17 +15,43 @@ both frameworks.
 
 ### `terraform test` suite — `tests/*.tftest.hcl`
 
-Plan-time invariants only. No AWS contact, no LocalStack required —
-`override_data` blocks stub `data.terraform_remote_state.vpc` and
-`data.aws_caller_identity.current`. Fast and cheap.
+Two modes. Both default-on with a single `terraform test` invocation.
+
+**Plan-only files** (`default.tftest.hcl`, `kms_external.tftest.hcl`,
+`sso.tftest.hcl`) — `command = plan` with `override_data` stubs for
+`data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`.
+No LocalStack required. ~1.2s total. The fast CI gate.
 
 ```bash
 cd modules/eks/cluster
 terraform init -backend=false
-terraform test
+terraform test -filter=tests/default.tftest.hcl \
+               -filter=tests/kms_external.tftest.hcl \
+               -filter=tests/sso.tftest.hcl
 ```
 
-Runtime: ~1–2 seconds.
+**Apply-against-LocalStack file** (`apply_localstack.tftest.hcl`) —
+`command = apply` against LocalStack Pro. Exercises IAM, KMS,
+CloudWatch Logs, EKS, EC2 SGs. The gap-discovery mode per RFC-0001:
+every LocalStack 501 / coverage gap surfaces here as a concrete apply
+failure → sneakystack ticket.
+
+Requires a running LocalStack Pro container on `:4566`. Also requires
+env vars in the parent shell (the s3 backend of
+`data.terraform_remote_state.vpc` uses its own AWS SDK independent of
+the provider's `endpoints` block):
+
+```bash
+cd modules/eks/cluster
+terraform init -backend=false
+AWS_ENDPOINT_URL=http://localhost:4566 \
+AWS_ACCESS_KEY_ID=test \
+AWS_SECRET_ACCESS_KEY=test \
+AWS_REGION=us-east-1 \
+  terraform test
+```
+
+Runtime: ~80s (the apply-against-LocalStack run dominates).
 
 ### libtftest suite — `test/*_test.go`
 

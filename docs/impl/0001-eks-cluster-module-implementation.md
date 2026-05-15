@@ -491,19 +491,35 @@ Every other module ships with `terraform test` alone.
       and SSO enabled (count 1, principal_arn from stubbed
       `data.aws_iam_roles.sso[0].arns`, policy_arn references
       `var.sso_cluster_policy`).
-- [x] Verify `terraform test` runs clean from
+- [x] `tests/apply_localstack.tftest.hcl`: **the gap-discovery mode**.
+      `command = apply` against LocalStack Pro 2026.5.0. Exercises
+      IAM, KMS, CloudWatch Logs, EKS, EC2 SGs. Setup fixture
+      (`tests/fixtures/setup/`) creates a real VPC + subnets + S3
+      bucket + stub `terraform.tfstate` object so the cluster's
+      `data.terraform_remote_state.vpc` resolves naturally against
+      LocalStack S3 (this is the same seeding pattern libtftest uses).
+- [x] Verify the plan-only suite runs clean from
       `modules/eks/cluster/` with no AWS contact and no LocalStack
-      requirement (plan-only, `override_data` for both data sources).
-      4 run blocks pass; full suite ~1.2s.
-- [x] Capture comparison data and feed back into the PR description.
-      Phase 8 (libtftest): 566 lines Go + 351 lines go.mod/go.sum,
-      ~45s runtime against LocalStack Pro. Phase 9 (terraform test):
-      326 lines HCL, ~1.2s, no LocalStack. One real ergonomics finding:
-      `aws_eks_cluster.encryption_config[].resources` is a typed set
-      in HCL (no index access) while the JSON plan represents it as a
-      list — required `contains(...)` in HCL where Go index-walks
-      worked. Documented inline in `tests/default.tftest.hcl`. No
-      RFC/ADR claim contradicted.
+      (default + kms_external + sso, ~1.2s).
+- [x] Verify the apply-LocalStack suite passes with
+      `AWS_ENDPOINT_URL=http://localhost:4566 AWS_ACCESS_KEY_ID=test
+      AWS_SECRET_ACCESS_KEY=test AWS_REGION=us-east-1 terraform test`
+      (apply_localstack, ~80s end-to-end including teardown).
+- [x] Capture comparison + gap-discovery data and feed back into the
+      PR description. Phase 8 (libtftest, plan-only): 566 lines Go +
+      351 lines go.mod/go.sum, ~45s against LocalStack Pro. Phase 9
+      plan-only (terraform test): 326 lines HCL, ~1.2s, no LocalStack.
+      Phase 9 apply-LocalStack: ~80s and surfaces real apply behavior
+      LocalStack Pro serves. **Findings:** (a) HCL set vs list on
+      `encryption_config.resources` — required `contains(...)`;
+      (b) `override_data` evaluates statically, can't reference
+      `run.*` outputs, so cross-run dynamic stubbing of remote state
+      forces the same S3-seeding pattern libtftest uses; (c) the
+      `terraform_remote_state` s3 backend uses the AWS SDK directly,
+      independent of `provider "aws"` `endpoints` — needs
+      `AWS_ENDPOINT_URL` env var (same gap libtftest hit). None of
+      these contradict an RFC/ADR claim — they're documented as
+      findings, not retractions.
 - [x] Update `modules/eks/cluster/README.md` to document both test
       suites and how to run each.
 - [x] Update CLAUDE.md "Cluster module shape" section to note both
