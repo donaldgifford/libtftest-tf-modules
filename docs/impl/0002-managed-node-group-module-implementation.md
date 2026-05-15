@@ -1,7 +1,7 @@
 ---
 id: IMPL-0002
 title: "Managed Node Group Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0002: Managed Node Group Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -137,28 +137,28 @@ resource-free configuration.
 
 #### Tasks
 
-- [ ] Create `modules/eks/managed-node-group/` with the standard
+- [x] Create `modules/eks/managed-node-group/` with the standard
       scaffolding: `versions.tf`, `variables.tf`, `locals.tf`,
       `data.tf`, `main.tf`, `outputs.tf`, `README.md`, `USAGE.md`
       (placeholder), `.terraform-docs.yml`, `.tflint.hcl`.
-- [ ] `versions.tf`: `terraform >= 1.1`, `hashicorp/aws ~> 6.2`.
-- [ ] `variables.tf`: required inputs (`remote_state_bucket`,
+- [x] `versions.tf`: `terraform >= 1.1`, `hashicorp/aws ~> 6.2`.
+- [x] `variables.tf`: required inputs (`remote_state_bucket`,
       `region`, `cluster_name`, `vpc_name`, `nodegroup_name`) and
       typed optionals (`architecture` object per DESIGN-0001 with
       validation, `instance_types`, `capacity_type`, `desired_size`/
       `min_size`/`max_size`, `disk_size_gib`, `enable_ssm`,
       `gvisor_release`, `additional_labels`, `additional_taints`,
       `extra_kubelet_args`, `tags`).
-- [ ] `data.tf`: `data.terraform_remote_state.eks` + `.vpc` with
+- [x] `data.tf`: `data.terraform_remote_state.eks` + `.vpc` with
       `use_path_style = true` per cluster module's drive-by fix.
-- [ ] `locals.tf`: minimal — `local.runtime_labels` (the
+- [x] `locals.tf`: minimal — `local.runtime_labels` (the
       `runtime=gvisor`, `workload-class=secure` standard label pair
       merged with `var.additional_labels`).
-- [ ] `main.tf`: header comment only at this phase.
-- [ ] `outputs.tf`: empty at this phase; finalized in Phase 6.
-- [ ] `.tflint.hcl`: copy from cluster module.
-- [ ] `.terraform-docs.yml`: copy from cluster module.
-- [ ] `terraform init -backend=false && terraform validate` clean.
+- [x] `main.tf`: header comment only at this phase.
+- [x] `outputs.tf`: empty at this phase; finalized in Phase 6.
+- [x] `.tflint.hcl`: copy from cluster module.
+- [x] `.terraform-docs.yml`: copy from cluster module.
+- [x] `terraform init -backend=false && terraform validate` clean.
 
 #### Success Criteria
 
@@ -178,16 +178,16 @@ ADR-0012.
 
 #### Tasks
 
-- [ ] `iam.tf`: `data.aws_iam_policy_document.node_assume_role`
+- [x] `iam.tf`: `data.aws_iam_policy_document.node_assume_role`
       trusting `ec2.amazonaws.com`.
-- [ ] `aws_iam_role.node` named `${var.nodegroup_name}-node`.
-- [ ] `aws_iam_role_policy_attachment.worker_node` →
+- [x] `aws_iam_role.node` named `${var.nodegroup_name}-node`.
+- [x] `aws_iam_role_policy_attachment.worker_node` →
       `AmazonEKSWorkerNodePolicy`.
-- [ ] `aws_iam_role_policy_attachment.ecr_pull_only` →
+- [x] `aws_iam_role_policy_attachment.ecr_pull_only` →
       `AmazonEC2ContainerRegistryPullOnly`.
-- [ ] `aws_iam_role_policy_attachment.ssm[0]` →
+- [x] `aws_iam_role_policy_attachment.ssm[0]` →
       `AmazonSSMManagedInstanceCore`, gated on `var.enable_ssm`.
-- [ ] `aws_iam_instance_profile.node` bound to `aws_iam_role.node`.
+- [x] `aws_iam_instance_profile.node` bound to `aws_iam_role.node`.
 
 #### Success Criteria
 
@@ -210,20 +210,20 @@ the rendered user data body.
 
 #### Tasks
 
-- [ ] `launch_template.tf`: `aws_launch_template.node`.
-- [ ] `metadata_options`: `http_tokens = "required"`,
+- [x] `launch_template.tf`: `aws_launch_template.node`.
+- [x] `metadata_options`: `http_tokens = "required"`,
       `http_put_response_hop_limit = 2`,
       `instance_metadata_tags = "enabled"` (per ADR-0007).
-- [ ] `block_device_mappings` for the root volume: `gp3`,
+- [x] `block_device_mappings` for the root volume: `gp3`,
       `encrypted = true`, `kms_key_id` from
       `data.terraform_remote_state.eks.outputs.kms_key_arn`,
       `delete_on_termination = true`, `volume_size = var.disk_size_gib`.
-- [ ] `monitoring { enabled = true }`.
-- [ ] `vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]`.
-- [ ] `iam_instance_profile { arn = aws_iam_instance_profile.node.arn }`.
-- [ ] `tag_specifications` for `instance` and `volume`.
-- [ ] `lifecycle { create_before_destroy = true }`.
-- [ ] `user_data` is a placeholder for Phase 4
+- [x] `monitoring { enabled = true }`.
+- [x] `vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]`.
+- [x] `iam_instance_profile { arn = aws_iam_instance_profile.node.arn }`.
+- [x] `tag_specifications` for `instance` and `volume`.
+- [x] `lifecycle { create_before_destroy = true }`.
+- [x] `user_data` is a placeholder for Phase 4
       (`base64encode("placeholder")` so plan succeeds).
 
 #### Success Criteria
@@ -243,24 +243,24 @@ Land the multipart MIME user data per DESIGN-0001 §"User data
 
 #### Tasks
 
-- [ ] `templates/user_data.sh.tftpl` — AL2023 nodeadm bootstrap +
+- [x] `templates/user_data.sh.tftpl` — AL2023 nodeadm bootstrap +
       gVisor install + containerd drop-in.
-- [ ] Template variables: `cluster_name`, `cluster_endpoint`,
+- [x] Template variables: `cluster_name`, `cluster_endpoint`,
       `cluster_ca_data`, `gvisor_arch` (derived from
       `var.architecture`), `gvisor_release`, `extra_kubelet_args`.
-- [ ] gVisor download flow: `runsc` + `containerd-shim-runsc-v1`
+- [x] gVisor download flow: `runsc` + `containerd-shim-runsc-v1`
       from `https://storage.googleapis.com/gvisor/releases/<release>/<arch>`,
       SHA-512 verification using upstream-published hashes.
-- [ ] containerd drop-in at `/etc/containerd/config.d/runsc.toml`
+- [x] containerd drop-in at `/etc/containerd/config.d/runsc.toml`
       registering the `runsc` runtime handler.
-- [ ] `/etc/containerd/runsc.toml` with `platform = "systrap"`,
+- [x] `/etc/containerd/runsc.toml` with `platform = "systrap"`,
       `network = "sandbox"` per ADR-0005.
-- [ ] containerd restart + assertion that the `runsc` plugin is
+- [x] containerd restart + assertion that the `runsc` plugin is
       loaded.
-- [ ] `user_data.tf`: `templatefile(...)` invocation wired into
+- [x] `user_data.tf`: `templatefile(...)` invocation wired into
       `aws_launch_template.node.user_data` (replacing the Phase 3
       placeholder).
-- [ ] Document the GoogleAPIs storage release URL pattern + Renovate
+- [x] Document the GoogleAPIs storage release URL pattern + Renovate
       bump policy in the user data file's header comment.
 
 #### Success Criteria
@@ -281,23 +281,23 @@ Land the node group resource per DESIGN-0001 §"EKS node group".
 
 #### Tasks
 
-- [ ] `main.tf`: `aws_eks_node_group.this`.
-- [ ] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
-- [ ] `node_role_arn = aws_iam_role.node.arn`.
-- [ ] `subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids`.
-- [ ] `ami_type = var.architecture.ami_type`.
-- [ ] `instance_types = length(var.instance_types) > 0 ? var.instance_types : var.architecture.default_instance_types`.
-- [ ] `capacity_type = var.capacity_type` (default `ON_DEMAND`).
-- [ ] `scaling_config` with `desired_size`, `min_size`, `max_size`.
-- [ ] `launch_template { id = aws_launch_template.node.id, version = aws_launch_template.node.latest_version }`.
-- [ ] `taint { key = "workload-class", value = "secure", effect = "NO_SCHEDULE" }` (always).
-- [ ] Additional taints merged from `var.additional_taints`.
-- [ ] `labels` set from `local.runtime_labels` (merged
+- [x] `main.tf`: `aws_eks_node_group.this`.
+- [x] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
+- [x] `node_role_arn = aws_iam_role.node.arn`.
+- [x] `subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids`.
+- [x] `ami_type = var.architecture.ami_type`.
+- [x] `instance_types = length(var.instance_types) > 0 ? var.instance_types : var.architecture.default_instance_types`.
+- [x] `capacity_type = var.capacity_type` (default `ON_DEMAND`).
+- [x] `scaling_config` with `desired_size`, `min_size`, `max_size`.
+- [x] `launch_template { id = aws_launch_template.node.id, version = aws_launch_template.node.latest_version }`.
+- [x] `taint { key = "workload-class", value = "secure", effect = "NO_SCHEDULE" }` (always).
+- [x] Additional taints merged from `var.additional_taints`.
+- [x] `labels` set from `local.runtime_labels` (merged
       `workload-class=secure` + `runtime=gvisor` + arch label +
       `var.additional_labels`).
-- [ ] `update_config { max_unavailable_percentage = ... }`.
-- [ ] `lifecycle { ignore_changes = [scaling_config[0].desired_size] }`.
-- [ ] `tags = var.tags`.
+- [x] `update_config { max_unavailable_percentage = ... }`.
+- [x] `lifecycle { ignore_changes = [scaling_config[0].desired_size] }`.
+- [x] `tags = var.tags`.
 
 #### Success Criteria
 
@@ -317,12 +317,12 @@ Land the output contract and regenerate the module docs.
 
 #### Tasks
 
-- [ ] `outputs.tf`: `nodegroup_name`, `architecture` (echoed),
+- [x] `outputs.tf`: `nodegroup_name`, `architecture` (echoed),
       `ami_type`, `node_role_arn`, `node_role_name`,
       `instance_profile_arn`, `launch_template_id`,
       `launch_template_latest_version`, `node_labels`, `node_taints`.
-- [ ] Run `terraform-docs .` to regenerate `USAGE.md`.
-- [ ] Update `README.md` with: pointer to USAGE.md, `RuntimeClass`
+- [x] Run `terraform-docs .` to regenerate `USAGE.md`.
+- [x] Update `README.md` with: pointer to USAGE.md, `RuntimeClass`
       manifest (kubectl + Argo+Kustomize delivery examples per
       ADR-0011), how to instantiate per arch.
 
@@ -343,7 +343,7 @@ suite. No LocalStack, no env vars, fast CI gate.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl`: default-config plan with
+- [x] `tests/default.tftest.hcl`: default-config plan with
       `override_data` for `data.terraform_remote_state.eks` and `.vpc`.
       Provider config with `skip_credentials_validation = true` so
       no AWS contact. Assertions from DESIGN-0001 §"Static
@@ -359,15 +359,15 @@ suite. No LocalStack, no env vars, fast CI gate.
       - Node group `labels` include `runtime=gvisor` +
         `workload-class=secure`.
       - All 10 outputs declared.
-- [ ] `tests/architecture_validation.tftest.hcl`: variable validation
+- [x] `tests/architecture_validation.tftest.hcl`: variable validation
       runs.
       - `architecture.name = "x86"` rejected (only `arm64`/`amd64`).
       - `architecture.name = "amd64"` accepted; `ami_type =
         AL2023_x86_64_STANDARD`.
       - `capacity_type = "FOO"` rejected (only `ON_DEMAND`/`SPOT`).
-- [ ] `tests/ssm_enabled.tftest.hcl`: `enable_ssm = true` adds the
+- [x] `tests/ssm_enabled.tftest.hcl`: `enable_ssm = true` adds the
       third managed attachment.
-- [ ] All runs pass with `terraform test` from the module dir.
+- [x] All runs pass with `terraform test` from the module dir.
 
 #### Success Criteria
 
@@ -388,31 +388,31 @@ doesn't serve for managed node groups.
 
 #### Tasks
 
-- [ ] `tests-localstack/fixtures/setup/main.tf`: VPC + subnets + S3
+- [x] `tests-localstack/fixtures/setup/main.tf`: VPC + subnets + S3
       bucket + stub `eks` remote state + stub `vpc` remote state.
       The stub `eks` state contains placeholder cluster outputs
       (`cluster_name`, `cluster_endpoint`, `cluster_ca_data`,
       `cluster_oidc_issuer_url`, `cluster_security_group_id`,
       `node_security_group_id`, `kms_key_arn`).
-- [ ] `tests-localstack/apply_localstack.tftest.hcl`: AWS provider
+- [x] `tests-localstack/apply_localstack.tftest.hcl`: AWS provider
       configured with LocalStack endpoints (cluster module's v6-valid
       shape). `command = apply` runs:
       - `setup` — applies the fixture, produces cluster + VPC stub
         state files in LocalStack S3.
       - `default_apply` — applies the managed node group module.
-- [ ] Apply-time assertions on returned values:
+- [x] Apply-time assertions on returned values:
       - `aws_iam_role.node.arn` populated.
       - `aws_iam_instance_profile.node.arn` populated.
       - `aws_launch_template.node.id` populated.
       - `aws_eks_node_group.this.arn` populated.
       - `aws_eks_node_group.this.status` (whatever LocalStack
         returns — finding documented inline).
-- [ ] Document findings inline per RFC-0001's gap-discovery loop:
+- [x] Document findings inline per RFC-0001's gap-discovery loop:
       - Does LocalStack Pro fully implement `aws_eks_node_group`
         (registration, status transitions)?
       - Does the user_data base64 round-trip work?
       - Does `aws_iam_instance_profile` propagation work as expected?
-- [ ] Verify the apply-LocalStack mode runs via
+- [x] Verify the apply-LocalStack mode runs via
       `just tf test-localstack eks/managed-node-group`.
 
 #### Success Criteria
@@ -453,15 +453,15 @@ doesn't serve for managed node groups.
 
 ## Testing Plan
 
-- [ ] `terraform validate` clean after each phase.
-- [ ] `tflint` clean after each phase.
-- [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform-docs .` produces a non-empty USAGE.md after Phase 6.
-- [ ] `just tf test eks/managed-node-group` — every plan-time invariant
+- [x] `terraform validate` clean after each phase.
+- [x] `tflint` clean after each phase.
+- [x] `terraform fmt -check -recursive` clean.
+- [x] `terraform-docs .` produces a non-empty USAGE.md after Phase 6.
+- [x] `just tf test eks/managed-node-group` — every plan-time invariant
       from DESIGN-0001 §Testing Strategy covered.
-- [ ] `just tf test-localstack eks/managed-node-group` — apply against
+- [x] `just tf test-localstack eks/managed-node-group` — apply against
       LocalStack succeeds; any gaps captured inline.
-- [ ] Post-deploy integration checks (`kubectl get nodes`, gVisor
+- [x] Post-deploy integration checks (`kubectl get nodes`, gVisor
       banner, IMDS smoke test) — deferred to the consumer Terragrunt
       stack in infrastructure-live per RFC-0001's out-of-scope clause.
 

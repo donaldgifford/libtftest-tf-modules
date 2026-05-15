@@ -1,0 +1,119 @@
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="//"
+
+--//
+Content-Type: application/node.eks.aws
+
+---
+apiVersion: node.eks.aws/v1alpha1
+kind: NodeConfig
+spec:
+  cluster:
+    name: ${cluster_name}
+    apiServerEndpoint: ${cluster_endpoint}
+    certificateAuthority: ${cluster_ca_data}
+  kubelet:
+    config:
+      maxPods: 110
+    flags:
+      - "--node-labels=workload-class=secure,runtime=gvisor,kubernetes.io/arch=${k8s_arch}"
+      - "--register-with-taints=workload-class=secure:NoSchedule"
+%{ if extra_kubelet_args != "" ~}
+      - "${extra_kubelet_args}"
+%{ endif ~}
+
+--//
+Content-Type: text/x-shellscript; charset="us-ascii"
+
+#!/bin/bash
+#
+# gVisor install — ADR-0005 (gVisor runtime), ADR-0008 (AL2023),
+# ADR-0010 (Renovate-pinned release). Downloads runsc +
+# containerd-shim-runsc-v1 from upstream GCS, verifies SHA-512 against
+# Renovate-pinned digests, registers the runsc runtime handler with
+# containerd, and restarts containerd.
+#
+# URL pattern: https://storage.googleapis.com/gvisor/releases/<release>/<arch>/<binary>
+# Renovate bumps both var.gvisor_version and the matching SHA-512
+# digests in var.gvisor_sha512 together per ADR-0010.
+
+set -euxo pipefail
+
+GVISOR_RELEASE="${gvisor_version}"
+GVISOR_ARCH="${gvisor_arch}"
+GVISOR_URL="https://storage.googleapis.com/gvisor/releases/$${GVISOR_RELEASE}/$${GVISOR_ARCH}"
+RUNSC_SHA512="${runsc_sha512}"
+SHIM_SHA512="${shim_sha512}"
+
+INSTALL_DIR="/usr/local/bin"
+mkdir -p "$${INSTALL_DIR}"
+
+for binary in runsc containerd-shim-runsc-v1; do
+  curl --fail --silent --show-error --location \
+    --output "$${INSTALL_DIR}/$${binary}" \
+    "$${GVISOR_URL}/$${binary}"
+  chmod 0755 "$${INSTALL_DIR}/$${binary}"
+done
+
+# SHA-512 verification — both digests are Renovate-pinned next to
+# var.gvisor_version, so a release bump fails fast if a digest wasn't
+# updated in lockstep.
+echo "$${RUNSC_SHA512}  $${INSTALL_DIR}/runsc" | sha512sum --check --strict
+echo "$${SHIM_SHA512}  $${INSTALL_DIR}/containerd-shim-runsc-v1" | sha512sum --check --strict
+
+# runsc platform config — systrap on both arches per ADR-0005.
+mkdir -p /etc/containerd
+cat >/etc/containerd/runsc.toml <<'EOF'
+[runsc_config]
+  platform = "systrap"
+  network  = "sandbox"
+EOF
+
+# containerd drop-in registering the runsc runtime handler. The handler
+# name "runsc" is what the gvisor RuntimeClass references per ADR-0011.
+mkdir -p /etc/containerd/config.toml.d
+cat >/etc/containerd/config.toml.d/runsc.toml <<'EOF'
+version = 2
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+  runtime_type = "io.containerd.runsc.v1"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc.options]
+  TypeUrl    = "io.containerd.runsc.v1.options"
+  ConfigPath = "/etc/containerd/runsc.toml"
+EOF
+
+%{ if mirror_enabled ~}
+# Containerd registry mirror — ECR pull-through cache redirect per
+# IMPL-0005 Q8. Off by default; opt-in via
+# var.containerd_pull_through_mirror.enabled. Bootstrap-time write
+# (before any Kubernetes pod runs) — ADR-0011 allows this since it's
+# not a K8s API call.
+cat >/etc/containerd/config.toml.d/mirror.toml <<'EOF'
+version = 2
+
+[plugins."io.containerd.grpc.v1.cri".registry]
+  config_path = "/etc/containerd/certs.d"
+EOF
+
+mkdir -p /etc/containerd/certs.d
+%{ for upstream in mirror_upstreams ~}
+mkdir -p "/etc/containerd/certs.d/${upstream.host}"
+cat >"/etc/containerd/certs.d/${upstream.host}/hosts.toml" <<'EOF'
+server = "https://${upstream.host}"
+
+[host."https://${mirror_cache_url_prefix}/${upstream.prefix}"]
+  capabilities = ["pull", "resolve"]
+EOF
+%{ endfor ~}
+%{ endif ~}
+
+systemctl restart containerd
+
+# Sanity: runsc plugin must be loaded after the restart. ctr returns
+# nothing on success; non-zero exit + log to journalctl on failure.
+ctr --namespace k8s.io plugins list \
+  | grep -q "io.containerd.runsc.v1" \
+  || { echo "runsc runtime plugin not loaded after containerd restart" >&2; exit 1; }
+
+--//--

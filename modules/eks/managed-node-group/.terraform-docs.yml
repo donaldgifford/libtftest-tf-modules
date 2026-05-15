@@ -1,5 +1,5 @@
 ---
-formatter: "mb tbl"  # this is required
+formatter: "markdown table"  # canonical terraform-docs formatter ID
 
 version: ">=0.18"
 
