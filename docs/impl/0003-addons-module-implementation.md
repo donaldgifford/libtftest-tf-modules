@@ -293,7 +293,7 @@ Behind `var.efs_csi_enabled` (default `false`).
 
 #### Tasks
 
-- [ ] `efs_csi.tf` with `count = var.efs_csi_enabled ? 1 : 0` on
+- [x] `efs_csi.tf` with `count = var.efs_csi_enabled ? 1 : 0` on
       every resource:
       - `aws_iam_role.efs_csi[0]`.
       - `aws_iam_role_policy_attachment.efs_csi[0]` →

@@ -71,7 +71,6 @@ variable "ebs_csi_version" {
   default     = null
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "efs_csi_version" {
   description = "aws-efs-csi-driver addon version. Null resolves via data.aws_eks_addon_version (Phase 7). Ignored when efs_csi_enabled is false."
   type        = string
@@ -98,7 +97,6 @@ variable "coredns_configuration_values" {
 # EFS CSI opt-in
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0003 phase
 variable "efs_csi_enabled" {
   description = "Install the aws-efs-csi-driver addon, its IAM role, and its Pod Identity Association. Off by default — most clusters don't need EFS-backed PVs."
   type        = bool
