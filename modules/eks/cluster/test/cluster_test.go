@@ -131,6 +131,7 @@ func TestCluster_DefaultPlan(t *testing.T) {
 	t.Run("outputs_contract", func(t *testing.T) {
 		want := []string{
 			"cluster_name",
+			"cluster_version",
 			"cluster_endpoint",
 			"cluster_ca_data",
 			"cluster_oidc_issuer_url",

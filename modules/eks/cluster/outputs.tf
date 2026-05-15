@@ -11,6 +11,11 @@ output "cluster_name" {
   value       = aws_eks_cluster.this.name
 }
 
+output "cluster_version" {
+  description = "EKS cluster Kubernetes version. Consumed by the addons module for data.aws_eks_addon_version lookups; consumed by the managed-node-group module to choose a matching AL2023 AMI."
+  value       = aws_eks_cluster.this.version
+}
+
 output "cluster_endpoint" {
   description = "EKS API server endpoint URL. Consumed by node group user data."
   value       = aws_eks_cluster.this.endpoint

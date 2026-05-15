@@ -45,4 +45,5 @@ docz create adr "Your ADR Title"
 | ADR-0012 | SSM access on the node role | Accepted | 2026-05-13 | Donald Gifford | [0012-ssm-access-on-the-node-role.md](0012-ssm-access-on-the-node-role.md) |
 | ADR-0013 | Use terraform test for plan-time module invariants | Proposed | 2026-05-15 | Donald Gifford | [0013-use-terraform-test-for-plan-time-module-invariants.md](0013-use-terraform-test-for-plan-time-module-invariants.md) |
 | ADR-0014 | Use libtftest for apply-time runtime validation without AWS | Proposed | 2026-05-15 | Donald Gifford | [0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md](0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) |
+| ADR-0015 | Permit opt-in third managed policy on node role for ECR pull-through cache | Proposed | 2026-05-15 | Donald Gifford | [0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md](0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md) |
 <!-- END DOCZ AUTO-GENERATED -->
