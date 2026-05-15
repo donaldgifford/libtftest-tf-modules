@@ -144,9 +144,9 @@ No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/addons/` with standard scaffolding files.
-- [ ] `versions.tf`: terraform >= 1.1, aws ~> 6.2.
-- [ ] `variables.tf`:
+- [x] Create `modules/eks/addons/` with standard scaffolding files.
+- [x] `versions.tf`: terraform >= 1.1, aws ~> 6.2.
+- [x] `variables.tf`:
       - Required: `remote_state_bucket`, `region`, `cluster_name`,
         `pod_identity_agent_version` (no default per ADR-0003).
       - Optional: `vpc_cni_version`, `vpc_cni_configuration_values`,
@@ -154,11 +154,11 @@ No resources yet.
         `coredns_configuration_values`, `ebs_csi_version`,
         `efs_csi_enabled` (default `false`), `efs_csi_version`,
         `tags` (typed object similar to cluster module).
-- [ ] `data.tf`: `data.terraform_remote_state.eks` with
+- [x] `data.tf`: `data.terraform_remote_state.eks` with
       `use_path_style = true`.
-- [ ] `.terraform-docs.yml`, `.tflint.hcl`, `README.md` (placeholder),
+- [x] `.terraform-docs.yml`, `.tflint.hcl`, `README.md` (placeholder),
       `USAGE.md` (placeholder).
-- [ ] `terraform validate` clean.
+- [x] `terraform validate` clean.
 
 #### Success Criteria
 
