@@ -119,11 +119,11 @@ the full input contract. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/` directory.
-- [ ] Copy scaffolding files verbatim from `modules/eks/cluster/`:
+- [x] Create `modules/eks/pod-identity-access/` directory.
+- [x] Copy scaffolding files verbatim from `modules/eks/cluster/`:
       `.terraform-docs.yml`, `.tflint.hcl`, `README.md`, `USAGE.md` skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] Create `variables.tf` with the full surface from DESIGN-0004:
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] Create `variables.tf` with the full surface from DESIGN-0004:
   - Required: `remote_state_bucket`, `region`, `cluster_name`, `namespace`,
     `service_account`.
   - Mode toggle: `create_role` (default `true`).
@@ -134,13 +134,13 @@ the full input contract. No resources yet.
     `inline_policies` (`map(string)`, default `{}`), `permissions_boundary`
     (default `null`).
   - Tags: `tags` (default `{}`), `association_tags` (default `{}`).
-- [ ] Add variable validation: when `create_role = false`,
+- [x] Add variable validation: when `create_role = false`,
       `existing_role_arn` must be non-null (`validation` block with clear
       condition / error_message).
-- [ ] Create empty `main.tf`, `iam.tf`, `locals.tf`, `outputs.tf` files
+- [x] Create empty `main.tf`, `iam.tf`, `locals.tf`, `outputs.tf` files
       (resources land in later phases).
-- [ ] Run `terraform init && terraform validate` in module dir.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate` in module dir.
+- [x] Run `tflint --init && tflint`.
 
 #### Success Criteria
 
