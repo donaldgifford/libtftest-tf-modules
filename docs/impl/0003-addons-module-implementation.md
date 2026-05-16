@@ -1,7 +1,7 @@
 ---
 id: IMPL-0003
 title: "Addons Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0003: Addons Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -144,9 +144,9 @@ No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/addons/` with standard scaffolding files.
-- [ ] `versions.tf`: terraform >= 1.1, aws ~> 6.2.
-- [ ] `variables.tf`:
+- [x] Create `modules/eks/addons/` with standard scaffolding files.
+- [x] `versions.tf`: terraform >= 1.1, aws ~> 6.2.
+- [x] `variables.tf`:
       - Required: `remote_state_bucket`, `region`, `cluster_name`,
         `pod_identity_agent_version` (no default per ADR-0003).
       - Optional: `vpc_cni_version`, `vpc_cni_configuration_values`,
@@ -154,11 +154,11 @@ No resources yet.
         `coredns_configuration_values`, `ebs_csi_version`,
         `efs_csi_enabled` (default `false`), `efs_csi_version`,
         `tags` (typed object similar to cluster module).
-- [ ] `data.tf`: `data.terraform_remote_state.eks` with
+- [x] `data.tf`: `data.terraform_remote_state.eks` with
       `use_path_style = true`.
-- [ ] `.terraform-docs.yml`, `.tflint.hcl`, `README.md` (placeholder),
+- [x] `.terraform-docs.yml`, `.tflint.hcl`, `README.md` (placeholder),
       `USAGE.md` (placeholder).
-- [ ] `terraform validate` clean.
+- [x] `terraform validate` clean.
 
 #### Success Criteria
 
@@ -176,17 +176,17 @@ Per ADR-0003, this is the first thing the module installs.
 
 #### Tasks
 
-- [ ] `pod_identity_agent.tf`: `aws_eks_addon.eks_pod_identity_agent`.
-- [ ] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
-- [ ] `addon_name = "eks-pod-identity-agent"`.
-- [ ] `addon_version = var.pod_identity_agent_version`.
-- [ ] `resolve_conflicts_on_create = "OVERWRITE"`.
-- [ ] `resolve_conflicts_on_update = "PRESERVE"`.
-- [ ] **No** `pod_identity_association` block (agent uses node-role
+- [x] `pod_identity_agent.tf`: `aws_eks_addon.eks_pod_identity_agent`.
+- [x] `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
+- [x] `addon_name = "eks-pod-identity-agent"`.
+- [x] `addon_version = var.pod_identity_agent_version`.
+- [x] `resolve_conflicts_on_create = "OVERWRITE"`.
+- [x] `resolve_conflicts_on_update = "PRESERVE"`.
+- [x] **No** `pod_identity_association` block (agent uses node-role
       `eks-auth:AssumeRoleForPodIdentity` per ADR-0002 / ADR-0003).
-- [ ] **No** `aws_iam_role` for the agent.
-- [ ] `tags = var.tags`.
-- [ ] Add a header comment to `pod_identity_agent.tf` documenting
+- [x] **No** `aws_iam_role` for the agent.
+- [x] `tags = var.tags`.
+- [x] Add a header comment to `pod_identity_agent.tf` documenting
       that this addon is the foundation every other addon
       `depends_on` per ADR-0003.
 
@@ -207,7 +207,7 @@ pattern.
 
 #### Tasks
 
-- [ ] `vpc_cni.tf`:
+- [x] `vpc_cni.tf`:
       - `data.aws_iam_policy_document.pod_identity_trust` —
         `pods.eks.amazonaws.com` with
         `["sts:AssumeRole", "sts:TagSession"]`. Shared by all
@@ -246,13 +246,13 @@ to keep the dependency graph regular.
 
 #### Tasks
 
-- [ ] `main.tf`: `aws_eks_addon.kube_proxy` and
+- [x] `main.tf`: `aws_eks_addon.kube_proxy` and
       `aws_eks_addon.coredns`.
-- [ ] Both with `addon_version` (null → resolved via Phase 7),
+- [x] Both with `addon_version` (null → resolved via Phase 7),
       conflict resolution OVERWRITE/PRESERVE, `depends_on =
       [aws_eks_addon.eks_pod_identity_agent]`, `tags = var.tags`.
-- [ ] CoreDNS: `configuration_values = var.coredns_configuration_values`.
-- [ ] Neither addon has a `pod_identity_association` block.
+- [x] CoreDNS: `configuration_values = var.coredns_configuration_values`.
+- [x] Neither addon has a `pod_identity_association` block.
 
 #### Success Criteria
 
@@ -268,7 +268,7 @@ Mirror of Phase 3 for EBS CSI.
 
 #### Tasks
 
-- [ ] `ebs_csi.tf`:
+- [x] `ebs_csi.tf`:
       - `aws_iam_role.ebs_csi` named `${cluster_name}-ebs-csi`.
       - `aws_iam_role_policy_attachment.ebs_csi` →
         `AmazonEBSCSIDriverPolicy`.
@@ -293,7 +293,7 @@ Behind `var.efs_csi_enabled` (default `false`).
 
 #### Tasks
 
-- [ ] `efs_csi.tf` with `count = var.efs_csi_enabled ? 1 : 0` on
+- [x] `efs_csi.tf` with `count = var.efs_csi_enabled ? 1 : 0` on
       every resource:
       - `aws_iam_role.efs_csi[0]`.
       - `aws_iam_role_policy_attachment.efs_csi[0]` →
@@ -317,14 +317,14 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `data.aws_eks_addon_version.vpc_cni` with `addon_name = "vpc-cni"`,
+- [x] `data.aws_eks_addon_version.vpc_cni` with `addon_name = "vpc-cni"`,
       `kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version`.
       **See Open Question Q2 — cluster_version is not currently
       output by the cluster module; needs to be added before this
       phase begins.**
-- [ ] Similar data sources for kube-proxy, coredns, aws-ebs-csi-driver,
+- [x] Similar data sources for kube-proxy, coredns, aws-ebs-csi-driver,
       aws-efs-csi-driver (gated).
-- [ ] Replace direct `var.<name>_version` references in each addon
+- [x] Replace direct `var.<name>_version` references in each addon
       with `coalesce(var.<name>_version, data.aws_eks_addon_version.<name>.version)`.
 
 #### Success Criteria
@@ -341,15 +341,15 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `outputs.tf`:
+- [x] `outputs.tf`:
       - `pod_identity_agent_addon_arn`.
       - `pod_identity_agent_addon_id`.
       - `vpc_cni_role_arn`.
       - `ebs_csi_role_arn`.
       - `efs_csi_role_arn` (null when disabled).
       - `addon_versions` map.
-- [ ] `terraform-docs .` regenerates `USAGE.md`.
-- [ ] `README.md` documents:
+- [x] `terraform-docs .` regenerates `USAGE.md`.
+- [x] `README.md` documents:
       - PrivateLink endpoint prerequisite (`com.amazonaws.<region>.eks-auth`).
       - Cross-stack operational ordering (cluster → nodes → addons →
         pod-identity-access).
@@ -367,7 +367,7 @@ compatible version against the cluster's K8s version.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl`:
+- [x] `tests/default.tftest.hcl`:
       - `override_data` for `data.terraform_remote_state.eks`, the
         five `data.aws_eks_addon_version.*`, and
         `data.aws_caller_identity.current`.
@@ -389,15 +389,15 @@ compatible version against the cluster's K8s version.
         - Each IAM role's trust policy includes
           `pods.eks.amazonaws.com` with
           `sts:AssumeRole`+`sts:TagSession`.
-- [ ] `tests/efs_csi_enabled.tftest.hcl`:
+- [x] `tests/efs_csi_enabled.tftest.hcl`:
       - With `efs_csi_enabled = true`, plan adds 1 addon, 1 IAM role,
         1 policy attachment, 1 PIA block.
-- [ ] `tests/version_resolution.tftest.hcl`:
+- [x] `tests/version_resolution.tftest.hcl`:
       - With `vpc_cni_version = "v1.18.0-eksbuild.1"`, addon's
         resolved version is the pinned literal.
       - With `vpc_cni_version = null`, addon's resolved version
         comes from `data.aws_eks_addon_version.vpc_cni.version`.
-- [ ] `tests/agent_version_required.tftest.hcl`:
+- [x] `tests/agent_version_required.tftest.hcl`:
       - `pod_identity_agent_version = ""` rejected at variable
         validation.
 
@@ -416,9 +416,9 @@ plus the addon-managed PIA pattern.
 
 #### Tasks
 
-- [ ] `tests-localstack/fixtures/setup/`: VPC + subnets + S3 bucket +
+- [x] `tests-localstack/fixtures/setup/`: VPC + subnets + S3 bucket +
       stub `eks` remote state.
-- [ ] `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] `tests-localstack/apply_localstack.tftest.hcl`:
       - Provider config with LocalStack endpoints.
       - `command = apply` for setup, then for the addons module.
       - Assertions on returned values:
@@ -427,7 +427,7 @@ plus the addon-managed PIA pattern.
         - `aws_iam_role.ebs_csi.arn` populated.
         - `aws_eks_addon.vpc_cni.pod_identity_association` registered.
         - `aws_eks_addon.ebs_csi_driver.pod_identity_association` registered.
-- [ ] Document inline findings — likely:
+- [x] Document inline findings — likely:
       - Whether LocalStack Pro accepts the addon-managed
         `pod_identity_association` block (newer EKS API).
       - Whether the agent addon's apply succeeds in LocalStack
@@ -436,7 +436,7 @@ plus the addon-managed PIA pattern.
       - Whether `data.aws_eks_addon_version` resolves against
         LocalStack (this lookup queries AWS's published addon
         catalog — possibly stubbed/empty in LocalStack).
-- [ ] If `data.aws_eks_addon_version` returns empty in LocalStack,
+- [x] If `data.aws_eks_addon_version` returns empty in LocalStack,
       use literal version pins in the apply test variables and
       document the LocalStack gap inline.
 
@@ -473,14 +473,14 @@ plus the addon-managed PIA pattern.
 
 ## Testing Plan
 
-- [ ] `terraform validate` clean after each phase.
-- [ ] `tflint` clean after each phase.
-- [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform-docs .` produces a non-empty USAGE.md after Phase 8.
-- [ ] `just tf test eks/addons` — plan-only suite passes.
-- [ ] `just tf test-localstack eks/addons` — apply-LocalStack passes
+- [x] `terraform validate` clean after each phase.
+- [x] `tflint` clean after each phase.
+- [x] `terraform fmt -check -recursive` clean.
+- [x] `terraform-docs .` produces a non-empty USAGE.md after Phase 8.
+- [x] `just tf test eks/addons` — plan-only suite passes.
+- [x] `just tf test-localstack eks/addons` — apply-LocalStack passes
       or every gap is documented as a named ticket.
-- [ ] Post-deploy validation (`kubectl -n kube-system get pods`,
+- [x] Post-deploy validation (`kubectl -n kube-system get pods`,
       addons `Running`) — out of scope here; lives on the
       Terragrunt-unit layer in infrastructure-live.
 

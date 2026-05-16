@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: `modules/eks/cluster` (IMPL-0001) and `modules/eks/managed-node-group` (IMPL-0002) are fully implemented. The other three directories (`addons`, `ecr-pull-through-cache`, `pod-identity-access`) contain only docs/tooling stubs pending IMPL-0003 / IMPL-0004 / IMPL-0005. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
+A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: `modules/eks/cluster` (IMPL-0001), `modules/eks/managed-node-group` (IMPL-0002), and `modules/eks/addons` (IMPL-0003) are fully implemented. The other two directories (`ecr-pull-through-cache`, `pod-identity-access`) contain only docs/tooling stubs pending IMPL-0004 / IMPL-0005. The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
 
 ## Tooling
 
@@ -122,6 +122,28 @@ Implementation complete per IMPL-0002 (status: Completed). The module shape is n
 - **Tests** — defaults to `terraform test` per ADR-0013, no libtftest Go suite (cluster is the side-by-side reference, not a per-module pattern):
   - `modules/eks/managed-node-group/tests/` — plan-only suite. 3 files (`default.tftest.hcl` 15 assertions, `architecture.tftest.hcl` 4 runs incl. cross-arch precondition negative, `ssm_enabled.tftest.hcl`). Run with `just tf test eks/managed-node-group`. ~1.2s, no LocalStack.
   - `modules/eks/managed-node-group/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + KMS + real `aws_eks_cluster` + node SG + S3 bucket with stub VPC/EKS state files; `apply_localstack.tftest.hcl::default_apply` applies the full module against LocalStack Pro. Run with `just tf test-localstack eks/managed-node-group`. Per `FINDINGS.md`: zero coverage gaps in LocalStack Pro 2026.5.0 for this module's AWS surface; kubelet-join validation + gVisor `runsc` init + Pod Identity Agent reachability are filed as out-of-scope libtftest backlog (RFC-0001 §Phase 3).
+
+Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+
+### Addons module shape
+
+Implementation complete per IMPL-0003 (status: Completed). The module shape is now:
+
+- **Inputs**: required (`remote_state_bucket`, `region`, `cluster_name`, typed `var.tags` object matching the cluster module); per-addon version inputs (`pod_identity_agent_version`, `vpc_cni_version`, `kube_proxy_version`, `coredns_version`, `ebs_csi_version`, `efs_csi_version`) all defaulting to null per IMPL-0003 Q3; free-form `vpc_cni_configuration_values` and `coredns_configuration_values` passthroughs; `efs_csi_enabled` opt-in (default `false`). Validation: `pod_identity_agent_version == ""` rejected (the "tried to pin and forgot" safety net).
+- **Data sources** (`data.tf`): `data.terraform_remote_state.eks` with `use_path_style = true`; six `data.aws_eks_addon_version.<addon>` lookups (EFS gated) with `kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version` and `most_recent = true`. Each addon's `addon_version = coalesce(var.<name>_version, data.aws_eks_addon_version.<name>.version)` — null routes to the data source, a non-null literal pin short-circuits it.
+- **Resources** (`pod_identity_agent.tf` / `vpc_cni.tf` / `main.tf` / `ebs_csi.tf` / `efs_csi.tf` / `locals.tf`):
+  - `aws_eks_addon.pod_identity_agent` — installed FIRST per ADR-0003. No `depends_on`, no IAM role, no PIA block (the agent uses the node role's `eks-auth:AssumeRoleForPodIdentity` per ADR-0002).
+  - `aws_eks_addon.vpc_cni` + `aws_iam_role.vpc_cni` + AmazonEKS_CNI_Policy attachment + addon-managed `pod_identity_association { service_account = "aws-node" }` per ADR-0004. `depends_on = [aws_eks_addon.pod_identity_agent]`.
+  - `aws_eks_addon.kube_proxy` + `aws_eks_addon.coredns` — no IAM, no PIA. Both `depends_on` the agent for graph regularity per DESIGN-0003.
+  - `aws_eks_addon.ebs_csi_driver` + `aws_iam_role.ebs_csi` + AmazonEBSCSIDriverPolicy attachment + addon-managed `pod_identity_association { service_account = "ebs-csi-controller-sa" }`. `depends_on` the agent.
+  - `aws_eks_addon.efs_csi_driver[0]` + role + attachment + PIA — count-gated on `var.efs_csi_enabled`.
+  - Shared `data.aws_iam_policy_document.pod_identity_trust` (Service: `pods.eks.amazonaws.com`, Actions: `sts:AssumeRole`, `sts:TagSession`) in `locals.tf` per IMPL-0003 Q1 — one declaration, three references (VPC CNI / EBS CSI / EFS CSI roles).
+  - Conflict resolution: `OVERWRITE` on create, `PRESERVE` on update for every addon per DESIGN-0003.
+  - **Note**: agent resource named `aws_eks_addon.pod_identity_agent` (not `eks_pod_identity_agent` per the IMPL doc text) — the redundant "eks" prefix violates the custom `terraform_tautological_naming` style rule since the resource type is already `aws_eks_addon`.
+- **Outputs** (consumer contract): `pod_identity_agent_addon_arn`, `pod_identity_agent_addon_id`, `vpc_cni_role_arn`, `ebs_csi_role_arn`, `efs_csi_role_arn` (null when disabled), `addon_versions` map keyed by addon_name.
+- **Tests** — defaults to `terraform test` per ADR-0013:
+  - `modules/eks/addons/tests/` — plan-only suite. 4 files (`default.tftest.hcl` 14 assertions on addon registration + PIA contract + IAM policy attachments + shared trust policy + conflict resolution + EFS-off-by-default, `efs_csi_enabled.tftest.hcl` 4 assertions, `version_resolution.tftest.hcl` 2 runs — pin-wins-over-data-source uses a sentinel `v9.9.9-DATA-SOURCE-WINS` value, `agent_version_required.tftest.hcl` negative for `pod_identity_agent_version = ""`). Run with `just tf test eks/addons`. ~1.4s, no LocalStack.
+  - `modules/eks/addons/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + KMS + real `aws_eks_cluster` (pinned to K8s 1.35) + S3 bucket with stub EKS state file (cluster_name + cluster_version); `apply_localstack.tftest.hcl::default_apply` applies all five mandatory addons against LocalStack Pro. Addon versions pinned to LocalStack-supported literals (v1.3.10/v1.21.1/v1.35.3/v1.13.2/v1.57.1) since LocalStack's `describe-addon-versions` catalog is narrower than production AWS — documented in `FINDINGS.md` (Finding #2). LocalStack Pro 2026.5.0 fully supports `aws_eks_addon` + addon-managed `pod_identity_association` (Finding #1); DaemonSet readiness + actual PIA credential delivery are out-of-scope libtftest backlog (RFC-0001 §Phase 3).
 
 Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 
