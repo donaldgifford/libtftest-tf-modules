@@ -1,7 +1,7 @@
 ---
 id: IMPL-0003
 title: "Addons Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0003: Addons Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -416,9 +416,9 @@ plus the addon-managed PIA pattern.
 
 #### Tasks
 
-- [ ] `tests-localstack/fixtures/setup/`: VPC + subnets + S3 bucket +
+- [x] `tests-localstack/fixtures/setup/`: VPC + subnets + S3 bucket +
       stub `eks` remote state.
-- [ ] `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] `tests-localstack/apply_localstack.tftest.hcl`:
       - Provider config with LocalStack endpoints.
       - `command = apply` for setup, then for the addons module.
       - Assertions on returned values:
@@ -427,7 +427,7 @@ plus the addon-managed PIA pattern.
         - `aws_iam_role.ebs_csi.arn` populated.
         - `aws_eks_addon.vpc_cni.pod_identity_association` registered.
         - `aws_eks_addon.ebs_csi_driver.pod_identity_association` registered.
-- [ ] Document inline findings — likely:
+- [x] Document inline findings — likely:
       - Whether LocalStack Pro accepts the addon-managed
         `pod_identity_association` block (newer EKS API).
       - Whether the agent addon's apply succeeds in LocalStack
@@ -436,7 +436,7 @@ plus the addon-managed PIA pattern.
       - Whether `data.aws_eks_addon_version` resolves against
         LocalStack (this lookup queries AWS's published addon
         catalog — possibly stubbed/empty in LocalStack).
-- [ ] If `data.aws_eks_addon_version` returns empty in LocalStack,
+- [x] If `data.aws_eks_addon_version` returns empty in LocalStack,
       use literal version pins in the apply test variables and
       document the LocalStack gap inline.
 
@@ -473,14 +473,14 @@ plus the addon-managed PIA pattern.
 
 ## Testing Plan
 
-- [ ] `terraform validate` clean after each phase.
-- [ ] `tflint` clean after each phase.
-- [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform-docs .` produces a non-empty USAGE.md after Phase 8.
-- [ ] `just tf test eks/addons` — plan-only suite passes.
-- [ ] `just tf test-localstack eks/addons` — apply-LocalStack passes
+- [x] `terraform validate` clean after each phase.
+- [x] `tflint` clean after each phase.
+- [x] `terraform fmt -check -recursive` clean.
+- [x] `terraform-docs .` produces a non-empty USAGE.md after Phase 8.
+- [x] `just tf test eks/addons` — plan-only suite passes.
+- [x] `just tf test-localstack eks/addons` — apply-LocalStack passes
       or every gap is documented as a named ticket.
-- [ ] Post-deploy validation (`kubectl -n kube-system get pods`,
+- [x] Post-deploy validation (`kubectl -n kube-system get pods`,
       addons `Running`) — out of scope here; lives on the
       Terragrunt-unit layer in infrastructure-live.
 
