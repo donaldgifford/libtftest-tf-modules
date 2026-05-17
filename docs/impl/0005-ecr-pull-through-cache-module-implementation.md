@@ -473,9 +473,9 @@ get filed for any LocalStack fidelity gaps.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/tests-localstack/`
+- [x] Create `modules/eks/ecr-pull-through-cache/tests-localstack/`
       directory.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl` (no setup
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl` (no setup
       fixture needed — this module reads no cluster state):
   - Provider block with the comprehensive `endpoints` map and
     LocalStack-friendly settings (mirror the cluster module's working
@@ -493,20 +493,28 @@ get filed for any LocalStack fidelity gaps.
     - `aws_iam_policy.node_pull_through[0].arn` populated.
     - Output `cache_url_prefixes["docker-hub"]` is a syntactically
       valid `<acct>.dkr.ecr.<region>.amazonaws.com/docker-hub` URL.
-- [ ] Create `tests-localstack/FINDINGS.md` capturing observed
+
+  *(Implementation outcome: this apply run hit three concrete
+  LocalStack 501s (CreatePullThroughCacheRule x2 +
+  CreateRepositoryCreationTemplate) and was commented out per the
+  Phase 9 task below. The active run in the file is a `plan_smoke`
+  against LocalStack — proves provider endpoint resolution + plan
+  -time validation. Full apply run preserved as commented HCL for
+  re-enable when LocalStack lands the two missing APIs.)*
+- [x] Create `tests-localstack/FINDINGS.md` capturing observed
       LocalStack Pro fidelity gaps per DESIGN-0005 §Testing Strategy
       (use as input into sneakystack / libtftest backlog):
   - Does LocalStack persist `aws_ecr_repository_creation_template`?
-    (Newer ECR API; expected to be partial.)
+    (Answered: **no** — 501.)
   - Does LocalStack validate the `credential_arn` reference on
     `aws_ecr_pull_through_cache_rule` against Secrets Manager?
-  - Does an actual `crictl pull` through the cache URL work? (Almost
-    certainly no — LocalStack ECR doesn't proxy to real Docker Hub.
-    Document as "out-of-scope-of-LocalStack" backlog for
-    sneakystack-vs-real-cluster planning.)
-- [ ] Verify `just tf test-localstack eks/ecr-pull-through-cache` works
+    (Cannot test — `aws_ecr_pull_through_cache_rule` itself 501s.)
+  - Does an actual `crictl pull` through the cache URL work?
+    (Filed as libtftest / sneakystack backlog — needs real cluster
+    AND ECR proxying to a real Docker Hub.)
+- [x] Verify `just tf test-localstack eks/ecr-pull-through-cache` works
       module-agnostically.
-- [ ] If any apply step 501s in LocalStack, comment out that block, log
+- [x] If any apply step 501s in LocalStack, comment out that block, log
       the gap in `FINDINGS.md`, and proceed — gap-discovery success per
       RFC-0001.
 
