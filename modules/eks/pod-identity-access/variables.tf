@@ -36,7 +36,6 @@ variable "service_account" {
 # Mode toggle (Mode A = create role; Mode B = pass existing_role_arn)
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "create_role" {
   description = "When true (default), the module creates a Pod-Identity-trusting IAM role and binds the association to it. When false, the caller must pass existing_role_arn — the module creates the association only."
   type        = bool
@@ -85,7 +84,6 @@ variable "inline_policies" {
   default     = {}
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "permissions_boundary" {
   description = "ARN of an IAM permissions boundary policy to attach to the Mode A role. Null (default) attaches no boundary."
   type        = string
@@ -96,7 +94,6 @@ variable "permissions_boundary" {
 # Tags
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "tags" {
   description = "Tags applied to the Mode A IAM role."
   type        = map(string)

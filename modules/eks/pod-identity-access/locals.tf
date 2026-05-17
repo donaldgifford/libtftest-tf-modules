@@ -20,6 +20,5 @@ locals {
     : format("%s-%s", substr(local.role_name_joined, 0, 57), substr(sha256(local.role_name_joined), 0, 6))
   )
 
-  # tflint-ignore: terraform_unused_declarations  # consumed by aws_iam_role.this[0].name in Phase 3
   role_name = coalesce(var.role_name_override, local.role_name_truncated)
 }

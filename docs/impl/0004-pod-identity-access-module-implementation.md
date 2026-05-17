@@ -193,17 +193,17 @@ Pod Identity roles fleet-wide (ADR-0004 / DESIGN-0004).
 
 #### Tasks
 
-- [ ] In `iam.tf`, add `data "aws_iam_policy_document" "pod_identity_trust"`
+- [x] In `iam.tf`, add `data "aws_iam_policy_document" "pod_identity_trust"`
       with `count = var.create_role ? 1 : 0`:
   - `effect = "Allow"`.
   - `principals { type = "Service" identifiers = ["pods.eks.amazonaws.com"] }`.
   - `actions = ["sts:AssumeRole", "sts:TagSession"]`.
-- [ ] Add `aws_iam_role.this` with `count = var.create_role ? 1 : 0`:
+- [x] Add `aws_iam_role.this` with `count = var.create_role ? 1 : 0`:
   - `name = local.role_name`.
   - `assume_role_policy = data.aws_iam_policy_document.pod_identity_trust[0].json`.
   - `permissions_boundary = var.permissions_boundary` (nullable passthrough).
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
