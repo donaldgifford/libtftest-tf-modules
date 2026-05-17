@@ -9,7 +9,6 @@ variable "region" {
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "name_prefix" {
   description = "Short name prefix for the Secrets Manager secret names and the IAM policy. The Secrets Manager prefix follows ECR's required \"ecr-pullthroughcache/\" — this prefix is appended as ecr-pullthroughcache/<name_prefix>-<upstream>."
   type        = string
@@ -71,7 +70,6 @@ variable "scan_on_push" {
   default     = true
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "tags" {
   description = "AWS resource tags applied to every taggable resource in the module (Secrets Manager secrets, IAM policy, creation template)."
   type        = map(string)

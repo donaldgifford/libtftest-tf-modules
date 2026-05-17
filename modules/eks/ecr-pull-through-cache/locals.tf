@@ -19,7 +19,6 @@ locals {
 
   selected = { for name in var.upstream_registries : name => local.upstream_catalog[name] }
 
-  # tflint-ignore: terraform_unused_declarations  # consumed by aws_secretsmanager_secret.upstream and the credential_arn lookup in Phases 3 + 4
   authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }
 
   # tflint-ignore: terraform_unused_declarations  # consumed by aws_iam_policy.node_pull_through and the cache_url_prefixes output in later phases

@@ -213,18 +213,18 @@ post-apply.
 
 #### Tasks
 
-- [ ] In `credentials.tf`, add `aws_secretsmanager_secret.upstream` with
+- [x] In `credentials.tf`, add `aws_secretsmanager_secret.upstream` with
       `for_each = local.authenticated`:
   - `name = "ecr-pullthroughcache/${var.name_prefix}-${each.key}"`.
   - `description = "ECR pull-through cache credentials for ${each.value.upstream_url}"`.
   - `tags = var.tags`.
-- [ ] Add `aws_secretsmanager_secret_version.upstream` with
+- [x] Add `aws_secretsmanager_secret_version.upstream` with
       `for_each = local.authenticated`:
   - `secret_id = aws_secretsmanager_secret.upstream[each.key].id`.
   - `secret_string = jsonencode({ username = "REPLACE_ME", accessToken = "REPLACE_ME" })`.
   - `lifecycle { ignore_changes = [secret_string] }` so the operator-
     rotated value persists across `terraform apply` runs.
-- [ ] Add a README NOTE block (in the module's README, not USAGE.md)
+- [x] Add a README NOTE block (in the module's README, not USAGE.md)
       explaining the post-apply credential population step:
 
   ```sh
@@ -233,7 +233,7 @@ post-apply.
     --secret-string '{"username":"<user>","accessToken":"<token>"}'
   ```
 
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
