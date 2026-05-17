@@ -129,13 +129,13 @@ unknown values at plan time. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/` directory.
-- [ ] Copy scaffolding files verbatim from `modules/eks/cluster/`:
+- [x] Create `modules/eks/ecr-pull-through-cache/` directory.
+- [x] Copy scaffolding files verbatim from `modules/eks/cluster/`:
       `.terraform-docs.yml`, `.tflint.hcl`, `README.md`, `USAGE.md`
       skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
       `>= 1.1`.
-- [ ] Create `variables.tf` with the full surface from DESIGN-0005:
+- [x] Create `variables.tf` with the full surface from DESIGN-0005:
   - Required: `region` (`string`), `name_prefix` (`string`),
     `upstream_registries` (`list(string)`).
   - Optional: `enable_node_pull_through_policy` (default `true`),
@@ -143,15 +143,15 @@ unknown values at plan time. No resources yet.
     `untagged_image_retention_days` (`number`, default `7`),
     `scan_on_push` (`bool`, default `true`),
     `tags` (`map(string)`, default `{}`).
-- [ ] Add `validation` block on `upstream_registries`:
+- [x] Add `validation` block on `upstream_registries`:
   - `condition = alltrue([for u in var.upstream_registries : contains(["ecr-public","quay","docker-hub","ghcr","kubernetes","mcr"], u)])`.
   - Clear error message listing the supported set.
-- [ ] Add `validation` block: `length(var.upstream_registries) > 0`
+- [x] Add `validation` block: `length(var.upstream_registries) > 0`
       (DESIGN-0005 §Testing Strategy plan-time assertion).
-- [ ] Create empty `main.tf`, `credentials.tf`, `template.tf`,
+- [x] Create empty `main.tf`, `credentials.tf`, `template.tf`,
       `iam.tf`, `locals.tf`, `outputs.tf` files.
-- [ ] Run `terraform init && terraform validate`.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate`.
+- [x] Run `tflint --init && tflint`.
 
 #### Success Criteria
 
