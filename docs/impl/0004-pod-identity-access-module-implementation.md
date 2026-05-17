@@ -1,7 +1,7 @@
 ---
 id: IMPL-0004
 title: "Pod Identity Access Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0004: Pod Identity Access Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -119,11 +119,11 @@ the full input contract. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/` directory.
-- [ ] Copy scaffolding files verbatim from `modules/eks/cluster/`:
+- [x] Create `modules/eks/pod-identity-access/` directory.
+- [x] Copy scaffolding files verbatim from `modules/eks/cluster/`:
       `.terraform-docs.yml`, `.tflint.hcl`, `README.md`, `USAGE.md` skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] Create `variables.tf` with the full surface from DESIGN-0004:
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] Create `variables.tf` with the full surface from DESIGN-0004:
   - Required: `remote_state_bucket`, `region`, `cluster_name`, `namespace`,
     `service_account`.
   - Mode toggle: `create_role` (default `true`).
@@ -134,13 +134,13 @@ the full input contract. No resources yet.
     `inline_policies` (`map(string)`, default `{}`), `permissions_boundary`
     (default `null`).
   - Tags: `tags` (default `{}`), `association_tags` (default `{}`).
-- [ ] Add variable validation: when `create_role = false`,
+- [x] Add variable validation: when `create_role = false`,
       `existing_role_arn` must be non-null (`validation` block with clear
       condition / error_message).
-- [ ] Create empty `main.tf`, `iam.tf`, `locals.tf`, `outputs.tf` files
+- [x] Create empty `main.tf`, `iam.tf`, `locals.tf`, `outputs.tf` files
       (resources land in later phases).
-- [ ] Run `terraform init && terraform validate` in module dir.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate` in module dir.
+- [x] Run `tflint --init && tflint`.
 
 #### Success Criteria
 
@@ -162,18 +162,18 @@ internal naming. No IAM yet — keep this phase pure plumbing.
 
 #### Tasks
 
-- [ ] Add `data.terraform_remote_state.eks` block in `main.tf` matching the
+- [x] Add `data.terraform_remote_state.eks` block in `main.tf` matching the
       convention from CLAUDE.md (`key = "${var.region}/eks/${var.cluster_name}/terraform.tfstate"`).
-- [ ] In `locals.tf`, compute `role_name`:
+- [x] In `locals.tf`, compute `role_name`:
   - Default: `<cluster_name>-<namespace>-<service_account>` joined with `-`.
   - If `var.role_name_override != null`, use the override.
   - Apply length-safe truncation to fit IAM's 64-char limit. Use
     `substr(...)` plus a short hash suffix (e.g., last 6 chars of `sha256`)
     when the joined name exceeds 64 chars, so callers get deterministic
     names without silent collisions.
-- [ ] Reference `data.terraform_remote_state.eks.outputs.cluster_name` at the
+- [x] Reference `data.terraform_remote_state.eks.outputs.cluster_name` at the
       use site only — no aliasing local (ADR-0001).
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -193,17 +193,17 @@ Pod Identity roles fleet-wide (ADR-0004 / DESIGN-0004).
 
 #### Tasks
 
-- [ ] In `iam.tf`, add `data "aws_iam_policy_document" "pod_identity_trust"`
+- [x] In `iam.tf`, add `data "aws_iam_policy_document" "pod_identity_trust"`
       with `count = var.create_role ? 1 : 0`:
   - `effect = "Allow"`.
   - `principals { type = "Service" identifiers = ["pods.eks.amazonaws.com"] }`.
   - `actions = ["sts:AssumeRole", "sts:TagSession"]`.
-- [ ] Add `aws_iam_role.this` with `count = var.create_role ? 1 : 0`:
+- [x] Add `aws_iam_role.this` with `count = var.create_role ? 1 : 0`:
   - `name = local.role_name`.
   - `assume_role_policy = data.aws_iam_policy_document.pod_identity_trust[0].json`.
   - `permissions_boundary = var.permissions_boundary` (nullable passthrough).
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -223,17 +223,17 @@ policy documents to the Mode A role. All gated on `var.create_role`.
 
 #### Tasks
 
-- [ ] Add `aws_iam_role_policy_attachment.managed` with `for_each = var.create_role ? toset(var.managed_policy_arns) : []`:
+- [x] Add `aws_iam_role_policy_attachment.managed` with `for_each = var.create_role ? toset(var.managed_policy_arns) : []`:
   - `role = aws_iam_role.this[0].name`.
   - `policy_arn = each.value`.
-- [ ] Add `aws_iam_role_policy_attachment.customer` with `for_each = var.create_role ? toset(var.customer_managed_policy_arns) : []`:
+- [x] Add `aws_iam_role_policy_attachment.customer` with `for_each = var.create_role ? toset(var.customer_managed_policy_arns) : []`:
   - Same shape as managed; separate resource for state-readability and to
     keep AWS-managed vs customer-owned ARNs visible at the plan level.
-- [ ] Add `aws_iam_role_policy.inline` with `for_each = var.create_role ? var.inline_policies : {}`:
+- [x] Add `aws_iam_role_policy.inline` with `for_each = var.create_role ? var.inline_policies : {}`:
   - `name = each.key`.
   - `role = aws_iam_role.this[0].name`.
   - `policy = each.value`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -255,13 +255,13 @@ Role ARN resolution: Mode A passes `aws_iam_role.this[0].arn`, Mode B passes
 
 #### Tasks
 
-- [ ] In `main.tf`, add `resource "aws_eks_pod_identity_association" "this"`:
+- [x] In `main.tf`, add `resource "aws_eks_pod_identity_association" "this"`:
   - `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
   - `namespace = var.namespace`.
   - `service_account = var.service_account`.
   - `role_arn = var.create_role ? aws_iam_role.this[0].arn : var.existing_role_arn`.
   - `tags = var.association_tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -282,15 +282,15 @@ echo outputs handy for multi-instance compositions.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, define:
+- [x] In `outputs.tf`, define:
   - `role_arn` — `var.create_role ? aws_iam_role.this[0].arn : var.existing_role_arn`.
   - `association_id` — `aws_eks_pod_identity_association.this.id` (or
     `association_id` if the AWS provider exposes it under that name; verify
     against current `hashicorp/aws ~> 6.2` schema).
   - `namespace` — echo of `var.namespace`.
   - `service_account` — echo of `var.service_account`.
-- [ ] Run `terraform-docs .` to regenerate USAGE.md.
-- [ ] Commit USAGE.md.
+- [x] Run `terraform-docs .` to regenerate USAGE.md.
+- [x] Commit USAGE.md.
 
 #### Success Criteria
 
@@ -309,14 +309,14 @@ without `-test-directory`, default ~1–2s.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/tests/` directory.
-- [ ] Create `tests/fixtures/setup/` module that produces a stub S3-backend
+- [x] Create `modules/eks/pod-identity-access/tests/` directory.
+- [x] Create `tests/fixtures/setup/` module that produces a stub S3-backend
       `terraform.tfstate` JSON file with cluster outputs (`cluster_name`).
       Pattern: mirror the cluster module's `tests-localstack/fixtures/setup`,
       but plan-only here (no real LocalStack). The remote-state read still
       resolves because Terraform consults the S3 backend at plan time —
       pre-seed the bucket with a fake state in the setup module.
-- [ ] Create `tests/mode_a.tftest.hcl`:
+- [x] Create `tests/mode_a.tftest.hcl`:
   - `run "setup_fixture"` applies `fixtures/setup`.
   - `run "plan_mode_a"`: 3 managed + 1 customer + 2 inline policies.
     Assertions:
@@ -327,7 +327,7 @@ without `-test-directory`, default ~1–2s.
     - 1 `aws_iam_role_policy_attachment.customer` entry.
     - 2 `aws_iam_role_policy.inline` entries.
     - 1 `aws_eks_pod_identity_association.this`.
-- [ ] Create `tests/mode_b.tftest.hcl`:
+- [x] Create `tests/mode_b.tftest.hcl`:
   - `run "setup_fixture"` applies `fixtures/setup`.
   - `run "plan_mode_b"`: `create_role = false`,
     `existing_role_arn = "arn:aws:iam::123456789012:role/preexisting"`.
@@ -335,21 +335,21 @@ without `-test-directory`, default ~1–2s.
     - Zero IAM role / attachment / inline resources.
     - Exactly one `aws_eks_pod_identity_association.this`.
     - Association's `role_arn == "arn:aws:iam::123456789012:role/preexisting"`.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_mode_b_missing_arn"`: `create_role = false`,
     `existing_role_arn = null`. Use `expect_failures = [var.existing_role_arn]`
     to assert the validation block fires.
-- [ ] Create `tests/naming.tftest.hcl`:
+- [x] Create `tests/naming.tftest.hcl`:
   - `run "long_inputs"`: cluster_name / namespace / service_account chosen
     so the concatenated default name exceeds 64 chars.
     Assertion: the created role's `name` is ≤ 64 chars AND
     deterministic (re-running planning produces the same name).
   - `run "override"`: `role_name_override = "my-custom-name"`.
     Assertion: the role's name equals `"my-custom-name"`.
-- [ ] Add justfile compatibility check — the existing `just tf test` recipe
+- [x] Add justfile compatibility check — the existing `just tf test` recipe
       should pick this module up without modification (action-dispatch
       already module-agnostic).
-- [ ] Run `just tf test eks/pod-identity-access` — all suites green.
+- [x] Run `just tf test eks/pod-identity-access` — all suites green.
 
 #### Success Criteria
 
@@ -370,14 +370,14 @@ backlog for libtftest / sneakystack.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/tests-localstack/` directory.
-- [ ] Create `tests-localstack/fixtures/setup/main.tf` that, in one apply,
+- [x] Create `modules/eks/pod-identity-access/tests-localstack/` directory.
+- [x] Create `tests-localstack/fixtures/setup/main.tf` that, in one apply,
       provisions:
   - VPC + subnets (minimal — only enough to satisfy `aws_eks_cluster`).
   - A real `aws_eks_cluster` (LocalStack Pro EKS).
   - S3 bucket holding `${var.region}/eks/${var.cluster_name}/terraform.tfstate`
     with the cluster's real outputs serialized.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl`:
   - Provider block: comprehensive `endpoints` map pointing at
     `http://localhost:4566` (`s3.localhost.localstack.cloud:4566` for S3
     virtual-hosted-style — mirror the cluster module's working config).
@@ -394,13 +394,13 @@ backlog for libtftest / sneakystack.
     fixture, pass its ARN as `existing_role_arn`. Assertions:
     - Zero IAM role resources in this run's plan.
     - Association apply succeeds, `association_id` populated.
-- [ ] Add justfile compatibility check — `just tf test-localstack
+- [x] Add justfile compatibility check — `just tf test-localstack
       eks/pod-identity-access` should work module-agnostically.
-- [ ] Run `just tf test-localstack eks/pod-identity-access` against a
+- [x] Run `just tf test-localstack eks/pod-identity-access` against a
       running LocalStack Pro container. Capture any LocalStack fidelity gaps
       in a `tests-localstack/FINDINGS.md` (mirror the cluster module's
       pattern from the IMPL-0001 plan-only-vs-apply learnings).
-- [ ] If `aws_eks_pod_identity_association` apply fails or behaves
+- [x] If `aws_eks_pod_identity_association` apply fails or behaves
       non-physically in LocalStack, note the gap and skip the run with a
       clear comment (this is exactly the RFC-0001 backlog signal — LocalStack
       gap becomes libtftest/sneakystack work).
@@ -427,18 +427,18 @@ module's pattern, label / CI verification.
 
 #### Tasks
 
-- [ ] Update `modules/eks/pod-identity-access/README.md` to match the cluster
+- [x] Update `modules/eks/pod-identity-access/README.md` to match the cluster
       module's short-pointer shape, with a 1–2 paragraph blurb + the
       typical Mode A and Mode B usage snippets.
-- [ ] Regenerate `USAGE.md` via `terraform-docs .` (terraform-docs is
+- [x] Regenerate `USAGE.md` via `terraform-docs .` (terraform-docs is
       configured with `output.mode: inject` writing between
       `<!-- BEGIN_TF_DOCS -->` markers).
-- [ ] Verify justfile recipes (`just tf validate`, `just tf fmt`, `just tf
+- [x] Verify justfile recipes (`just tf validate`, `just tf fmt`, `just tf
       lint`, `just tf docs`, `just tf test`, `just tf all`) all work
       module-agnostically against `eks/pod-identity-access`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm` provider
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm` provider
       references (ADR-0011 — AWS-API-only Terraform).
-- [ ] Final pass: confirm zero aliasing locals that simply re-export
+- [x] Final pass: confirm zero aliasing locals that simply re-export
       remote-state outputs (ADR-0001 / CLAUDE.md).
 
 #### Success Criteria

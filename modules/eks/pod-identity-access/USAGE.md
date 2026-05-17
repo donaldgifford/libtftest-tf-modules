@@ -7,7 +7,61 @@
 <!-- prettier-ignore-end -->
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
 
-{{ .Content }}
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | 6.45.0 |
+| terraform | n/a |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_eks_pod_identity_association.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_pod_identity_association) | resource |
+| [aws_iam_role.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.inline](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_iam_role_policy_attachment.customer](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_policy_document.pod_identity_trust](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [terraform_remote_state.eks](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| association\_tags | Tags applied to the aws\_eks\_pod\_identity\_association resource. Separate from var.tags so callers can label the association independently of the role (useful when migrating ownership). | `map(string)` | `{}` | no |
+| cluster\_name | EKS cluster name. Used as the remote-state key fragment and as the association's cluster\_name. | `string` | n/a | yes |
+| create\_role | When true (default), the module creates a Pod-Identity-trusting IAM role and binds the association to it. When false, the caller must pass existing\_role\_arn — the module creates the association only. | `bool` | `true` | no |
+| customer\_managed\_policy\_arns | Customer-managed policy ARNs to attach to the Mode A role. Separate from managed\_policy\_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance. | `list(string)` | `[]` | no |
+| existing\_role\_arn | ARN of a pre-existing Pod-Identity-trusting IAM role. Required when create\_role = false; ignored when create\_role = true. The cross-variable invariant is enforced via lifecycle.precondition on aws\_eks\_pod\_identity\_association.this (terraform >= 1.1 cannot reference other variables in a variable.validation block). | `string` | `null` | no |
+| inline\_policies | Inline IAM policy documents to attach to the Mode A role, keyed by policy name. Values are JSON strings. | `map(string)` | `{}` | no |
+| managed\_policy\_arns | AWS-managed policy ARNs to attach to the Mode A role (e.g. arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy). | `list(string)` | `[]` | no |
+| namespace | Kubernetes namespace of the target ServiceAccount. The ServiceAccount itself is created out-of-band (Helm/Kustomize/Argo) per ADR-0011. | `string` | n/a | yes |
+| permissions\_boundary | ARN of an IAM permissions boundary policy to attach to the Mode A role. Null (default) attaches no boundary. | `string` | `null` | no |
+| region | AWS region. Also feeds the remote-state key convention <region>/eks/<cluster\_name>/terraform.tfstate. | `string` | n/a | yes |
+| remote\_state\_bucket | S3 bucket holding the cluster module's remote state. Used by data.terraform\_remote\_state.eks per ADR-0001. | `string` | n/a | yes |
+| role\_name\_override | Override the default deterministic role name (<cluster\_name>-<namespace>-<service\_account>). Use sparingly — the default name surfaces the binding for free in the console / IAM audits. | `string` | `null` | no |
+| service\_account | Kubernetes ServiceAccount name to bind to AWS credentials. | `string` | n/a | yes |
+| tags | Tags applied to the Mode A IAM role. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| association\_id | EKS Pod Identity Association ID. Stable handle for the (cluster\_name, namespace, service\_account, role\_arn) tuple. |
+| namespace | Echo of var.namespace. Useful for multi-instance for\_each compositions that key by (namespace, service\_account). |
+| role\_arn | ARN of the Pod-Identity-trusting IAM role bound to (var.namespace, var.service\_account). Mode A: the role created by this module. Mode B: var.existing\_role\_arn echoed back. |
+| service\_account | Echo of var.service\_account. Useful for multi-instance for\_each compositions that key by (namespace, service\_account). |
 <!-- END_TF_DOCS -->
