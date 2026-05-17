@@ -173,7 +173,7 @@ Build the static catalog mapping each supported upstream to its `prefix`,
 
 #### Tasks
 
-- [ ] In `locals.tf`, add `local.upstream_catalog`:
+- [x] In `locals.tf`, add `local.upstream_catalog`:
 
   ```hcl
   local.upstream_catalog = {
@@ -186,12 +186,12 @@ Build the static catalog mapping each supported upstream to its `prefix`,
   }
   ```
 
-- [ ] In `locals.tf`, derive `local.selected = { for name in var.upstream_registries : name => local.upstream_catalog[name] }`.
-- [ ] In `locals.tf`, derive `local.authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }`.
-- [ ] In `locals.tf`, derive `local.account_id = data.aws_caller_identity.current.account_id`.
-- [ ] Add `data "aws_caller_identity" "current" {}` (ADR-0001
+- [x] In `locals.tf`, derive `local.selected = { for name in var.upstream_registries : name => local.upstream_catalog[name] }`.
+- [x] In `locals.tf`, derive `local.authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }`.
+- [x] In `locals.tf`, derive `local.account_id = data.aws_caller_identity.current.account_id`.
+- [x] Add `data "aws_caller_identity" "current" {}` (ADR-0001
       identity-class carve-out — same shape as cluster module).
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 

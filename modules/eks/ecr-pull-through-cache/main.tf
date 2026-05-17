@@ -13,3 +13,10 @@
 # used to scope the IAM policy's Resource ARN to this account.
 #
 # Phase 4 lands aws_ecr_pull_through_cache_rule.this here.
+
+# Identity-class carve-out per ADR-0001. The account ID is identity
+# (does not drift), the sts:GetCallerIdentity call is effectively
+# free, and the value scopes the node IAM policy's Resource ARN to
+# this account's ECR repositories — meaningful compositional work,
+# not a remote-state alias.
+data "aws_caller_identity" "current" {}
