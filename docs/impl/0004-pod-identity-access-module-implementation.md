@@ -223,17 +223,17 @@ policy documents to the Mode A role. All gated on `var.create_role`.
 
 #### Tasks
 
-- [ ] Add `aws_iam_role_policy_attachment.managed` with `for_each = var.create_role ? toset(var.managed_policy_arns) : []`:
+- [x] Add `aws_iam_role_policy_attachment.managed` with `for_each = var.create_role ? toset(var.managed_policy_arns) : []`:
   - `role = aws_iam_role.this[0].name`.
   - `policy_arn = each.value`.
-- [ ] Add `aws_iam_role_policy_attachment.customer` with `for_each = var.create_role ? toset(var.customer_managed_policy_arns) : []`:
+- [x] Add `aws_iam_role_policy_attachment.customer` with `for_each = var.create_role ? toset(var.customer_managed_policy_arns) : []`:
   - Same shape as managed; separate resource for state-readability and to
     keep AWS-managed vs customer-owned ARNs visible at the plan level.
-- [ ] Add `aws_iam_role_policy.inline` with `for_each = var.create_role ? var.inline_policies : {}`:
+- [x] Add `aws_iam_role_policy.inline` with `for_each = var.create_role ? var.inline_policies : {}`:
   - `name = each.key`.
   - `role = aws_iam_role.this[0].name`.
   - `policy = each.value`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 

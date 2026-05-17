@@ -33,3 +33,33 @@ resource "aws_iam_role" "this" {
 
   tags = var.tags
 }
+
+#--------------------------------------------------------------
+# Policy attachments and inline policies (Mode A)
+#--------------------------------------------------------------
+#
+# managed / customer attachments split across two resources so the
+# plan distinguishes AWS-owned from caller-owned ARNs at a glance
+# (state-readability dividend per DESIGN-0004).
+
+resource "aws_iam_role_policy_attachment" "managed" {
+  for_each = var.create_role ? toset(var.managed_policy_arns) : []
+
+  role       = aws_iam_role.this[0].name
+  policy_arn = each.value
+}
+
+resource "aws_iam_role_policy_attachment" "customer" {
+  for_each = var.create_role ? toset(var.customer_managed_policy_arns) : []
+
+  role       = aws_iam_role.this[0].name
+  policy_arn = each.value
+}
+
+resource "aws_iam_role_policy" "inline" {
+  for_each = var.create_role ? var.inline_policies : {}
+
+  name   = each.key
+  role   = aws_iam_role.this[0].name
+  policy = each.value
+}

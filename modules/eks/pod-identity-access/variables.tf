@@ -63,21 +63,18 @@ variable "role_name_override" {
 # Mode A policy inputs
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "managed_policy_arns" {
   description = "AWS-managed policy ARNs to attach to the Mode A role (e.g. arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy)."
   type        = list(string)
   default     = []
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "customer_managed_policy_arns" {
   description = "Customer-managed policy ARNs to attach to the Mode A role. Separate from managed_policy_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance."
   type        = list(string)
   default     = []
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "inline_policies" {
   description = "Inline IAM policy documents to attach to the Mode A role, keyed by policy name. Values are JSON strings."
   type        = map(string)
