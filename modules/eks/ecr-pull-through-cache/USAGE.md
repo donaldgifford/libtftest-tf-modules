@@ -7,7 +7,54 @@
 <!-- prettier-ignore-end -->
 
 <!-- BEGIN_TF_DOCS -->
+## Requirements
 
-{{ .Content }}
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | 6.45.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_ecr_pull_through_cache_rule.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_pull_through_cache_rule) | resource |
+| [aws_ecr_repository_creation_template.pull_through](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository_creation_template) | resource |
+| [aws_iam_policy.node_pull_through](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_secretsmanager_secret.upstream](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_version.upstream](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.node_pull_through](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| enable\_node\_pull\_through\_policy | When true (default), the module emits aws\_iam\_policy.node\_pull\_through carrying ecr:CreateRepository + ecr:BatchImportUpstreamImage scoped to this account's ECR repository ARNs. Consumers wire the ARN into the managed-node-group module's var.extra\_node\_policies. Off → zero IAM policy resources emitted (ADR-0015 two-stages-of-consent first gate). | `bool` | `true` | no |
+| name\_prefix | Short name prefix for the Secrets Manager secret names and the IAM policy. The Secrets Manager prefix follows ECR's required "ecr-pullthroughcache/" — this prefix is appended as ecr-pullthroughcache/<name\_prefix>-<upstream>. | `string` | n/a | yes |
+| region | AWS region. Used in the IAM policy's Resource ARN scope and the cache\_url\_prefixes output. The module is per-region — instantiate once per region the cluster runs in. | `string` | n/a | yes |
+| repo\_creation\_template\_prefix | Prefix passed to aws\_ecr\_repository\_creation\_template. Default "*" matches every pull-through-created repo. Override only when you need to scope the template to a specific upstream prefix (e.g. "docker-hub"). | `string` | `"*"` | no |
+| tags | AWS resource tags applied to every taggable resource in the module (Secrets Manager secrets, IAM policy, creation template). | `map(string)` | `{}` | no |
+| untagged\_image\_retention\_days | Days to retain untagged images pulled through the cache before the ECR lifecycle policy prunes them. Embedded in the creation template's lifecycle\_policy JSON. | `number` | `7` | no |
+| upstream\_registries | List of upstream registries to cache. Supported values: ecr-public, quay, docker-hub, ghcr, kubernetes, mcr. docker-hub and ghcr are authentication-required; the others are open. | `list(string)` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| cache\_rule\_ids | Map of upstream name → ECR pull-through cache rule ID. The id is the canonical identifier (the resource type does not expose an arn attribute in hashicorp/aws ~> 6.2). |
+| cache\_url\_prefixes | Map of upstream name → fully-qualified ECR cache URL prefix (<account\_id>.dkr.ecr.<region>.amazonaws.com/<prefix>). Public-AWS-only assumption per IMPL-0005 Q4 — partition-aware construction is future work when a GovCloud consumer materializes. |
+| credential\_secret\_arns | Map of upstream name → Secrets Manager secret ARN holding that upstream's pull-through credentials. Empty for instantiations whose upstream\_registries contain only open upstreams. |
+| node\_pull\_through\_policy\_arn | ARN of the IAM policy carrying ecr:CreateRepository + ecr:BatchImportUpstreamImage scoped to this account's ECR repositories. Consumers wire this into managed-node-group's var.extra\_node\_policies per ADR-0015. Null when var.enable\_node\_pull\_through\_policy = false (emission gate (a) closed). |
+| repository\_creation\_template\_id | ID of the aws\_ecr\_repository\_creation\_template (the prefix this template applies to). Renamed from \_arn per IMPL-0005 Q3 — the v6 provider exposes id, not arn. |
 <!-- END_TF_DOCS -->

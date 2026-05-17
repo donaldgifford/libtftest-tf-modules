@@ -352,7 +352,7 @@ Define the module's output contract per DESIGN-0005.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, define:
+- [x] In `outputs.tf`, define:
   - `cache_rule_arns` —
     `{ for k, r in aws_ecr_pull_through_cache_rule.this : k => r.id }`
     (or `.arn` — verify v6 schema; pull-through cache rules expose `id`
@@ -366,8 +366,8 @@ Define the module's output contract per DESIGN-0005.
   - `repository_creation_template_arn` —
     `aws_ecr_repository_creation_template.pull_through.arn` (verify
     schema; may be exposed under a different attribute name).
-- [ ] Run `terraform-docs .` to regenerate USAGE.md.
-- [ ] Commit USAGE.md.
+- [x] Run `terraform-docs .` to regenerate USAGE.md.
+- [x] Commit USAGE.md.
 
 #### Success Criteria
 
