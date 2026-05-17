@@ -255,7 +255,7 @@ Role ARN resolution: Mode A passes `aws_iam_role.this[0].arn`, Mode B passes
 
 #### Tasks
 
-- [ ] In `main.tf`, add `resource "aws_eks_pod_identity_association" "this"`:
+- [x] In `main.tf`, add `resource "aws_eks_pod_identity_association" "this"`:
   - `cluster_name = data.terraform_remote_state.eks.outputs.cluster_name`.
   - `namespace = var.namespace`.
   - `service_account = var.service_account`.

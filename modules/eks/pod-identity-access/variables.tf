@@ -42,7 +42,6 @@ variable "create_role" {
   default     = true
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "existing_role_arn" {
   description = "ARN of a pre-existing Pod-Identity-trusting IAM role. Required when create_role = false; ignored when create_role = true. The cross-variable invariant is enforced via lifecycle.precondition on aws_eks_pod_identity_association.this (terraform >= 1.1 cannot reference other variables in a variable.validation block)."
   type        = string
@@ -97,7 +96,6 @@ variable "tags" {
   default     = {}
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "association_tags" {
   description = "Tags applied to the aws_eks_pod_identity_association resource. Separate from var.tags so callers can label the association independently of the role (useful when migrating ownership)."
   type        = map(string)
