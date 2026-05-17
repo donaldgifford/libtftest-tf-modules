@@ -282,11 +282,11 @@ DESIGN-0005, parameterized by `var.untagged_image_retention_days` and
 
 #### Tasks
 
-- [ ] In `template.tf`, add `data "aws_iam_policy_document"
+- [x] In `template.tf`, add `data "aws_iam_policy_document"
       "cache_repo_policy"` — minimal repository policy granting the
       pull-through service principal `ecr:BatchImportUpstreamImage`
       access. (Verify exact action set against current ECR docs.)
-- [ ] Add `aws_ecr_repository_creation_template.pull_through`:
+- [x] Add `aws_ecr_repository_creation_template.pull_through`:
   - `prefix = var.repo_creation_template_prefix` (default `"*"`).
   - `applied_for = ["PULL_THROUGH_CACHE"]`.
   - `image_tag_mutability = "MUTABLE"`.
@@ -299,7 +299,7 @@ DESIGN-0005, parameterized by `var.untagged_image_retention_days` and
     `scan_configuration` or `scanning_configuration` block. See Open
     Questions Q3.
   - `resource_tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 

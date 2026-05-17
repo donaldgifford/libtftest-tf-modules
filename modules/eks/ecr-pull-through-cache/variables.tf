@@ -43,14 +43,12 @@ variable "enable_node_pull_through_policy" {
   default     = true
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "repo_creation_template_prefix" {
   description = "Prefix passed to aws_ecr_repository_creation_template. Default \"*\" matches every pull-through-created repo. Override only when you need to scope the template to a specific upstream prefix (e.g. \"docker-hub\")."
   type        = string
   default     = "*"
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "untagged_image_retention_days" {
   description = "Days to retain untagged images pulled through the cache before the ECR lifecycle policy prunes them. Embedded in the creation template's lifecycle_policy JSON."
   type        = number
@@ -60,13 +58,6 @@ variable "untagged_image_retention_days" {
     condition     = var.untagged_image_retention_days >= 1
     error_message = "untagged_image_retention_days must be at least 1 (ECR rejects 0)."
   }
-}
-
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
-variable "scan_on_push" {
-  description = "Enable ECR scan-on-push on repositories created via the pull-through cache template. Verified against the AWS provider v6 schema in Phase 5."
-  type        = bool
-  default     = true
 }
 
 variable "tags" {
