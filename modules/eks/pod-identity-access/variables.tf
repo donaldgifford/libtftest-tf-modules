@@ -2,35 +2,30 @@
 # Required inputs
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "remote_state_bucket" {
   description = "S3 bucket holding the cluster module's remote state. Used by data.terraform_remote_state.eks per ADR-0001."
   type        = string
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "region" {
   description = "AWS region. Also feeds the remote-state key convention <region>/eks/<cluster_name>/terraform.tfstate."
   type        = string
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "cluster_name" {
   description = "EKS cluster name. Used as the remote-state key fragment and as the association's cluster_name."
   type        = string
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "namespace" {
   description = "Kubernetes namespace of the target ServiceAccount. The ServiceAccount itself is created out-of-band (Helm/Kustomize/Argo) per ADR-0011."
   type        = string
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "service_account" {
   description = "Kubernetes ServiceAccount name to bind to AWS credentials."
   type        = string
@@ -59,7 +54,6 @@ variable "existing_role_arn" {
 # Naming
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0004 phase
 variable "role_name_override" {
   description = "Override the default deterministic role name (<cluster_name>-<namespace>-<service_account>). Use sparingly — the default name surfaces the binding for free in the console / IAM audits."
   type        = string

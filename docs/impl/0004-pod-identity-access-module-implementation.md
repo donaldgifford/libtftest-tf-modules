@@ -162,18 +162,18 @@ internal naming. No IAM yet — keep this phase pure plumbing.
 
 #### Tasks
 
-- [ ] Add `data.terraform_remote_state.eks` block in `main.tf` matching the
+- [x] Add `data.terraform_remote_state.eks` block in `main.tf` matching the
       convention from CLAUDE.md (`key = "${var.region}/eks/${var.cluster_name}/terraform.tfstate"`).
-- [ ] In `locals.tf`, compute `role_name`:
+- [x] In `locals.tf`, compute `role_name`:
   - Default: `<cluster_name>-<namespace>-<service_account>` joined with `-`.
   - If `var.role_name_override != null`, use the override.
   - Apply length-safe truncation to fit IAM's 64-char limit. Use
     `substr(...)` plus a short hash suffix (e.g., last 6 chars of `sha256`)
     when the joined name exceeds 64 chars, so callers get deterministic
     names without silent collisions.
-- [ ] Reference `data.terraform_remote_state.eks.outputs.cluster_name` at the
+- [x] Reference `data.terraform_remote_state.eks.outputs.cluster_name` at the
       use site only — no aliasing local (ADR-0001).
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
