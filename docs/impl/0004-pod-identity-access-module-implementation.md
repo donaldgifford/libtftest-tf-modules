@@ -309,14 +309,14 @@ without `-test-directory`, default ~1–2s.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/tests/` directory.
-- [ ] Create `tests/fixtures/setup/` module that produces a stub S3-backend
+- [x] Create `modules/eks/pod-identity-access/tests/` directory.
+- [x] Create `tests/fixtures/setup/` module that produces a stub S3-backend
       `terraform.tfstate` JSON file with cluster outputs (`cluster_name`).
       Pattern: mirror the cluster module's `tests-localstack/fixtures/setup`,
       but plan-only here (no real LocalStack). The remote-state read still
       resolves because Terraform consults the S3 backend at plan time —
       pre-seed the bucket with a fake state in the setup module.
-- [ ] Create `tests/mode_a.tftest.hcl`:
+- [x] Create `tests/mode_a.tftest.hcl`:
   - `run "setup_fixture"` applies `fixtures/setup`.
   - `run "plan_mode_a"`: 3 managed + 1 customer + 2 inline policies.
     Assertions:
@@ -327,7 +327,7 @@ without `-test-directory`, default ~1–2s.
     - 1 `aws_iam_role_policy_attachment.customer` entry.
     - 2 `aws_iam_role_policy.inline` entries.
     - 1 `aws_eks_pod_identity_association.this`.
-- [ ] Create `tests/mode_b.tftest.hcl`:
+- [x] Create `tests/mode_b.tftest.hcl`:
   - `run "setup_fixture"` applies `fixtures/setup`.
   - `run "plan_mode_b"`: `create_role = false`,
     `existing_role_arn = "arn:aws:iam::123456789012:role/preexisting"`.
@@ -335,21 +335,21 @@ without `-test-directory`, default ~1–2s.
     - Zero IAM role / attachment / inline resources.
     - Exactly one `aws_eks_pod_identity_association.this`.
     - Association's `role_arn == "arn:aws:iam::123456789012:role/preexisting"`.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_mode_b_missing_arn"`: `create_role = false`,
     `existing_role_arn = null`. Use `expect_failures = [var.existing_role_arn]`
     to assert the validation block fires.
-- [ ] Create `tests/naming.tftest.hcl`:
+- [x] Create `tests/naming.tftest.hcl`:
   - `run "long_inputs"`: cluster_name / namespace / service_account chosen
     so the concatenated default name exceeds 64 chars.
     Assertion: the created role's `name` is ≤ 64 chars AND
     deterministic (re-running planning produces the same name).
   - `run "override"`: `role_name_override = "my-custom-name"`.
     Assertion: the role's name equals `"my-custom-name"`.
-- [ ] Add justfile compatibility check — the existing `just tf test` recipe
+- [x] Add justfile compatibility check — the existing `just tf test` recipe
       should pick this module up without modification (action-dispatch
       already module-agnostic).
-- [ ] Run `just tf test eks/pod-identity-access` — all suites green.
+- [x] Run `just tf test eks/pod-identity-access` — all suites green.
 
 #### Success Criteria
 
