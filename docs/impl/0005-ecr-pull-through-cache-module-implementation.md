@@ -321,18 +321,18 @@ tension point with ADR-0002 — see Open Questions Q1.
 
 #### Tasks
 
-- [ ] In `iam.tf`, add `data "aws_iam_policy_document" "node_pull_through"`
+- [x] In `iam.tf`, add `data "aws_iam_policy_document" "node_pull_through"`
       with `count = var.enable_node_pull_through_policy ? 1 : 0`:
   - One Allow statement, two actions: `ecr:CreateRepository`,
     `ecr:BatchImportUpstreamImage`.
   - `resources = ["arn:aws:ecr:${var.region}:${local.account_id}:repository/*"]`.
-- [ ] Add `aws_iam_policy.node_pull_through` with
+- [x] Add `aws_iam_policy.node_pull_through` with
       `count = var.enable_node_pull_through_policy ? 1 : 0`:
   - `name = "${var.name_prefix}-ecr-pull-through"`.
   - `description = "Permissions for EKS nodes to use ECR pull-through cache (consumed by managed-node-group var.extra_node_policies)"`.
   - `policy = data.aws_iam_policy_document.node_pull_through[0].json`.
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 

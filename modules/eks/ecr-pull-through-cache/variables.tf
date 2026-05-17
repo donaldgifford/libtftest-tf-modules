@@ -2,7 +2,6 @@
 # Required inputs
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "region" {
   description = "AWS region. Used in the IAM policy's Resource ARN scope and the cache_url_prefixes output. The module is per-region — instantiate once per region the cluster runs in."
   type        = string
@@ -36,7 +35,6 @@ variable "upstream_registries" {
 # Optional inputs
 #--------------------------------------------------------------
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "enable_node_pull_through_policy" {
   description = "When true (default), the module emits aws_iam_policy.node_pull_through carrying ecr:CreateRepository + ecr:BatchImportUpstreamImage scoped to this account's ECR repository ARNs. Consumers wire the ARN into the managed-node-group module's var.extra_node_policies. Off → zero IAM policy resources emitted (ADR-0015 two-stages-of-consent first gate)."
   type        = bool

@@ -21,6 +21,5 @@ locals {
 
   authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }
 
-  # tflint-ignore: terraform_unused_declarations  # consumed by aws_iam_policy.node_pull_through and the cache_url_prefixes output in later phases
   account_id = data.aws_caller_identity.current.account_id
 }
