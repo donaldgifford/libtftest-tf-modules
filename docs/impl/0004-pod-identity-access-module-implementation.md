@@ -370,14 +370,14 @@ backlog for libtftest / sneakystack.
 
 #### Tasks
 
-- [ ] Create `modules/eks/pod-identity-access/tests-localstack/` directory.
-- [ ] Create `tests-localstack/fixtures/setup/main.tf` that, in one apply,
+- [x] Create `modules/eks/pod-identity-access/tests-localstack/` directory.
+- [x] Create `tests-localstack/fixtures/setup/main.tf` that, in one apply,
       provisions:
   - VPC + subnets (minimal — only enough to satisfy `aws_eks_cluster`).
   - A real `aws_eks_cluster` (LocalStack Pro EKS).
   - S3 bucket holding `${var.region}/eks/${var.cluster_name}/terraform.tfstate`
     with the cluster's real outputs serialized.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl`:
   - Provider block: comprehensive `endpoints` map pointing at
     `http://localhost:4566` (`s3.localhost.localstack.cloud:4566` for S3
     virtual-hosted-style — mirror the cluster module's working config).
@@ -394,13 +394,13 @@ backlog for libtftest / sneakystack.
     fixture, pass its ARN as `existing_role_arn`. Assertions:
     - Zero IAM role resources in this run's plan.
     - Association apply succeeds, `association_id` populated.
-- [ ] Add justfile compatibility check — `just tf test-localstack
+- [x] Add justfile compatibility check — `just tf test-localstack
       eks/pod-identity-access` should work module-agnostically.
-- [ ] Run `just tf test-localstack eks/pod-identity-access` against a
+- [x] Run `just tf test-localstack eks/pod-identity-access` against a
       running LocalStack Pro container. Capture any LocalStack fidelity gaps
       in a `tests-localstack/FINDINGS.md` (mirror the cluster module's
       pattern from the IMPL-0001 plan-only-vs-apply learnings).
-- [ ] If `aws_eks_pod_identity_association` apply fails or behaves
+- [x] If `aws_eks_pod_identity_association` apply fails or behaves
       non-physically in LocalStack, note the gap and skip the run with a
       clear comment (this is exactly the RFC-0001 backlog signal — LocalStack
       gap becomes libtftest/sneakystack work).
