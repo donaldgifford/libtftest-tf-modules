@@ -16,7 +16,10 @@
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| aws | 6.45.0 |
+| terraform | n/a |
 
 ## Modules
 
@@ -24,7 +27,15 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [aws_eks_pod_identity_association.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_pod_identity_association) | resource |
+| [aws_iam_role.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.inline](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_iam_role_policy_attachment.customer](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_policy_document.pod_identity_trust](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [terraform_remote_state.eks](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 
 ## Inputs
 
@@ -47,5 +58,10 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| association\_id | EKS Pod Identity Association ID. Stable handle for the (cluster\_name, namespace, service\_account, role\_arn) tuple. |
+| namespace | Echo of var.namespace. Useful for multi-instance for\_each compositions that key by (namespace, service\_account). |
+| role\_arn | ARN of the Pod-Identity-trusting IAM role bound to (var.namespace, var.service\_account). Mode A: the role created by this module. Mode B: var.existing\_role\_arn echoed back. |
+| service\_account | Echo of var.service\_account. Useful for multi-instance for\_each compositions that key by (namespace, service\_account). |
 <!-- END_TF_DOCS -->

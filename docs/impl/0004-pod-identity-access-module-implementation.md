@@ -282,15 +282,15 @@ echo outputs handy for multi-instance compositions.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, define:
+- [x] In `outputs.tf`, define:
   - `role_arn` — `var.create_role ? aws_iam_role.this[0].arn : var.existing_role_arn`.
   - `association_id` — `aws_eks_pod_identity_association.this.id` (or
     `association_id` if the AWS provider exposes it under that name; verify
     against current `hashicorp/aws ~> 6.2` schema).
   - `namespace` — echo of `var.namespace`.
   - `service_account` — echo of `var.service_account`.
-- [ ] Run `terraform-docs .` to regenerate USAGE.md.
-- [ ] Commit USAGE.md.
+- [x] Run `terraform-docs .` to regenerate USAGE.md.
+- [x] Commit USAGE.md.
 
 #### Success Criteria
 
