@@ -15,7 +15,6 @@ variable "name_prefix" {
   nullable    = false
 }
 
-# tflint-ignore: terraform_unused_declarations  # consumed in a later IMPL-0005 phase
 variable "upstream_registries" {
   description = "List of upstream registries to cache. Supported values: ecr-public, quay, docker-hub, ghcr, kubernetes, mcr. docker-hub and ghcr are authentication-required; the others are open."
   type        = list(string)

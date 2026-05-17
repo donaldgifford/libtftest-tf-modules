@@ -20,3 +20,19 @@
 # this account's ECR repositories — meaningful compositional work,
 # not a remote-state alias.
 data "aws_caller_identity" "current" {}
+
+#--------------------------------------------------------------
+# Pull-through cache rules
+#--------------------------------------------------------------
+#
+# One rule per selected upstream. credential_arn references the
+# matching Secrets Manager secret for authenticated upstreams
+# (Docker Hub, GHCR); null for open upstreams.
+
+resource "aws_ecr_pull_through_cache_rule" "this" {
+  for_each = local.selected
+
+  ecr_repository_prefix = each.value.prefix
+  upstream_registry_url = each.value.upstream_url
+  credential_arn        = each.value.auth_required ? aws_secretsmanager_secret.upstream[each.key].arn : null
+}

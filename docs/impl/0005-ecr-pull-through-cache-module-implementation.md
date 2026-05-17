@@ -257,12 +257,12 @@ open upstreams pass `credential_arn = null`.
 
 #### Tasks
 
-- [ ] In `main.tf`, add `aws_ecr_pull_through_cache_rule.this` with
+- [x] In `main.tf`, add `aws_ecr_pull_through_cache_rule.this` with
       `for_each = local.selected`:
   - `ecr_repository_prefix = each.value.prefix`.
   - `upstream_registry_url = each.value.upstream_url`.
   - `credential_arn = each.value.auth_required ? aws_secretsmanager_secret.upstream[each.key].arn : null`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
