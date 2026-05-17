@@ -1,7 +1,7 @@
 ---
 id: IMPL-0005
 title: "ECR Pull-Through Cache Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -542,7 +542,7 @@ the post-apply credential population step, and how to wire
 
 #### Tasks
 
-- [ ] Update `modules/eks/ecr-pull-through-cache/README.md`:
+- [x] Update `modules/eks/ecr-pull-through-cache/README.md`:
   - Short pointer to USAGE.md.
   - Prerequisite section: the three VPC endpoints
     (`com.amazonaws.<region>.ecr.api`,
@@ -555,14 +555,14 @@ the post-apply credential population step, and how to wire
     `var.extra_node_policies` (forward-references IMPL-0002).
   - Image-reference rewriting note (out-of-scope; Helm/Kustomize
     layer).
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
       provider references (ADR-0011).
-- [ ] Final pass: confirm zero aliasing locals that re-export remote
+- [x] Final pass: confirm zero aliasing locals that re-export remote
       state (ADR-0001 / CLAUDE.md). This module reads no remote state
       anyway — confirm the only `data.*` call is
       `aws_caller_identity.current`.
-- [ ] Verify `just tf all eks/ecr-pull-through-cache` passes.
+- [x] Verify `just tf all eks/ecr-pull-through-cache` passes.
 
 #### Success Criteria
 
