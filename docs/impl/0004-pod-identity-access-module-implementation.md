@@ -1,7 +1,7 @@
 ---
 id: IMPL-0004
 title: "Pod Identity Access Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -9,7 +9,7 @@ created: 2026-05-15
 
 # IMPL 0004: Pod Identity Access Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-15
 
@@ -261,7 +261,7 @@ Role ARN resolution: Mode A passes `aws_iam_role.this[0].arn`, Mode B passes
   - `service_account = var.service_account`.
   - `role_arn = var.create_role ? aws_iam_role.this[0].arn : var.existing_role_arn`.
   - `tags = var.association_tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -427,18 +427,18 @@ module's pattern, label / CI verification.
 
 #### Tasks
 
-- [ ] Update `modules/eks/pod-identity-access/README.md` to match the cluster
+- [x] Update `modules/eks/pod-identity-access/README.md` to match the cluster
       module's short-pointer shape, with a 1–2 paragraph blurb + the
       typical Mode A and Mode B usage snippets.
-- [ ] Regenerate `USAGE.md` via `terraform-docs .` (terraform-docs is
+- [x] Regenerate `USAGE.md` via `terraform-docs .` (terraform-docs is
       configured with `output.mode: inject` writing between
       `<!-- BEGIN_TF_DOCS -->` markers).
-- [ ] Verify justfile recipes (`just tf validate`, `just tf fmt`, `just tf
+- [x] Verify justfile recipes (`just tf validate`, `just tf fmt`, `just tf
       lint`, `just tf docs`, `just tf test`, `just tf all`) all work
       module-agnostically against `eks/pod-identity-access`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm` provider
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm` provider
       references (ADR-0011 — AWS-API-only Terraform).
-- [ ] Final pass: confirm zero aliasing locals that simply re-export
+- [x] Final pass: confirm zero aliasing locals that simply re-export
       remote-state outputs (ADR-0001 / CLAUDE.md).
 
 #### Success Criteria
