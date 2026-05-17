@@ -2,8 +2,11 @@
 # Repository creation template (auto-vivification)
 #--------------------------------------------------------------
 #
-# One template with prefix = "*" applies to every repository ECR
-# auto-creates via pull-through cache (DESIGN-0005 / IMPL-0005 Q2).
+# One template with prefix = "ROOT" applies to every repository
+# ECR auto-creates via pull-through cache (DESIGN-0005 / IMPL-0005
+# Q2). The v6 provider's plan-time validation rejects "*" — the
+# special match-all value is the literal "ROOT", not "*". DESIGN
+# -0005's "*" example was speculative; per Q3 we follow the schema.
 # Caller-controlled untagged-image retention drives the lifecycle
 # policy JSON; AES256 encryption per DESIGN-0005.
 #

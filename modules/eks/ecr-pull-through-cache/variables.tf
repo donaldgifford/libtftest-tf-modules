@@ -42,9 +42,14 @@ variable "enable_node_pull_through_policy" {
 }
 
 variable "repo_creation_template_prefix" {
-  description = "Prefix passed to aws_ecr_repository_creation_template. Default \"*\" matches every pull-through-created repo. Override only when you need to scope the template to a specific upstream prefix (e.g. \"docker-hub\")."
+  description = "Prefix passed to aws_ecr_repository_creation_template. Default \"ROOT\" matches every pull-through-created repo (per AWS provider v6 schema — the special match-all value is the literal \"ROOT\", not \"*\"; DESIGN-0005's \"*\" example was speculative). Override only when scoping the template to a specific upstream prefix (e.g. \"docker-hub\")."
   type        = string
-  default     = "*"
+  default     = "ROOT"
+
+  validation {
+    condition     = var.repo_creation_template_prefix == "ROOT" || (length(var.repo_creation_template_prefix) >= 2 && length(var.repo_creation_template_prefix) <= 256 && can(regex("^[a-zA-Z0-9_./-]+$", var.repo_creation_template_prefix)))
+    error_message = "repo_creation_template_prefix must be the special string \"ROOT\" or a 2-256 character string of alphanumerics / underscore / period / hyphen / slash (matches AWS provider v6 validation on aws_ecr_repository_creation_template.prefix)."
+  }
 }
 
 variable "untagged_image_retention_days" {

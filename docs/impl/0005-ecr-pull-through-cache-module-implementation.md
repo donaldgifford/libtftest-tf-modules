@@ -86,9 +86,13 @@ direct public-registry pulls without forcing per-image manifest rewrites.
   `aws_secretsmanager_secret_version` with placeholder body and
   `lifecycle.ignore_changes = [secret_string]` so operator-rotated values
   aren't clobbered.
-- One `aws_ecr_repository_creation_template` with `prefix = "*"`,
+- One `aws_ecr_repository_creation_template` with `prefix = "ROOT"`
+  (the v6-supported match-all special value; `"*"` is rejected by
+  plan-time validation per Q3 schema verification),
   `applied_for = ["PULL_THROUGH_CACHE"]`, parameterized untagged-image
-  retention via lifecycle policy, scan-on-push, and AES256 encryption.
+  retention via lifecycle policy, and AES256 encryption.
+  (scan_on_push dropped per Q3 — the v6 provider's template schema
+  does not expose it; ECR scan-on-push is per-account, out-of-scope.)
 - One gated `aws_iam_policy.node_pull_through[0]` (gated on
   `var.enable_node_pull_through_policy`) granting
   `ecr:CreateRepository` + `ecr:BatchImportUpstreamImage` on
@@ -139,10 +143,13 @@ unknown values at plan time. No resources yet.
   - Required: `region` (`string`), `name_prefix` (`string`),
     `upstream_registries` (`list(string)`).
   - Optional: `enable_node_pull_through_policy` (default `true`),
-    `repo_creation_template_prefix` (default `"*"`),
+    `repo_creation_template_prefix` (default `"ROOT"` — schema-driven
+    divergence from DESIGN-0005's speculative `"*"`; the v6 provider's
+    plan-time validation accepts only the special string `"ROOT"` or
+    a 2-256 char alphanumeric/underscore/period/hyphen/slash value),
     `untagged_image_retention_days` (`number`, default `7`),
-    `scan_on_push` (`bool`, default `true`),
     `tags` (`map(string)`, default `{}`).
+    (`scan_on_push` dropped — not exposed by the v6 template schema.)
 - [x] Add `validation` block on `upstream_registries`:
   - `condition = alltrue([for u in var.upstream_registries : contains(["ecr-public","quay","docker-hub","ghcr","kubernetes","mcr"], u)])`.
   - Clear error message listing the supported set.
@@ -287,18 +294,17 @@ DESIGN-0005, parameterized by `var.untagged_image_retention_days` and
       pull-through service principal `ecr:BatchImportUpstreamImage`
       access. (Verify exact action set against current ECR docs.)
 - [x] Add `aws_ecr_repository_creation_template.pull_through`:
-  - `prefix = var.repo_creation_template_prefix` (default `"*"`).
+  - `prefix = var.repo_creation_template_prefix` (default `"ROOT"` —
+    schema-driven from Q3; `"*"` is rejected by v6 plan-time validation).
   - `applied_for = ["PULL_THROUGH_CACHE"]`.
   - `image_tag_mutability = "MUTABLE"`.
   - `encryption_configuration { encryption_type = "AES256" }`.
-  - `repository_policy = data.aws_iam_policy_document.cache_repo_policy.json`.
   - `lifecycle_policy = jsonencode({ rules = [ { rulePriority = 1, description = "Prune untagged images after ${var.untagged_image_retention_days} days", selection = { tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = var.untagged_image_retention_days }, action = { type = "expire" } } ] })`.
-  - Scan configuration: verify exact AWS provider v6 attribute name —
-    DESIGN-0005's example references `scan_on_push = true` on the
-    template; the v6 schema may expose this as a nested
-    `scan_configuration` or `scanning_configuration` block. See Open
-    Questions Q3.
   - `resource_tags = var.tags`.
+  - `repository_policy` and `scan_on_push` dropped per Q3 — the v6
+    template schema does not expose `scan_on_push`, and an explicit
+    `repository_policy` is unnecessary (ECR auto-attaches a service
+    -principal policy to pull-through-created repos).
 - [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
@@ -389,8 +395,8 @@ resource scope.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/tests/` directory.
-- [ ] Create `tests/all_open.tftest.hcl`:
+- [x] Create `modules/eks/ecr-pull-through-cache/tests/` directory.
+- [x] Create `tests/all_open.tftest.hcl`:
   - `run "plan_open"`:
     `upstream_registries = ["ecr-public","kubernetes","mcr"]`.
     Assertions:
@@ -399,7 +405,7 @@ resource scope.
     - 1 `aws_ecr_repository_creation_template` resource.
     - 1 `aws_iam_policy` resource (default
       `enable_node_pull_through_policy = true`).
-- [ ] Create `tests/mixed.tftest.hcl`:
+- [x] Create `tests/mixed.tftest.hcl`:
   - `run "plan_mixed"`:
     `upstream_registries = ["ecr-public","docker-hub","ghcr"]`.
     Assertions:
@@ -409,37 +415,41 @@ resource scope.
     - 1 IAM policy.
   - Assertion: the docker-hub cache rule's `credential_arn` references
     the docker-hub Secrets Manager secret's ARN (not `null`).
+    *(Implementation note: at plan time the secret ARN is unknown, so
+    the assertion is structural — verify the docker-hub key exists in
+    `aws_secretsmanager_secret.upstream`, which guarantees the
+    for_each wiring in main.tf populates credential_arn.)*
   - Assertion: the ecr-public cache rule's `credential_arn` is `null`.
-- [ ] Create `tests/all_authenticated.tftest.hcl`:
+- [x] Create `tests/all_authenticated.tftest.hcl`:
   - `run "plan_auth"`: `upstream_registries = ["docker-hub","ghcr"]`.
     Assertions:
     - 2 cache rules, 2 secrets, 2 versions.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_bogus_upstream"`:
     `upstream_registries = ["bogus"]`.
     `expect_failures = [var.upstream_registries]`.
   - `run "negative_empty"`: `upstream_registries = []`.
     `expect_failures = [var.upstream_registries]`.
-- [ ] Create `tests/iam_gate.tftest.hcl`:
+- [x] Create `tests/iam_gate.tftest.hcl`:
   - `run "iam_disabled"`:
     `enable_node_pull_through_policy = false`,
     `upstream_registries = ["docker-hub"]`.
     Assertions:
     - 0 IAM policy resources.
     - `output.node_pull_through_policy_arn == null`.
-- [ ] Create `tests/lifecycle_json.tftest.hcl`:
+- [x] Create `tests/lifecycle_json.tftest.hcl`:
   - `run "default_retention"`: `untagged_image_retention_days = 7`.
     Assertion: encoded JSON of the creation template's
     `lifecycle_policy` contains `"countNumber":7`.
   - `run "custom_retention"`: `untagged_image_retention_days = 30`.
     Assertion: encoded JSON contains `"countNumber":30`.
-- [ ] Create `tests/iam_scope.tftest.hcl`:
+- [x] Create `tests/iam_scope.tftest.hcl`:
   - `run "policy_scope"`: with `region = "us-east-1"`.
     Assertion: IAM policy JSON's `Resource` field matches
     `arn:aws:ecr:us-east-1:*:repository/*` (the account-ID placeholder
     is resolved at plan time via
     `data.aws_caller_identity.current.account_id`).
-- [ ] Verify `just tf test eks/ecr-pull-through-cache` works
+- [x] Verify `just tf test eks/ecr-pull-through-cache` works
       module-agnostically.
 
 #### Success Criteria
