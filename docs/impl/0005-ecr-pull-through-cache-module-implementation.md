@@ -1,7 +1,7 @@
 ---
 id: IMPL-0005
 title: "ECR Pull-Through Cache Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-15
 ---
@@ -86,9 +86,13 @@ direct public-registry pulls without forcing per-image manifest rewrites.
   `aws_secretsmanager_secret_version` with placeholder body and
   `lifecycle.ignore_changes = [secret_string]` so operator-rotated values
   aren't clobbered.
-- One `aws_ecr_repository_creation_template` with `prefix = "*"`,
+- One `aws_ecr_repository_creation_template` with `prefix = "ROOT"`
+  (the v6-supported match-all special value; `"*"` is rejected by
+  plan-time validation per Q3 schema verification),
   `applied_for = ["PULL_THROUGH_CACHE"]`, parameterized untagged-image
-  retention via lifecycle policy, scan-on-push, and AES256 encryption.
+  retention via lifecycle policy, and AES256 encryption.
+  (scan_on_push dropped per Q3 — the v6 provider's template schema
+  does not expose it; ECR scan-on-push is per-account, out-of-scope.)
 - One gated `aws_iam_policy.node_pull_through[0]` (gated on
   `var.enable_node_pull_through_policy`) granting
   `ecr:CreateRepository` + `ecr:BatchImportUpstreamImage` on
@@ -129,29 +133,32 @@ unknown values at plan time. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/` directory.
-- [ ] Copy scaffolding files verbatim from `modules/eks/cluster/`:
+- [x] Create `modules/eks/ecr-pull-through-cache/` directory.
+- [x] Copy scaffolding files verbatim from `modules/eks/cluster/`:
       `.terraform-docs.yml`, `.tflint.hcl`, `README.md`, `USAGE.md`
       skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
       `>= 1.1`.
-- [ ] Create `variables.tf` with the full surface from DESIGN-0005:
+- [x] Create `variables.tf` with the full surface from DESIGN-0005:
   - Required: `region` (`string`), `name_prefix` (`string`),
     `upstream_registries` (`list(string)`).
   - Optional: `enable_node_pull_through_policy` (default `true`),
-    `repo_creation_template_prefix` (default `"*"`),
+    `repo_creation_template_prefix` (default `"ROOT"` — schema-driven
+    divergence from DESIGN-0005's speculative `"*"`; the v6 provider's
+    plan-time validation accepts only the special string `"ROOT"` or
+    a 2-256 char alphanumeric/underscore/period/hyphen/slash value),
     `untagged_image_retention_days` (`number`, default `7`),
-    `scan_on_push` (`bool`, default `true`),
     `tags` (`map(string)`, default `{}`).
-- [ ] Add `validation` block on `upstream_registries`:
+    (`scan_on_push` dropped — not exposed by the v6 template schema.)
+- [x] Add `validation` block on `upstream_registries`:
   - `condition = alltrue([for u in var.upstream_registries : contains(["ecr-public","quay","docker-hub","ghcr","kubernetes","mcr"], u)])`.
   - Clear error message listing the supported set.
-- [ ] Add `validation` block: `length(var.upstream_registries) > 0`
+- [x] Add `validation` block: `length(var.upstream_registries) > 0`
       (DESIGN-0005 §Testing Strategy plan-time assertion).
-- [ ] Create empty `main.tf`, `credentials.tf`, `template.tf`,
+- [x] Create empty `main.tf`, `credentials.tf`, `template.tf`,
       `iam.tf`, `locals.tf`, `outputs.tf` files.
-- [ ] Run `terraform init && terraform validate`.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate`.
+- [x] Run `tflint --init && tflint`.
 
 #### Success Criteria
 
@@ -173,7 +180,7 @@ Build the static catalog mapping each supported upstream to its `prefix`,
 
 #### Tasks
 
-- [ ] In `locals.tf`, add `local.upstream_catalog`:
+- [x] In `locals.tf`, add `local.upstream_catalog`:
 
   ```hcl
   local.upstream_catalog = {
@@ -186,12 +193,12 @@ Build the static catalog mapping each supported upstream to its `prefix`,
   }
   ```
 
-- [ ] In `locals.tf`, derive `local.selected = { for name in var.upstream_registries : name => local.upstream_catalog[name] }`.
-- [ ] In `locals.tf`, derive `local.authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }`.
-- [ ] In `locals.tf`, derive `local.account_id = data.aws_caller_identity.current.account_id`.
-- [ ] Add `data "aws_caller_identity" "current" {}` (ADR-0001
+- [x] In `locals.tf`, derive `local.selected = { for name in var.upstream_registries : name => local.upstream_catalog[name] }`.
+- [x] In `locals.tf`, derive `local.authenticated = { for name, cfg in local.selected : name => cfg if cfg.auth_required }`.
+- [x] In `locals.tf`, derive `local.account_id = data.aws_caller_identity.current.account_id`.
+- [x] Add `data "aws_caller_identity" "current" {}` (ADR-0001
       identity-class carve-out — same shape as cluster module).
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -213,18 +220,18 @@ post-apply.
 
 #### Tasks
 
-- [ ] In `credentials.tf`, add `aws_secretsmanager_secret.upstream` with
+- [x] In `credentials.tf`, add `aws_secretsmanager_secret.upstream` with
       `for_each = local.authenticated`:
   - `name = "ecr-pullthroughcache/${var.name_prefix}-${each.key}"`.
   - `description = "ECR pull-through cache credentials for ${each.value.upstream_url}"`.
   - `tags = var.tags`.
-- [ ] Add `aws_secretsmanager_secret_version.upstream` with
+- [x] Add `aws_secretsmanager_secret_version.upstream` with
       `for_each = local.authenticated`:
   - `secret_id = aws_secretsmanager_secret.upstream[each.key].id`.
   - `secret_string = jsonencode({ username = "REPLACE_ME", accessToken = "REPLACE_ME" })`.
   - `lifecycle { ignore_changes = [secret_string] }` so the operator-
     rotated value persists across `terraform apply` runs.
-- [ ] Add a README NOTE block (in the module's README, not USAGE.md)
+- [x] Add a README NOTE block (in the module's README, not USAGE.md)
       explaining the post-apply credential population step:
 
   ```sh
@@ -233,7 +240,7 @@ post-apply.
     --secret-string '{"username":"<user>","accessToken":"<token>"}'
   ```
 
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -257,12 +264,12 @@ open upstreams pass `credential_arn = null`.
 
 #### Tasks
 
-- [ ] In `main.tf`, add `aws_ecr_pull_through_cache_rule.this` with
+- [x] In `main.tf`, add `aws_ecr_pull_through_cache_rule.this` with
       `for_each = local.selected`:
   - `ecr_repository_prefix = each.value.prefix`.
   - `upstream_registry_url = each.value.upstream_url`.
   - `credential_arn = each.value.auth_required ? aws_secretsmanager_secret.upstream[each.key].arn : null`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -282,24 +289,23 @@ DESIGN-0005, parameterized by `var.untagged_image_retention_days` and
 
 #### Tasks
 
-- [ ] In `template.tf`, add `data "aws_iam_policy_document"
+- [x] In `template.tf`, add `data "aws_iam_policy_document"
       "cache_repo_policy"` — minimal repository policy granting the
       pull-through service principal `ecr:BatchImportUpstreamImage`
       access. (Verify exact action set against current ECR docs.)
-- [ ] Add `aws_ecr_repository_creation_template.pull_through`:
-  - `prefix = var.repo_creation_template_prefix` (default `"*"`).
+- [x] Add `aws_ecr_repository_creation_template.pull_through`:
+  - `prefix = var.repo_creation_template_prefix` (default `"ROOT"` —
+    schema-driven from Q3; `"*"` is rejected by v6 plan-time validation).
   - `applied_for = ["PULL_THROUGH_CACHE"]`.
   - `image_tag_mutability = "MUTABLE"`.
   - `encryption_configuration { encryption_type = "AES256" }`.
-  - `repository_policy = data.aws_iam_policy_document.cache_repo_policy.json`.
   - `lifecycle_policy = jsonencode({ rules = [ { rulePriority = 1, description = "Prune untagged images after ${var.untagged_image_retention_days} days", selection = { tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = var.untagged_image_retention_days }, action = { type = "expire" } } ] })`.
-  - Scan configuration: verify exact AWS provider v6 attribute name —
-    DESIGN-0005's example references `scan_on_push = true` on the
-    template; the v6 schema may expose this as a nested
-    `scan_configuration` or `scanning_configuration` block. See Open
-    Questions Q3.
   - `resource_tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+  - `repository_policy` and `scan_on_push` dropped per Q3 — the v6
+    template schema does not expose `scan_on_push`, and an explicit
+    `repository_policy` is unnecessary (ECR auto-attaches a service
+    -principal policy to pull-through-created repos).
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -321,18 +327,18 @@ tension point with ADR-0002 — see Open Questions Q1.
 
 #### Tasks
 
-- [ ] In `iam.tf`, add `data "aws_iam_policy_document" "node_pull_through"`
+- [x] In `iam.tf`, add `data "aws_iam_policy_document" "node_pull_through"`
       with `count = var.enable_node_pull_through_policy ? 1 : 0`:
   - One Allow statement, two actions: `ecr:CreateRepository`,
     `ecr:BatchImportUpstreamImage`.
   - `resources = ["arn:aws:ecr:${var.region}:${local.account_id}:repository/*"]`.
-- [ ] Add `aws_iam_policy.node_pull_through` with
+- [x] Add `aws_iam_policy.node_pull_through` with
       `count = var.enable_node_pull_through_policy ? 1 : 0`:
   - `name = "${var.name_prefix}-ecr-pull-through"`.
   - `description = "Permissions for EKS nodes to use ECR pull-through cache (consumed by managed-node-group var.extra_node_policies)"`.
   - `policy = data.aws_iam_policy_document.node_pull_through[0].json`.
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -352,7 +358,7 @@ Define the module's output contract per DESIGN-0005.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, define:
+- [x] In `outputs.tf`, define:
   - `cache_rule_arns` —
     `{ for k, r in aws_ecr_pull_through_cache_rule.this : k => r.id }`
     (or `.arn` — verify v6 schema; pull-through cache rules expose `id`
@@ -366,8 +372,8 @@ Define the module's output contract per DESIGN-0005.
   - `repository_creation_template_arn` —
     `aws_ecr_repository_creation_template.pull_through.arn` (verify
     schema; may be exposed under a different attribute name).
-- [ ] Run `terraform-docs .` to regenerate USAGE.md.
-- [ ] Commit USAGE.md.
+- [x] Run `terraform-docs .` to regenerate USAGE.md.
+- [x] Commit USAGE.md.
 
 #### Success Criteria
 
@@ -389,8 +395,8 @@ resource scope.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/tests/` directory.
-- [ ] Create `tests/all_open.tftest.hcl`:
+- [x] Create `modules/eks/ecr-pull-through-cache/tests/` directory.
+- [x] Create `tests/all_open.tftest.hcl`:
   - `run "plan_open"`:
     `upstream_registries = ["ecr-public","kubernetes","mcr"]`.
     Assertions:
@@ -399,7 +405,7 @@ resource scope.
     - 1 `aws_ecr_repository_creation_template` resource.
     - 1 `aws_iam_policy` resource (default
       `enable_node_pull_through_policy = true`).
-- [ ] Create `tests/mixed.tftest.hcl`:
+- [x] Create `tests/mixed.tftest.hcl`:
   - `run "plan_mixed"`:
     `upstream_registries = ["ecr-public","docker-hub","ghcr"]`.
     Assertions:
@@ -409,37 +415,41 @@ resource scope.
     - 1 IAM policy.
   - Assertion: the docker-hub cache rule's `credential_arn` references
     the docker-hub Secrets Manager secret's ARN (not `null`).
+    *(Implementation note: at plan time the secret ARN is unknown, so
+    the assertion is structural — verify the docker-hub key exists in
+    `aws_secretsmanager_secret.upstream`, which guarantees the
+    for_each wiring in main.tf populates credential_arn.)*
   - Assertion: the ecr-public cache rule's `credential_arn` is `null`.
-- [ ] Create `tests/all_authenticated.tftest.hcl`:
+- [x] Create `tests/all_authenticated.tftest.hcl`:
   - `run "plan_auth"`: `upstream_registries = ["docker-hub","ghcr"]`.
     Assertions:
     - 2 cache rules, 2 secrets, 2 versions.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_bogus_upstream"`:
     `upstream_registries = ["bogus"]`.
     `expect_failures = [var.upstream_registries]`.
   - `run "negative_empty"`: `upstream_registries = []`.
     `expect_failures = [var.upstream_registries]`.
-- [ ] Create `tests/iam_gate.tftest.hcl`:
+- [x] Create `tests/iam_gate.tftest.hcl`:
   - `run "iam_disabled"`:
     `enable_node_pull_through_policy = false`,
     `upstream_registries = ["docker-hub"]`.
     Assertions:
     - 0 IAM policy resources.
     - `output.node_pull_through_policy_arn == null`.
-- [ ] Create `tests/lifecycle_json.tftest.hcl`:
+- [x] Create `tests/lifecycle_json.tftest.hcl`:
   - `run "default_retention"`: `untagged_image_retention_days = 7`.
     Assertion: encoded JSON of the creation template's
     `lifecycle_policy` contains `"countNumber":7`.
   - `run "custom_retention"`: `untagged_image_retention_days = 30`.
     Assertion: encoded JSON contains `"countNumber":30`.
-- [ ] Create `tests/iam_scope.tftest.hcl`:
+- [x] Create `tests/iam_scope.tftest.hcl`:
   - `run "policy_scope"`: with `region = "us-east-1"`.
     Assertion: IAM policy JSON's `Resource` field matches
     `arn:aws:ecr:us-east-1:*:repository/*` (the account-ID placeholder
     is resolved at plan time via
     `data.aws_caller_identity.current.account_id`).
-- [ ] Verify `just tf test eks/ecr-pull-through-cache` works
+- [x] Verify `just tf test eks/ecr-pull-through-cache` works
       module-agnostically.
 
 #### Success Criteria
@@ -463,9 +473,9 @@ get filed for any LocalStack fidelity gaps.
 
 #### Tasks
 
-- [ ] Create `modules/eks/ecr-pull-through-cache/tests-localstack/`
+- [x] Create `modules/eks/ecr-pull-through-cache/tests-localstack/`
       directory.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl` (no setup
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl` (no setup
       fixture needed — this module reads no cluster state):
   - Provider block with the comprehensive `endpoints` map and
     LocalStack-friendly settings (mirror the cluster module's working
@@ -483,20 +493,28 @@ get filed for any LocalStack fidelity gaps.
     - `aws_iam_policy.node_pull_through[0].arn` populated.
     - Output `cache_url_prefixes["docker-hub"]` is a syntactically
       valid `<acct>.dkr.ecr.<region>.amazonaws.com/docker-hub` URL.
-- [ ] Create `tests-localstack/FINDINGS.md` capturing observed
+
+  *(Implementation outcome: this apply run hit three concrete
+  LocalStack 501s (CreatePullThroughCacheRule x2 +
+  CreateRepositoryCreationTemplate) and was commented out per the
+  Phase 9 task below. The active run in the file is a `plan_smoke`
+  against LocalStack — proves provider endpoint resolution + plan
+  -time validation. Full apply run preserved as commented HCL for
+  re-enable when LocalStack lands the two missing APIs.)*
+- [x] Create `tests-localstack/FINDINGS.md` capturing observed
       LocalStack Pro fidelity gaps per DESIGN-0005 §Testing Strategy
       (use as input into sneakystack / libtftest backlog):
   - Does LocalStack persist `aws_ecr_repository_creation_template`?
-    (Newer ECR API; expected to be partial.)
+    (Answered: **no** — 501.)
   - Does LocalStack validate the `credential_arn` reference on
     `aws_ecr_pull_through_cache_rule` against Secrets Manager?
-  - Does an actual `crictl pull` through the cache URL work? (Almost
-    certainly no — LocalStack ECR doesn't proxy to real Docker Hub.
-    Document as "out-of-scope-of-LocalStack" backlog for
-    sneakystack-vs-real-cluster planning.)
-- [ ] Verify `just tf test-localstack eks/ecr-pull-through-cache` works
+    (Cannot test — `aws_ecr_pull_through_cache_rule` itself 501s.)
+  - Does an actual `crictl pull` through the cache URL work?
+    (Filed as libtftest / sneakystack backlog — needs real cluster
+    AND ECR proxying to a real Docker Hub.)
+- [x] Verify `just tf test-localstack eks/ecr-pull-through-cache` works
       module-agnostically.
-- [ ] If any apply step 501s in LocalStack, comment out that block, log
+- [x] If any apply step 501s in LocalStack, comment out that block, log
       the gap in `FINDINGS.md`, and proceed — gap-discovery success per
       RFC-0001.
 
@@ -524,7 +542,7 @@ the post-apply credential population step, and how to wire
 
 #### Tasks
 
-- [ ] Update `modules/eks/ecr-pull-through-cache/README.md`:
+- [x] Update `modules/eks/ecr-pull-through-cache/README.md`:
   - Short pointer to USAGE.md.
   - Prerequisite section: the three VPC endpoints
     (`com.amazonaws.<region>.ecr.api`,
@@ -537,14 +555,14 @@ the post-apply credential population step, and how to wire
     `var.extra_node_policies` (forward-references IMPL-0002).
   - Image-reference rewriting note (out-of-scope; Helm/Kustomize
     layer).
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
       provider references (ADR-0011).
-- [ ] Final pass: confirm zero aliasing locals that re-export remote
+- [x] Final pass: confirm zero aliasing locals that re-export remote
       state (ADR-0001 / CLAUDE.md). This module reads no remote state
       anyway — confirm the only `data.*` call is
       `aws_caller_identity.current`.
-- [ ] Verify `just tf all eks/ecr-pull-through-cache` passes.
+- [x] Verify `just tf all eks/ecr-pull-through-cache` passes.
 
 #### Success Criteria
 
