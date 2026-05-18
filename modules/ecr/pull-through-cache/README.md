@@ -52,7 +52,7 @@ through the cache URL hangs at the manifest-resolve step.
 
 ```hcl
 module "ecr_pull_through_cache" {
-  source = "../../modules/eks/ecr-pull-through-cache"
+  source = "../../modules/ecr/pull-through-cache"
 
   region              = "us-east-1"
   name_prefix         = "platform"

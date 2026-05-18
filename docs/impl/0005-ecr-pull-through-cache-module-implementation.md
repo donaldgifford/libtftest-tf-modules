@@ -66,7 +66,7 @@ created: 2026-05-15
 
 ## Objective
 
-Implement `modules/eks/ecr-pull-through-cache` — the fleet-shared,
+Implement `modules/ecr/pull-through-cache` — the fleet-shared,
 account-level module that provisions ECR pull-through cache rules,
 Secrets-Manager-backed upstream credentials, ECR repository creation
 templates for auto-vivification, and the additional node IAM policy nodes
@@ -133,7 +133,7 @@ unknown values at plan time. No resources yet.
 
 #### Tasks
 
-- [x] Create `modules/eks/ecr-pull-through-cache/` directory.
+- [x] Create `modules/ecr/pull-through-cache/` directory.
 - [x] Copy scaffolding files verbatim from `modules/eks/cluster/`:
       `.terraform-docs.yml`, `.tflint.hcl`, `README.md`, `USAGE.md`
       skeleton.
@@ -395,7 +395,7 @@ resource scope.
 
 #### Tasks
 
-- [x] Create `modules/eks/ecr-pull-through-cache/tests/` directory.
+- [x] Create `modules/ecr/pull-through-cache/tests/` directory.
 - [x] Create `tests/all_open.tftest.hcl`:
   - `run "plan_open"`:
     `upstream_registries = ["ecr-public","kubernetes","mcr"]`.
@@ -449,7 +449,7 @@ resource scope.
     `arn:aws:ecr:us-east-1:*:repository/*` (the account-ID placeholder
     is resolved at plan time via
     `data.aws_caller_identity.current.account_id`).
-- [x] Verify `just tf test eks/ecr-pull-through-cache` works
+- [x] Verify `just tf test ecr/pull-through-cache` works
       module-agnostically.
 
 #### Success Criteria
@@ -473,7 +473,7 @@ get filed for any LocalStack fidelity gaps.
 
 #### Tasks
 
-- [x] Create `modules/eks/ecr-pull-through-cache/tests-localstack/`
+- [x] Create `modules/ecr/pull-through-cache/tests-localstack/`
       directory.
 - [x] Create `tests-localstack/apply_localstack.tftest.hcl` (no setup
       fixture needed — this module reads no cluster state):
@@ -512,7 +512,7 @@ get filed for any LocalStack fidelity gaps.
   - Does an actual `crictl pull` through the cache URL work?
     (Filed as libtftest / sneakystack backlog — needs real cluster
     AND ECR proxying to a real Docker Hub.)
-- [x] Verify `just tf test-localstack eks/ecr-pull-through-cache` works
+- [x] Verify `just tf test-localstack ecr/pull-through-cache` works
       module-agnostically.
 - [x] If any apply step 501s in LocalStack, comment out that block, log
       the gap in `FINDINGS.md`, and proceed — gap-discovery success per
@@ -520,7 +520,7 @@ get filed for any LocalStack fidelity gaps.
 
 #### Success Criteria
 
-- `just tf test-localstack eks/ecr-pull-through-cache` either:
+- `just tf test-localstack ecr/pull-through-cache` either:
   - **passes the apply end-to-end**, with all five output ARNs
     populated, OR
   - **fails with documented LocalStack-fidelity gaps** captured in
@@ -542,7 +542,7 @@ the post-apply credential population step, and how to wire
 
 #### Tasks
 
-- [x] Update `modules/eks/ecr-pull-through-cache/README.md`:
+- [x] Update `modules/ecr/pull-through-cache/README.md`:
   - Short pointer to USAGE.md.
   - Prerequisite section: the three VPC endpoints
     (`com.amazonaws.<region>.ecr.api`,
@@ -562,11 +562,11 @@ the post-apply credential population step, and how to wire
       state (ADR-0001 / CLAUDE.md). This module reads no remote state
       anyway — confirm the only `data.*` call is
       `aws_caller_identity.current`.
-- [x] Verify `just tf all eks/ecr-pull-through-cache` passes.
+- [x] Verify `just tf all ecr/pull-through-cache` passes.
 
 #### Success Criteria
 
-- `just tf all eks/ecr-pull-through-cache` passes (validate + lint +
+- `just tf all ecr/pull-through-cache` passes (validate + lint +
   fmt + test).
 - USAGE.md committed and reflects the final input/output contract.
 - README documents the three VPC endpoint prerequisites, the
@@ -581,27 +581,27 @@ the post-apply credential population step, and how to wire
 
 | File                                                                    | Action | Description                                                                                       |
 | ----------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
-| `modules/eks/ecr-pull-through-cache/main.tf`                            | Create | `aws_ecr_pull_through_cache_rule.this` (for_each over selected upstreams).                        |
-| `modules/eks/ecr-pull-through-cache/credentials.tf`                     | Create | Secrets Manager secret + version per authenticated upstream; `ignore_changes = [secret_string]`.  |
-| `modules/eks/ecr-pull-through-cache/template.tf`                        | Create | `aws_ecr_repository_creation_template.pull_through` with lifecycle JSON.                          |
-| `modules/eks/ecr-pull-through-cache/iam.tf`                             | Create | Gated `aws_iam_policy.node_pull_through[0]`.                                                      |
-| `modules/eks/ecr-pull-through-cache/locals.tf`                          | Create | Upstream catalog, selected map, authenticated map, account-id local.                              |
-| `modules/eks/ecr-pull-through-cache/variables.tf`                       | Create | Input surface with two validation blocks (unknown upstreams + empty list).                        |
-| `modules/eks/ecr-pull-through-cache/outputs.tf`                         | Create | Five outputs per DESIGN-0005.                                                                     |
-| `modules/eks/ecr-pull-through-cache/versions.tf`                        | Create | `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.                                                       |
-| `modules/eks/ecr-pull-through-cache/README.md`                          | Modify | Prereqs, post-apply secret population, node-group integration snippet.                            |
-| `modules/eks/ecr-pull-through-cache/USAGE.md`                           | Modify | Regenerated by terraform-docs.                                                                    |
-| `modules/eks/ecr-pull-through-cache/.terraform-docs.yml`                | Create | Copied verbatim from cluster module.                                                              |
-| `modules/eks/ecr-pull-through-cache/.tflint.hcl`                        | Create | Copied verbatim from cluster module.                                                              |
-| `modules/eks/ecr-pull-through-cache/tests/all_open.tftest.hcl`          | Create | Resource-count assertions for the all-open shape.                                                 |
-| `modules/eks/ecr-pull-through-cache/tests/mixed.tftest.hcl`             | Create | Resource-count + credential_arn wiring for mixed open/auth upstreams.                             |
-| `modules/eks/ecr-pull-through-cache/tests/all_authenticated.tftest.hcl` | Create | Resource-count assertions for the all-authenticated shape.                                       |
-| `modules/eks/ecr-pull-through-cache/tests/validation.tftest.hcl`        | Create | `expect_failures` on unknown upstream + empty list.                                               |
-| `modules/eks/ecr-pull-through-cache/tests/iam_gate.tftest.hcl`          | Create | `enable_node_pull_through_policy = false` produces zero IAM resources.                            |
-| `modules/eks/ecr-pull-through-cache/tests/lifecycle_json.tftest.hcl`    | Create | `untagged_image_retention_days` is embedded in the lifecycle JSON.                                |
-| `modules/eks/ecr-pull-through-cache/tests/iam_scope.tftest.hcl`         | Create | IAM policy resource ARN is scoped to `var.region` + account ID.                                   |
-| `modules/eks/ecr-pull-through-cache/tests-localstack/apply_localstack.tftest.hcl` | Create | Opt-in apply against LocalStack Pro — explicit gap-discovery surface.                  |
-| `modules/eks/ecr-pull-through-cache/tests-localstack/FINDINGS.md`       | Create | Captured LocalStack fidelity gaps feeding sneakystack/libtftest backlog.                          |
+| `modules/ecr/pull-through-cache/main.tf`                            | Create | `aws_ecr_pull_through_cache_rule.this` (for_each over selected upstreams).                        |
+| `modules/ecr/pull-through-cache/credentials.tf`                     | Create | Secrets Manager secret + version per authenticated upstream; `ignore_changes = [secret_string]`.  |
+| `modules/ecr/pull-through-cache/template.tf`                        | Create | `aws_ecr_repository_creation_template.pull_through` with lifecycle JSON.                          |
+| `modules/ecr/pull-through-cache/iam.tf`                             | Create | Gated `aws_iam_policy.node_pull_through[0]`.                                                      |
+| `modules/ecr/pull-through-cache/locals.tf`                          | Create | Upstream catalog, selected map, authenticated map, account-id local.                              |
+| `modules/ecr/pull-through-cache/variables.tf`                       | Create | Input surface with two validation blocks (unknown upstreams + empty list).                        |
+| `modules/ecr/pull-through-cache/outputs.tf`                         | Create | Five outputs per DESIGN-0005.                                                                     |
+| `modules/ecr/pull-through-cache/versions.tf`                        | Create | `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.                                                       |
+| `modules/ecr/pull-through-cache/README.md`                          | Modify | Prereqs, post-apply secret population, node-group integration snippet.                            |
+| `modules/ecr/pull-through-cache/USAGE.md`                           | Modify | Regenerated by terraform-docs.                                                                    |
+| `modules/ecr/pull-through-cache/.terraform-docs.yml`                | Create | Copied verbatim from cluster module.                                                              |
+| `modules/ecr/pull-through-cache/.tflint.hcl`                        | Create | Copied verbatim from cluster module.                                                              |
+| `modules/ecr/pull-through-cache/tests/all_open.tftest.hcl`          | Create | Resource-count assertions for the all-open shape.                                                 |
+| `modules/ecr/pull-through-cache/tests/mixed.tftest.hcl`             | Create | Resource-count + credential_arn wiring for mixed open/auth upstreams.                             |
+| `modules/ecr/pull-through-cache/tests/all_authenticated.tftest.hcl` | Create | Resource-count assertions for the all-authenticated shape.                                       |
+| `modules/ecr/pull-through-cache/tests/validation.tftest.hcl`        | Create | `expect_failures` on unknown upstream + empty list.                                               |
+| `modules/ecr/pull-through-cache/tests/iam_gate.tftest.hcl`          | Create | `enable_node_pull_through_policy = false` produces zero IAM resources.                            |
+| `modules/ecr/pull-through-cache/tests/lifecycle_json.tftest.hcl`    | Create | `untagged_image_retention_days` is embedded in the lifecycle JSON.                                |
+| `modules/ecr/pull-through-cache/tests/iam_scope.tftest.hcl`         | Create | IAM policy resource ARN is scoped to `var.region` + account ID.                                   |
+| `modules/ecr/pull-through-cache/tests-localstack/apply_localstack.tftest.hcl` | Create | Opt-in apply against LocalStack Pro — explicit gap-discovery surface.                  |
+| `modules/ecr/pull-through-cache/tests-localstack/FINDINGS.md`       | Create | Captured LocalStack fidelity gaps feeding sneakystack/libtftest backlog.                          |
 
 ## Testing Plan
 

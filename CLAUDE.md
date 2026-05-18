@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-A monorepo of AWS EKS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). The modules live under `modules/eks/`. Tracked in git. As of this writing: all five EKS modules are fully implemented — `modules/eks/cluster` (IMPL-0001), `modules/eks/managed-node-group` (IMPL-0002), `modules/eks/addons` (IMPL-0003), `modules/eks/pod-identity-access` (IMPL-0004), and `modules/eks/ecr-pull-through-cache` (IMPL-0005). The design and decision rationale for the EKS module fleet lives in `docs/adr/` (ADR-0001..0015) and `docs/design/` (DESIGN-0001..0005).
+A monorepo of AWS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). Modules are organized by service under `modules/<service>/`. Tracked in git. As of this writing:
+
+- **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002), `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+- **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously lived at `modules/eks/ecr-pull-through-cache` and was relocated when DESIGN-0006 surfaced a second ECR module). `org-registry` (DESIGN-0006, not yet implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
+
+The design and decision rationale for the fleet lives in `docs/adr/` (ADR-0001..0016), `docs/rfc/` (RFC-0001..0002), and `docs/design/` (DESIGN-0001..0006).
 
 ## Tooling
 
@@ -44,7 +49,7 @@ Don't hand-edit the README index tables; they're regenerated. MkDocs (TechDocs) 
 
 ## Per-module conventions
 
-Each `modules/eks/<name>/` directory is a self-contained Terraform module with this layout (only `cluster/` currently fills it out):
+Each `modules/<service>/<name>/` directory is a self-contained Terraform module with this layout (services are `eks/` and `ecr/`; the per-service split is by AWS API surface):
 
 - `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `versions.tf` — module sources
 - `README.md` — short pointer; the rendered docs go into `USAGE.md`
@@ -166,9 +171,9 @@ Implementation complete per IMPL-0004 (status: Completed). The module shape is n
 
 Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 
-### ECR Pull-Through Cache module shape
+### ECR Pull-Through Cache module shape (`modules/ecr/pull-through-cache`)
 
-Implementation complete per IMPL-0005 (status: Completed). The module shape is now:
+Implementation complete per IMPL-0005 (status: Completed). Originally implemented at `modules/eks/ecr-pull-through-cache` and relocated to `modules/ecr/` when DESIGN-0006 surfaced a second ECR module (`modules/ecr/org-registry`). The module shape is now:
 
 - **Inputs**: required (`region`, `name_prefix`, `upstream_registries` — list of any subset of `["ecr-public","quay","docker-hub","ghcr","kubernetes","mcr"]`, two validation blocks reject empty + unknown); optional (`enable_node_pull_through_policy` default `true` — ADR-0015 gate (a); `repo_creation_template_prefix` default `"ROOT"` — schema-driven divergence from DESIGN-0005's speculative `"*"` per IMPL-0005 Q3 because the v6 provider rejects `"*"`; `untagged_image_retention_days` default 7; `tags`). `var.scan_on_push` was dropped — not exposed by the v6 template schema per Q3 (ECR scan-on-push is per-account, out-of-scope).
 - **Data sources** (`main.tf`): only `data.aws_caller_identity.current` (ADR-0001 identity carve-out — used to scope the IAM policy's Resource ARN to this account's ECR repositories). The module reads NO remote state — it's fleet-shared and cluster-agnostic (one instantiation per account+region serves every cluster in that region).
@@ -180,8 +185,8 @@ Implementation complete per IMPL-0005 (status: Completed). The module shape is n
   - `aws_iam_policy.node_pull_through[0]` + `data.aws_iam_policy_document.node_pull_through[0]` — both count-gated on `var.enable_node_pull_through_policy`. Actions: `["ecr:CreateRepository", "ecr:BatchImportUpstreamImage"]`. Resource: `["arn:aws:ecr:${var.region}:${local.account_id}:repository/*"]` (public-AWS-only per IMPL-0005 Q4 — partition awareness deferred until a GovCloud consumer materializes). ADR-0015 gate (a): emission is opt-out at module instantiation. Gate (b) is at the consumer: the managed-node-group module's `var.extra_node_policies` is where the ARN gets attached to a node role.
 - **Outputs** (consumer contract): `cache_rule_ids` (map upstream → rule id — renamed from `_arns` per IMPL-0005 Q3; v6 exposes id not arn), `cache_url_prefixes` (map upstream → `<acct>.dkr.ecr.<region>.amazonaws.com/<prefix>`), `credential_secret_arns` (map upstream → secret ARN; empty for all-open instantiations), `node_pull_through_policy_arn` (null when gate (a) closed), `repository_creation_template_id` (renamed per Q3).
 - **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/eks/ecr-pull-through-cache/tests/` — plan-only suite. 7 files (`all_open.tftest.hcl`, `mixed.tftest.hcl`, `all_authenticated.tftest.hcl`, `validation.tftest.hcl`, `iam_gate.tftest.hcl`, `lifecycle_json.tftest.hcl`, `iam_scope.tftest.hcl`). Run with `just tf test eks/ecr-pull-through-cache`. ~6s for 9 runs, no LocalStack.
-  - `modules/eks/ecr-pull-through-cache/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md`: LocalStack Pro 2026.5.0 returns 501/NotImplemented for `ecr:CreatePullThroughCacheRule` and `ecr:CreateRepositoryCreationTemplate` — both ARE the module's reason to exist. Per IMPL-0005 Phase 9, the full apply run is preserved as commented HCL for re-enable when LocalStack lands those APIs; the active run is a `plan_smoke` against LocalStack (proves provider endpoint resolution + plan-time validation). FINDINGS.md filed both 501s as sneakystack backlog. The `crictl pull` through the cache URL + auto-vivification of pulled-through repos + operator credential rotation are libtftest/sneakystack backlog (RFC-0001 §Phase 3).
+  - `modules/ecr/pull-through-cache/tests/` — plan-only suite. 7 files (`all_open.tftest.hcl`, `mixed.tftest.hcl`, `all_authenticated.tftest.hcl`, `validation.tftest.hcl`, `iam_gate.tftest.hcl`, `lifecycle_json.tftest.hcl`, `iam_scope.tftest.hcl`). Run with `just tf test ecr/pull-through-cache`. ~6s for 9 runs, no LocalStack.
+  - `modules/ecr/pull-through-cache/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md`: LocalStack Pro 2026.5.0 returns 501/NotImplemented for `ecr:CreatePullThroughCacheRule` and `ecr:CreateRepositoryCreationTemplate` — both ARE the module's reason to exist. Per IMPL-0005 Phase 9, the full apply run is preserved as commented HCL for re-enable when LocalStack lands those APIs; the active run is a `plan_smoke` against LocalStack (proves provider endpoint resolution + plan-time validation). FINDINGS.md filed both 501s as sneakystack backlog. The `crictl pull` through the cache URL + auto-vivification of pulled-through repos + operator credential rotation are libtftest/sneakystack backlog (RFC-0001 §Phase 3).
 
 Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
 

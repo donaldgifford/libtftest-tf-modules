@@ -56,6 +56,12 @@ Two `aws_ecr_repository_creation_template` resources (one per managed
 prefix — `helm-charts/`, `tf-modules/`) govern lazy repo creation for the
 entire estate's internal Helm charts and Terraform modules.
 
+**Implementation target:** `modules/ecr/org-registry/` — a reusable
+Terraform module under the `modules/ecr/` namespace alongside
+`modules/ecr/pull-through-cache/` (formerly `modules/eks/ecr-pull-through-cache/`;
+relocated when the second ECR module materialized — see the CLAUDE.md
+note on the `modules/ecr/` namespace).
+
 ## Goals and Non-Goals
 
 ### Goals
@@ -555,16 +561,41 @@ other actions are scoped to the two managed prefixes.
 
 ## API / Interface Changes
 
-This design exposes no public Terraform module surface yet — the resources
-above are intended to live in the artifact-hosting account's root
-configuration. A future iteration may package them as a reusable internal
-module (input surface would be `org_id`, `region`, KMS overrides), but
-the v1 ask is to stand up the registry, not to ship a module.
+Packaged as `modules/ecr/org-registry/`, the module accepts the following
+input surface (final shape lands in IMPL; this is the design-time
+sketch):
 
-The publisher-side interface is the `aws_iam_policy.oci_publisher` ARN —
-emit it as a Terraform `output` (or reference via SSM Parameter Store)
-so downstream CI / IRSA roles can attach it without copy-pasting policy
-JSON.
+- `name_prefix` (string, required) — short prefix used to name the KMS
+  alias, IAM role, and IAM policy emitted by the module.
+- `kms_key_arn` (string, optional, default null) — when non-null, the
+  module skips creating its own KMS key and uses the caller-supplied
+  ARN for the templates' encryption. Null routes to the module-managed
+  key (matches the cluster module's KMS bring-your-own pattern).
+- `helm_charts_prefix` / `tf_modules_prefix` (string, defaults
+  `"helm-charts"` / `"tf-modules"`) — override only if the org has
+  pre-existing namespace conventions.
+- `pre_release_retention_days` (number, default 90) — drives lifecycle
+  rule 1's `countNumber` for both templates.
+- `untagged_retention_days` (number, default 7) — drives lifecycle rule
+  2's `countNumber`.
+- `tags` (map(string), default `{}`).
+
+Outputs (consumer contract):
+
+- `helm_charts_template_id` / `tf_modules_template_id` — the two
+  `aws_ecr_repository_creation_template` IDs.
+- `kms_key_arn` — the OCI KMS key ARN (module-managed or echoed
+  caller-supplied).
+- `publisher_policy_arn` — the `aws_iam_policy.oci_publisher` ARN.
+  Downstream CI / IRSA roles attach this directly; no copy-paste of
+  policy JSON.
+- `ecr_template_role_arn` — the ECR-assumed role's ARN, exposed for
+  observability / audit (consumers don't need to reference it
+  directly).
+
+The module reads NO remote state — it is fleet-shared and singleton per
+artifact-hosting account, matching the `modules/ecr/pull-through-cache/`
+pattern.
 
 ## Data Model
 
@@ -592,13 +623,13 @@ and libtftest for apply-time runtime validation.
   the two managed prefix ARNs.
 - The lifecycle policy JSON embeds `countNumber: 90` for rule 1 and
   `countNumber: 7` for rule 2 (mirrors the assertion shape in
-  `modules/eks/ecr-pull-through-cache/tests/lifecycle_json.tftest.hcl`).
+  `modules/ecr/pull-through-cache/tests/lifecycle_json.tftest.hcl`).
 
 ### Apply-time validation
 
 As of LocalStack Pro 2026.5.0, `aws_ecr_repository_creation_template` is
 **not implemented** — see
-`modules/eks/ecr-pull-through-cache/tests-localstack/FINDINGS.md` for the
+`modules/ecr/pull-through-cache/tests-localstack/FINDINGS.md` for the
 501 evidence captured during IMPL-0005 Phase 9. Until LocalStack lands
 the API, apply-time validation is a real-account smoke (the
 `helm push` / `aws ecr describe-repositories` verification recipe in
@@ -663,29 +694,12 @@ outside this design.
 
 ## Open Questions
 
-1. **Module packaging.** Should the resources above be packaged as a
-   reusable Terraform module under `modules/ecr/` in this repo, or kept
-   inline in the artifact-hosting account's root config? Argument for
-   packaging: reusability if a second org-wide registry instance is ever
-   needed (unlikely). Argument against: the registry is a singleton per
-   org, so abstraction adds indirection with no payoff. **Tentative
-   answer:** keep inline; revisit if a second instance materializes.
-
-2. **`scan_on_push` per-prefix vs per-account.** The pull-through-cache
-   module ([DESIGN-0005](0005-ecr-pull-through-cache-module.md)) found
-   that the v6 provider's template schema does NOT expose `scan_on_push`
-   ([IMPL-0005](../impl/0005-ecr-pull-through-cache-module-implementation.md)
-   Q3 outcome). ECR scan-on-push is per-account
-   (`aws_ecr_registry_scanning_configuration`). This design inherits the
-   same constraint — scan-on-push is out of scope here; enable it once
-   at the account level if desired.
-
-3. **`tf-modules/` lifecycle.** The current design uses the same lifecycle
+1. **`tf-modules/` lifecycle.** The current design uses the same lifecycle
    as `helm-charts/`. If product teams pin to old pre-release module tags
    beyond 90 days in practice, drop rule 1 from the `tf_modules` template.
    Defer until consumer behavior is observed.
 
-4. **`images/` namespace integration.** This design leaves the existing
+2. **`images/` namespace integration.** This design leaves the existing
    `images/` namespace alone. A future ADR may govern whether
    `images/` is migrated to a template-based model too, but that is out
    of scope here.
