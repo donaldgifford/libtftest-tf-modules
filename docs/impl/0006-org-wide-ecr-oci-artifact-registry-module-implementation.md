@@ -350,16 +350,16 @@ KMS encryption or `resource_tags`. This role is assumed by the
 
 #### Tasks
 
-- [ ] In `iam.tf`, add
+- [x] In `iam.tf`, add
       `data "aws_iam_policy_document" "ecr_template_assume"` with one
       statement allowing `sts:AssumeRole` for the `ecr.amazonaws.com`
       service principal.
-- [ ] In `iam.tf`, add `aws_iam_role.ecr_template`:
+- [x] In `iam.tf`, add `aws_iam_role.ecr_template`:
   - `name = local.template_role_name`.
   - `description = "Assumed by ECR when creating repos via creation templates (managed by org-registry module)"`.
   - `assume_role_policy = data.aws_iam_policy_document.ecr_template_assume.json`.
   - `tags = var.tags`.
-- [ ] In `iam.tf`, add
+- [x] In `iam.tf`, add
       `data "aws_iam_policy_document" "ecr_template"` with two
       statements:
   - `sid = "ManageRepoConfig"`: actions `["ecr:CreateRepository",
@@ -370,11 +370,11 @@ KMS encryption or `resource_tags`. This role is assumed by the
   - `sid = "UseKmsKey"`: actions `["kms:Encrypt", "kms:Decrypt",
     "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]`,
     resources `[local.kms_key_arn]`.
-- [ ] In `iam.tf`, add `aws_iam_role_policy.ecr_template`:
+- [x] In `iam.tf`, add `aws_iam_role_policy.ecr_template`:
   - `name = "${var.name_prefix}-ecr-template-permissions"`.
   - `role = aws_iam_role.ecr_template.id`.
   - `policy = data.aws_iam_policy_document.ecr_template.json`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
