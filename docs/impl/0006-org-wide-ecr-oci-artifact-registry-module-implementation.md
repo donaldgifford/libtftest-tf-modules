@@ -172,14 +172,14 @@ inputs at plan time. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/` directory.
-- [ ] Copy scaffolding files verbatim from
+- [x] Create `modules/ecr/org-registry/` directory.
+- [x] Copy scaffolding files verbatim from
       `modules/ecr/pull-through-cache/`: `.terraform-docs.yml`,
       `.tflint.hcl`, `README.md` stub, `USAGE.md` skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
       `>= 1.1` (matches the fleet pin; resolves to >= 6.8.0 in practice,
       which is the minimum for `IMMUTABLE_WITH_EXCLUSION`).
-- [ ] Create `variables.tf` with the input surface from DESIGN-0006:
+- [x] Create `variables.tf` with the input surface from DESIGN-0006:
   - Required: `name_prefix` (`string`).
   - Required: `organizations_org_id` (`string`) — the AWS Organizations
     ID (`o-...` format) used in the `aws:PrincipalOrgID` condition on
@@ -211,28 +211,30 @@ inputs at plan time. No resources yet.
       the policy locally. Default null = same-account-only mode (no
       cross-account access on the params).
     - `tags` (`map(string)`, default `{}`).
-- [ ] Add `validation` block on `pre_release_retention_days`:
+- [x] Add `validation` block on `pre_release_retention_days`:
       `pre_release_retention_days >= 1` (ECR rejects 0).
-- [ ] Add `validation` block on `untagged_retention_days`:
+- [x] Add `validation` block on `untagged_retention_days`:
       `untagged_retention_days >= 1`.
-- [ ] Add `validation` block on each of `helm_charts_prefix` /
+- [x] Add `validation` block on each of `helm_charts_prefix` /
       `tf_modules_prefix`: match the AWS provider v6 schema rule for
       `aws_ecr_repository_creation_template.prefix` —
       `length(value) >= 2 && length(value) <= 256 &&
       can(regex("^[a-zA-Z0-9_./-]+$", value))`. Reject the literal
       `"ROOT"` (we're using prefix-scoped templates, not the catch-all).
-- [ ] Add `validation` block on `organizations_org_id`: must match
+- [x] Add `validation` block on `organizations_org_id`: must match
       `^o-[a-z0-9]{10,32}$` (AWS Organizations ID format). Required
       input — no null fallback.
-- [ ] Add `validation` block on `ssm_cross_account_org_id`: when
+- [x] Add `validation` block on `ssm_cross_account_org_id`: when
       non-null, same format check as `organizations_org_id`.
-- [ ] Add `validation` block on `ssm_parameter_path_arn` and
+- [x] Add `validation` block on `ssm_parameter_path_arn` and
       `ssm_parameter_path_json`: must start with `/` (SSM parameter
       paths require leading slash).
-- [ ] Create empty `main.tf`, `kms.tf`, `iam.tf`, `templates.tf`,
+- [x] Create empty `main.tf`, `kms.tf`, `iam.tf`, `templates.tf`,
       `publisher.tf`, `ssm.tf`, `locals.tf`, `outputs.tf` files.
-- [ ] Run `terraform init && terraform validate`.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate`.
+- [x] Run `tflint --init && tflint` (unused-var/provider warnings
+      expected at this scaffolding stage; resolved naturally as
+      Phases 2-7 wire each variable into a resource).
 
 #### Success Criteria
 
