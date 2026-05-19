@@ -266,28 +266,28 @@ composition.
 
 #### Tasks
 
-- [ ] In `main.tf`, add `data "aws_caller_identity" "current" {}`
+- [x] In `main.tf`, add `data "aws_caller_identity" "current" {}`
       ([ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       identity-class carve-out — same shape as
       `modules/ecr/pull-through-cache/`).
-- [ ] In `locals.tf`, derive `local.account_id =
+- [x] In `locals.tf`, derive `local.account_id =
       data.aws_caller_identity.current.account_id` (used to scope IAM
       ARNs to this account's ECR repositories).
-- [ ] In `locals.tf`, derive
+- [x] In `locals.tf`, derive
       `local.kms_key_arn = coalesce(var.kms_key_arn,
       try(aws_kms_key.ecr_oci[0].arn, null))`. Meaningful conditional
       work — both templates and the ECR-template IAM role reference
       this single value (no aliasing local; consumed at the use site).
-- [ ] In `locals.tf`, compose the deterministic resource-name locals:
+- [x] In `locals.tf`, compose the deterministic resource-name locals:
       `kms_alias_name = "alias/${var.name_prefix}-ecr-oci"`,
       `template_role_name = "${var.name_prefix}-ecr-template"`,
       `publisher_policy_name = "${var.name_prefix}-oci-publisher"`.
-- [ ] **Do NOT** alias `var.organizations_org_id` into a local. Per
+- [x] **Do NOT** alias `var.organizations_org_id` into a local. Per
       [ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       and CLAUDE.md ("reference at the use site, not via aliasing
       locals"), `var.organizations_org_id` is referenced directly at
       its single use site in Phase 5's `org_pull` policy document.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -310,7 +310,7 @@ so the same code path works for both bring-your-own and module-managed.
 
 #### Tasks
 
-- [ ] In `kms.tf`, add `aws_kms_key.ecr_oci` count-gated on
+- [x] In `kms.tf`, add `aws_kms_key.ecr_oci` count-gated on
       `var.kms_key_arn == null`:
   - `description = "ECR encryption key for OCI artifact repos (${var.helm_charts_prefix}/*, ${var.tf_modules_prefix}/*)"`.
   - `enable_key_rotation = true`.
@@ -321,10 +321,10 @@ so the same code path works for both bring-your-own and module-managed.
     deletion while OCI repos may still depend on it. Operators
     unblock destruction by removing the `lifecycle` block in a
     deliberate PR (see Phase 11 README's destruction procedure).
-- [ ] In `kms.tf`, add `aws_kms_alias.ecr_oci` count-gated identically:
+- [x] In `kms.tf`, add `aws_kms_alias.ecr_oci` count-gated identically:
   - `name = local.kms_alias_name`.
   - `target_key_id = aws_kms_key.ecr_oci[0].key_id`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
