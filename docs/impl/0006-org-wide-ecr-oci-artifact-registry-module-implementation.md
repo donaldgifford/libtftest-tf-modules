@@ -400,7 +400,7 @@ Questions).
 
 #### Tasks
 
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `data "aws_iam_policy_document" "org_pull"`:
   - One statement granting `["ecr:BatchGetImage",
     "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability",
@@ -410,7 +410,7 @@ Questions).
     "aws:PrincipalOrgID"; values = [var.organizations_org_id] }`.
     Per Q2 (a): reference `var.organizations_org_id` directly here
     (the only use site); no aliasing local.
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `aws_ecr_repository_creation_template.helm_charts`:
   - `prefix = var.helm_charts_prefix`.
   - `applied_for = ["CREATE_ON_PUSH"]`.
@@ -428,13 +428,13 @@ Questions).
   - `repository_policy = data.aws_iam_policy_document.org_pull.json`.
   - `resource_tags = merge(var.tags, { artifact_type = "helm-chart",
     managed_by = "platform" })`.
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `aws_ecr_repository_creation_template.tf_modules` — identical
       shape to `helm_charts` except:
   - `prefix = var.tf_modules_prefix`.
   - `description = "Internal Terraform modules published as OCI artifacts"`.
   - `resource_tags`'s `artifact_type = "terraform-module"`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
