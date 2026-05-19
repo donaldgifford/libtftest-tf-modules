@@ -37,4 +37,5 @@ docz create design "Your Design Title"
 | DESIGN-0003 | EKS Addons Module | Accepted | 2026-05-13 | Donald Gifford | [0003-eks-addons-module.md](0003-eks-addons-module.md) |
 | DESIGN-0004 | EKS Pod Identity Access Module | Accepted | 2026-05-13 | Donald Gifford | [0004-eks-pod-identity-access-module.md](0004-eks-pod-identity-access-module.md) |
 | DESIGN-0005 | ECR Pull-Through Cache Module | Draft | 2026-05-15 | Donald Gifford | [0005-ecr-pull-through-cache-module.md](0005-ecr-pull-through-cache-module.md) |
+| DESIGN-0006 | Org-wide ECR OCI Artifact Registry | Draft | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry.md](0006-org-wide-ecr-oci-artifact-registry.md) |
 <!-- END DOCZ AUTO-GENERATED -->

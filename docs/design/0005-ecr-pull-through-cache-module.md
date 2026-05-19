@@ -135,7 +135,7 @@ end-to-end `terraform test` apply-LocalStack coverage per RFC-0001.
 ### Module layout
 
 ```sh
-modules/eks/ecr-pull-through-cache/
+modules/ecr/pull-through-cache/
 ├── main.tf              # aws_ecr_pull_through_cache_rule resources
 ├── credentials.tf       # aws_secretsmanager_secret + version (for auth'd upstreams)
 ├── template.tf          # aws_ecr_repository_creation_template (auto-vivify rules)
