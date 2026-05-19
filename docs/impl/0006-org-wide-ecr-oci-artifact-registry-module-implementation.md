@@ -505,7 +505,7 @@ templates' org-wide pull policy.
 
 #### Tasks
 
-- [ ] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_arn`:
+- [x] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_arn`:
   - `count = var.publish_to_ssm ? 1 : 0`.
   - `name = var.ssm_parameter_path_arn`
     (default `/platform/ecr-oci-publisher-policy-arn`).
@@ -515,7 +515,7 @@ templates' org-wide pull policy.
     (Advanced is required to attach a resource-based policy).
   - `description = "ARN of the org-wide ECR OCI publisher IAM policy. Attach to CI / IRSA roles in the artifact-hosting account."`.
   - `tags = var.tags`.
-- [ ] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_json`:
+- [x] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_json`:
   - Same `count` gate.
   - `name = var.ssm_parameter_path_json`
     (default `/platform/ecr-oci-publisher-policy-json`).
@@ -527,22 +527,19 @@ templates' org-wide pull policy.
   - `tier` same expression as the ARN parameter.
   - `description = "Full JSON of the org-wide ECR OCI publisher IAM policy. Cross-account consumers read this and recreate the policy in their own accounts."`.
   - `tags = var.tags`.
-- [ ] **Cross-account resource-based policies on the parameters.**
-      When `var.ssm_cross_account_org_id != null`, grant org-wide
-      `ssm:GetParameter` on both parameters. **Provider schema
-      caveat (per IMPL-0005 Q3 pattern):** verify at implementation
-      time whether `hashicorp/aws ~> 6.2` exposes a dedicated
-      resource for SSM parameter resource-based policies (e.g.,
-      `aws_ssm_resource_data_sync` is NOT it; the candidate is
-      `aws_ssm_resource_policy` if/when it exists, or an inline
-      `policy` attribute on `aws_ssm_parameter`). If neither exists
-      in v6, document the gap in README under "Cross-account
-      consumer wiring" and emit the policy JSON as an additional
-      output for operators to attach via AWS CLI
-      (`aws ssm put-resource-policy`). Mirror the IMPL-0005
-      `prefix = "*"` → `prefix = "ROOT"` divergence pattern:
-      schema-driven adjustment, documented inline.
-- [ ] Add `data.aws_iam_policy_document.ssm_org_read[0]`
+- [x] **Cross-account resource-based policies on the parameters.**
+      **Schema gap confirmed:** `hashicorp/aws ~> 6.2` (v6.45.0) does
+      NOT expose `aws_ssm_resource_policy` and `aws_ssm_parameter`
+      has no inline access-policy attribute. Mirrors the IMPL-0005
+      `prefix = "*"` → `prefix = "ROOT"` divergence pattern. The
+      module emits `data.aws_iam_policy_document.ssm_org_read` JSON
+      as an additional output (`ssm_org_read_policy_json`); README
+      documents the `aws ssm put-resource-policy` CLI recipe for
+      operators to attach manually after apply. Parameter `tier`
+      flips to `Advanced` when
+      `var.ssm_cross_account_org_id != null` to satisfy the
+      Advanced-tier prerequisite for resource-based policies.
+- [x] Add `data.aws_iam_policy_document.ssm_org_read[0]`
       (count-gated on `var.ssm_cross_account_org_id != null`) with
       one statement:
   - `actions = ["ssm:GetParameter", "ssm:GetParameters"]`.
@@ -551,7 +548,9 @@ templates' org-wide pull policy.
   - `principals { type = "*"; identifiers = ["*"] }` constrained
     by `condition { test = "StringEquals"; variable =
     "aws:PrincipalOrgID"; values = [var.ssm_cross_account_org_id] }`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint` (one unused-data
+      warning on `ssm_org_read` clears in Phase 8 when outputs
+      reference it).
 
 #### Success Criteria
 
@@ -581,7 +580,7 @@ Changes section.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, add:
+- [x] In `outputs.tf`, add:
   - `helm_charts_template_id` — the helm_charts template's `id`
     attribute (per v6 schema, the resource exposes `id` not `arn`; cf.
     [IMPL-0005](0005-ecr-pull-through-cache-module-implementation.md)
@@ -597,12 +596,16 @@ Changes section.
     `try(aws_ssm_parameter.publisher_policy_arn[0].name, null)`.
   - `publisher_policy_ssm_json_parameter_name` — same for the JSON
     parameter.
-- [ ] Add clear `description` strings on each output explaining the
+  - `ssm_org_read_policy_json` (added per Phase 7 schema gap) —
+    resource-based policy JSON for operators to attach manually
+    via `aws ssm put-resource-policy` (null when cross-account
+    distribution is not configured).
+- [x] Add clear `description` strings on each output explaining the
       consumer use case (e.g., "attach this to CI / IRSA roles";
       "cross-account consumers read this SSM parameter to recreate
       the publisher policy in their own account").
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 

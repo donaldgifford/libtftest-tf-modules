@@ -33,23 +33,11 @@ data "aws_iam_policy_document" "org_pull" {
 #--------------------------------------------------------------
 
 resource "aws_ecr_repository_creation_template" "helm_charts" {
-  prefix      = var.helm_charts_prefix
-  applied_for = ["CREATE_ON_PUSH"]
-  description = "Internal Helm charts published as OCI artifacts"
-
+  applied_for          = ["CREATE_ON_PUSH"]
+  custom_role_arn      = aws_iam_role.ecr_template.arn
+  description          = "Internal Helm charts published as OCI artifacts"
   image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
-
-  image_tag_mutability_exclusion_filter {
-    filter      = "latest"
-    filter_type = "WILDCARD"
-  }
-
-  encryption_configuration {
-    encryption_type = "KMS"
-    kms_key         = local.kms_key_arn
-  }
-
-  custom_role_arn = aws_iam_role.ecr_template.arn
+  prefix               = var.helm_charts_prefix
 
   lifecycle_policy = jsonencode({
     rules = [
@@ -89,26 +77,24 @@ resource "aws_ecr_repository_creation_template" "helm_charts" {
     artifact_type = "helm-chart"
     managed_by    = "platform"
   })
-}
-
-resource "aws_ecr_repository_creation_template" "tf_modules" {
-  prefix      = var.tf_modules_prefix
-  applied_for = ["CREATE_ON_PUSH"]
-  description = "Internal Terraform modules published as OCI artifacts"
-
-  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
-
-  image_tag_mutability_exclusion_filter {
-    filter      = "latest"
-    filter_type = "WILDCARD"
-  }
 
   encryption_configuration {
     encryption_type = "KMS"
     kms_key         = local.kms_key_arn
   }
 
-  custom_role_arn = aws_iam_role.ecr_template.arn
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest"
+    filter_type = "WILDCARD"
+  }
+}
+
+resource "aws_ecr_repository_creation_template" "tf_modules" {
+  applied_for          = ["CREATE_ON_PUSH"]
+  custom_role_arn      = aws_iam_role.ecr_template.arn
+  description          = "Internal Terraform modules published as OCI artifacts"
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
+  prefix               = var.tf_modules_prefix
 
   lifecycle_policy = jsonencode({
     rules = [
@@ -148,4 +134,14 @@ resource "aws_ecr_repository_creation_template" "tf_modules" {
     artifact_type = "terraform-module"
     managed_by    = "platform"
   })
+
+  encryption_configuration {
+    encryption_type = "KMS"
+    kms_key         = local.kms_key_arn
+  }
+
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest"
+    filter_type = "WILDCARD"
+  }
 }

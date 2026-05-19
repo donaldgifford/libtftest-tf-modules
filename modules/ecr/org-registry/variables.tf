@@ -11,12 +11,13 @@ variable "name_prefix" {
 variable "organizations_org_id" {
   description = "AWS Organizations ID (o-...) used in the aws:PrincipalOrgID condition on the org-wide pull policy embedded in both creation templates. Caller-supplied — the module does NOT read this via data.aws_organizations_organization (per IMPL-0006 Q2 (a) / ADR-0001 explicit-input posture)."
   type        = string
-  nullable    = false
 
   validation {
     condition     = can(regex("^o-[a-z0-9]{10,32}$", var.organizations_org_id))
     error_message = "organizations_org_id must be an AWS Organizations ID matching ^o-[a-z0-9]{10,32}$ (e.g. o-abc1234567)."
   }
+
+  nullable = false
 }
 
 #--------------------------------------------------------------
