@@ -277,6 +277,11 @@ so the same code path works for both bring-your-own and module-managed.
   - `enable_key_rotation = true`.
   - `deletion_window_in_days = 30`.
   - `tags = var.tags`.
+  - `lifecycle { prevent_destroy = true }` — guard per Q8. Stops
+    `terraform destroy` / `terraform apply` from scheduling key
+    deletion while OCI repos may still depend on it. Operators
+    unblock destruction by removing the `lifecycle` block in a
+    deliberate PR (see Phase 10 README's destruction procedure).
 - [ ] In `kms.tf`, add `aws_kms_alias.ecr_oci` count-gated identically:
   - `name = local.kms_alias_name`.
   - `target_key_id = aws_kms_key.ecr_oci[0].key_id`.
@@ -287,6 +292,11 @@ so the same code path works for both bring-your-own and module-managed.
 - `terraform validate` and `tflint` pass.
 - With default (`kms_key_arn = null`), plan contains exactly one
   `aws_kms_key.ecr_oci` and one `aws_kms_alias.ecr_oci`.
+- The module-managed `aws_kms_key.ecr_oci[0]` has a
+  `lifecycle { prevent_destroy = true }` block (visible in the plan
+  output / Terraform source — the block itself isn't surfaced via
+  attributes; verified by code-review checkbox at Phase 10 final
+  audit).
 - With `kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/bring-your-own"`,
   plan contains zero KMS resources from this module; `local.kms_key_arn`
   echoes the BYO ARN.
@@ -601,20 +611,37 @@ API.
     template IDs populated, role + policy ARNs populated). Preserve
     as commented-out HCL so future LocalStack releases enable it by
     uncomment-only.
+- [ ] Implement **Pro-tier auto-detection** per Q3 in the
+      `just tf test-localstack ecr/org-registry` invocation. The
+      `tests-localstack/` suite uses `var.organizations_org_id`
+      (BYO org ID) so the AWS Organizations API call is not exercised
+      against LocalStack; this means the suite is **runnable against
+      LocalStack Community (free-tier)** for this module. ECR's
+      pull-through-cache + creation-template APIs were observed as
+      501 against LocalStack Pro 2026.5.0 (IMPL-0005 Finding #1);
+      they are also missing from Community. Both tiers therefore land
+      at the same plan-only smoke surface for this module. Document
+      this in `FINDINGS.md`.
 - [ ] Create `tests-localstack/FINDINGS.md` capturing:
   - **Finding #1 (inherited from IMPL-0005 Phase 9):** LocalStack
     Pro 2026.5.0 returns 501 for
     `CreateRepositoryCreationTemplate`. Both this module's templates
     hit the same API. Cross-reference
     `modules/ecr/pull-through-cache/tests-localstack/FINDINGS.md`
-    rather than duplicate the evidence.
-  - **Finding #2 (to investigate):** Does LocalStack Pro 2026.5.0
-    serve `data.aws_organizations_organization`? Document outcome.
-    If yes, the test could drop the `organizations_org_id` var and
-    let the data source resolve. If no (likely — Organizations is
-    typically AWS-account-level admin surface, not LocalStack-modeled),
-    file as sneakystack backlog and document the workaround (BYO org
-    ID).
+    rather than duplicate the evidence. The 501 is the same on
+    LocalStack Community — no tier difference for this surface.
+  - **Finding #2 (Pro-tier auto-detection — fleet principle, Q3):**
+    Per the user's testing guidance, `tests-localstack/` suites
+    should detect LocalStack tier (Pro vs Community) at invocation
+    time and skip Pro-only test cases when running against
+    Community. For THIS module the question is moot — the suite
+    uses `var.organizations_org_id` to side-step the
+    `aws_organizations_organization` Pro-only API, and the ECR
+    creation-template APIs 501 on both tiers. The fleet-wide
+    Pro-detection harness lives outside this module (a `justfile`
+    helper or a CI step probing `/_localstack/info`). Filed as a
+    follow-up under the existing testing strategy in RFC-0001 §Phase
+    3 — no per-module work here.
   - **Out-of-scope of LocalStack (libtftest/sneakystack backlog):**
     `helm push` through the create-on-push path; auto-vivification
     of `helm-charts/*` repos; lifecycle-policy enforcement on
@@ -646,12 +673,17 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
 - [ ] Update `modules/ecr/org-registry/README.md`:
   - Short pointer to USAGE.md.
   - Overview + RFC-0002 / ADR-0016 / DESIGN-0006 cross-references.
-  - **Prerequisite: Organizations access.** The module's
-    `data.aws_organizations_organization.this` requires
-    `organizations:DescribeOrganization`, which is only available
-    from the Organizations management account or a delegated admin.
-    Callers without this permission MUST pass
-    `var.organizations_org_id`.
+  - **Prerequisite: org ID supply path.** Final wording depends on
+    Q2 resolution. Two shapes:
+    - **Q2 (a) — required input.** "Pass the org ID literal to
+      `var.organizations_org_id` (12-char `o-...` string). Available
+      in the AWS console under Organizations → Settings, or via
+      `aws organizations describe-organization --query
+      'Organization.Id' --output text`."
+    - **Q2 (b) — remote state.** "This module reads `org_id` from
+      `s3://<remote_state_bucket>/<region>/organizations/terraform.tfstate`.
+      That stack must exist and export `org_id` before this module
+      can plan."
   - Post-apply smoke recipe — the `helm registry login` + `helm push`
     + `aws ecr describe-repositories` recipe from DESIGN-0006 §Testing
     Strategy.
@@ -660,15 +692,27 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
     managed policy; same-account: use `aws_iam_role_policy_attachment`
     referencing the output ARN).
   - **Operational gotchas** (mirrors ADR-0016 §Consequences):
-    - Template edits don't backfill existing repos. Provide the
-      bulk-`put-lifecycle-policy` script as a copy-paste snippet
-      (DESIGN-0006 §Cleanup notes).
+    - Template edits don't backfill existing repos (Q4: greenfield
+      assumption — if pre-existing OCI repos appear later, handle
+      via a one-shot operational PR outside this module; no
+      module-emitted migration tooling).
     - `ecr:CreateRepository` is the critical permission for
       publishers; absence yields confusing first-push errors.
-    - The module's KMS key has a 30-day deletion window; destroying
-      the module schedules deletion of all OCI artifact repos'
-      encryption key. Operators should empty + delete repos BEFORE
-      destroying the module to avoid the schedule.
+    - **KMS key destruction procedure** (per Q8). The module-managed
+      key has `lifecycle.prevent_destroy = true`. Two-step unlock to
+      retire the registry:
+      1. Empty + delete every repo under `<helm_charts_prefix>/*`
+         and `<tf_modules_prefix>/*` (the
+         `aws ecr describe-repositories | aws ecr delete-repository
+         --force` loop). The module's templates do NOT track or
+         delete these repos — they materialize lazily and live
+         independently of the module's state.
+      2. Open a deliberate PR removing the `lifecycle` block on
+         `aws_kms_key.ecr_oci`, then run `terraform destroy`. The
+         30-day deletion window starts AFTER apply.
+      Skipping step 1 leaves OCI artifact repos depending on a key
+      that's scheduled for deletion — all repos under the managed
+      prefixes become unreadable on day 30.
 - [ ] Regenerate `USAGE.md` via `terraform-docs .`.
 - [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
       provider references
@@ -745,6 +789,12 @@ Driven by [RFC-0001](../rfc/0001-module-testing-strategy-terraform-test-as-basel
   commented HCL pending LocalStack support for
   `CreateRepositoryCreationTemplate` (inherited 501 from IMPL-0005).
   Findings captured in `FINDINGS.md`.
+  Suite is designed to run against either **LocalStack Community
+  (free-tier)** or **LocalStack Pro** — uses `var.organizations_org_id`
+  to side-step the Pro-only Organizations API. Per Q3, the
+  fleet-wide Pro-detection harness (probing `/_localstack/info` and
+  skipping Pro-only cases when running Community) is a separate
+  workstream; this module's suite is tier-agnostic by construction.
 - **Post-apply smoke (operator)** — `helm push` + `aws ecr
   describe-repositories` recipe documented in README; exercised on a
   real account during initial rollout. Not automated; not part of CI.
@@ -766,199 +816,190 @@ Driven by [RFC-0001](../rfc/0001-module-testing-strategy-terraform-test-as-basel
 
 ## Open Questions
 
-These are surfaced for review before implementation begins. Each
-should resolve to a one-line answer that lands in the relevant Phase's
-Tasks section.
+First-round answers received 2026-05-18. Q1 / Q4 / Q5 / Q6 / Q8
+fully resolved and folded into the relevant phases. Q2 / Q3 / Q7 are
+still open with sharper follow-up questions below.
 
-### Q1 — `name_prefix` semantics: prefix every resource name, or hardcode singletons?
+### Q1 — `name_prefix` semantics — RESOLVED (b)
 
-DESIGN-0006 §API says `name_prefix` "drives names of the KMS alias,
-IAM role, and IAM policy." But the reference Terraform in DESIGN-0006
-hardcodes those names (`alias/ecr-oci-artifacts`,
-`ecr-repository-creation-template`, `ecr-oci-publisher`) — they're
-singletons per artifact-hosting account, so prefixing isn't strictly
-required.
+**Resolved (b):** prefix every resource name with `var.name_prefix`.
+The module produces `alias/${name_prefix}-ecr-oci`,
+`${name_prefix}-ecr-template`, `${name_prefix}-oci-publisher`. Phase
+1 / 2 / 4 / 6 tasks already assume this — no doc changes needed.
 
-**Options:**
+### Q2 — `data.aws_organizations_organization` permission scope — STILL OPEN
 
-1. **(a) Hardcode** the three names; drop `var.name_prefix` from the
-   variable surface. Pro: simpler; matches DESIGN-0006's reference
-   Terraform exactly. Con: divergence from the
-   pull-through-cache module's `var.name_prefix` convention.
-2. **(b) Prefix every name** with `var.name_prefix` (e.g.,
-   `alias/${name_prefix}-ecr-oci`,
-   `${name_prefix}-ecr-template`,
-   `${name_prefix}-oci-publisher`). Pro: fleet consistency with
-   pull-through-cache; enables multiple instances per account if
-   ever needed (unlikely but cheap). Con: the design's reference
-   Terraform's names become un-clean.
-3. **(c) Per-resource name overrides** (`var.kms_alias_name`,
-   `var.template_role_name`, `var.publisher_policy_name`) with no
-   `var.name_prefix`. Maximum flexibility; most surface.
+Direction from first-round review: "depends on the data needed from
+the org; could be a remote state set or just inputs added to simplify
+as well — need more info on this."
 
-**Tentative recommendation:** (b). The Phase 1/2/4/6 tasks above
-already assume (b); flip to (a) by removing `var.name_prefix` and
-hardcoding the names if you prefer.
+**The data actually needed by this design.** The reference Terraform
+in DESIGN-0006 reads exactly one field:
+`data.aws_organizations_organization.this.id` (the org ID, e.g.,
+`o-abc1234567`). It is consumed in one place: the `aws:PrincipalOrgID`
+condition on the org-wide pull policy. **Nothing else from
+Organizations is referenced.** No OU listing, no account listing, no
+delegated-admin lookup.
 
-**Action needed:** confirm (b), or pick (a) / (c).
+That narrows the options to two paths, both simpler than the original
+draft:
 
-### Q2 — `data.aws_organizations_organization` permission scope
+1. **(a) Required string input `var.organizations_org_id`.** The
+   caller's Terragrunt config supplies the literal value. Zero data
+   sources. Zero permission concerns. Matches the existing fleet's
+   "all cross-stack data is either remote state or explicit input"
+   posture
+   ([ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)).
+2. **(b) Remote-state read.** If the parent org has an existing
+   Terraform stack managing AWS Organizations (account vending /
+   landing zone / control tower), this module reads
+   `data.terraform_remote_state.organizations.outputs.org_id` from a
+   well-known S3 key — matches the EKS modules' cross-module pattern.
+   The state key convention would be something like
+   `${var.region}/organizations/terraform.tfstate`. Requires that
+   stack to exist and export `org_id`.
 
-The reference Terraform's `data "aws_organizations_organization" "this" {}`
-requires `organizations:DescribeOrganization`, which is only
-available from:
+   Module input surface for (b) becomes: `var.remote_state_bucket`,
+   `var.region`, hard-coded state-key
+   (`organizations/terraform.tfstate` or similar).
 
-- the AWS Organizations **management account**, or
-- a **delegated administrator** for the relevant service (Organizations
-  itself, or sometimes a per-service delegation).
+The original (b) — "data source by default with var fallback" — is
+**off the table** because (i) the data source isn't really useful when
+only the org ID is needed (no dynamic data) and (ii) the fallback path
+already covers the workload-account case adequately, so duplicating it
+with a data source just adds surface.
 
-If the artifact-hosting account is a **workload account** (not the
-management account and not a delegated admin), the data source fails
-at plan time with `AccessDeniedException`.
+**Follow-up questions for you:**
 
-**Options:**
+1. Is there an existing Terraform stack in the org that manages AWS
+   Organizations and exports `org_id` (or similar) as an output?
+   - If YES: name the S3 backend bucket + the state-key path you want
+     this module to read. I'll wire it as remote-state lookup per (b).
+   - If NO: go with (a) — required `var.organizations_org_id`. The
+     Terragrunt config in the artifact-hosting account supplies the
+     literal value (one-line entry).
+2. Independent of (1): is there a reason this module might ever need
+   anything else from Organizations later (OU IDs for OU-scoped pull
+   policies, delegated-admin lookups, account enumeration for
+   cross-account access bootstrap)? If yes, we keep the door open for
+   a data source in v2; otherwise (a) or (b) is the permanent shape.
 
-1. **(a) Always use the data source.** Assumes admin permissions
-   present. Hard fail if not — clear error message but no graceful
-   fallback.
-2. **(b) Module-managed by default, var override** (the current Phase
-   1 plan). `var.organizations_org_id == null` → data source;
-   non-null → use the var. Best of both worlds; the test suite uses
-   the var path to avoid permissions concerns.
-3. **(c) Always require the var.** No data source. Simpler module
-   code; pushes the responsibility (and the var value) into the
-   caller's Terragrunt config.
+**Tentative recommendation pending your answer:** (a) — required
+`var.organizations_org_id` input — as the simplest path. Swap to (b)
+if there is a usable org-managing Terraform stack.
 
-**Tentative recommendation:** (b). Implemented in the Phase 1/2/8
-tasks. If artifact-hosting is **always** in an org-admin position,
-(a) is simpler; if **always** a workload account, (c) avoids the
-gated data source entirely.
+### Q3 — Pro-tier auto-detection in `tests-localstack/` — DIRECTIONALLY RESOLVED
 
-**Action needed:** confirm (b), or pick (a) / (c). Also: **which AWS
-account will host this module?** Management account, delegated admin,
-or workload account?
+Direction from first-round review: "testing should always check if pro
+is used, if not revert to non pro tests."
 
-### Q3 — LocalStack Pro fidelity for `data.aws_organizations_organization`
+**Resolution baked in:**
 
-Even if the production-side answer to Q2 is (b) or (a), the
-`tests-localstack/` suite needs the data source to resolve against
-LocalStack. Unknown whether LocalStack Pro 2026.5.0 models
-`organizations:DescribeOrganization`. The Phase 9 plan uses the BYO
-org-ID path (`var.organizations_org_id = "o-tftest1234"`) to
-side-step this question, then files the LocalStack support outcome
-in FINDINGS.md.
+- For THIS module's `tests-localstack/`: the suite uses
+  `var.organizations_org_id` (BYO org ID) and a `plan_smoke` against
+  LocalStack endpoints. **No Pro-only API is touched at test time.**
+  The suite runs identically against LocalStack Community and Pro.
+  This is documented in `FINDINGS.md` (Finding #2) per the updated
+  Phase 9 plan.
+- For the fleet (cross-module): a true "auto-detect Pro, skip Pro-only
+  cases on Community" harness lives in `justfile` (probe
+  `/_localstack/info` or `/_localstack/health`, set an env var that
+  the test files key off via `expect_failures` or pre-checks). This is
+  separate from IMPL-0006 and is filed under RFC-0001 §Phase 3 as a
+  follow-up.
 
-**Tentative resolution:** confirmed during Phase 9 implementation;
-documented in FINDINGS.md. No action needed pre-implementation.
+**Follow-up question for you (fleet-wide, not blocking IMPL-0006):**
+do you want me to open a small follow-up task (a new INV doc, or
+just a Linear/issue ticket) tracking the fleet-wide Pro-detection
+harness? It would touch the `justfile` recipes, not any module's
+sources. Not blocking — flag this when convenient.
 
-### Q4 — Existing-repo migration tooling
+### Q4 — Existing-repo migration — RESOLVED (c)
 
-If the artifact-hosting account already has `helm-charts/*` or
-`tf-modules/*` repos pre-dating this module, the creation templates
-will **not** backfill them (ECR property — templates only apply at
-creation time). Those repos retain whatever encryption / mutability /
-lifecycle / repository-policy they were created with.
+**Resolved (c):** ignore old repos; assume the artifact-hosting
+account is greenfield for OCI artifacts. No migration tooling
+emitted by the module; no bulk script documented in the README
+(removed from the Phase 10 task list). If a migration ever becomes
+necessary, file it as a one-shot operational PR outside this module.
 
-**Options:**
+### Q5 — `var.tags` shape — RESOLVED (`map(string)`)
 
-1. **(a) Module-emitted Terraform `import` blocks** for any
-   pre-existing repos under the managed prefixes. The caller passes
-   a list of repo names; the module imports them and re-applies
-   template-equivalent config explicitly per repo.
-2. **(b) Documented bulk script** (the
-   `aws ecr describe-repositories | aws ecr put-lifecycle-policy`
-   loop from DESIGN-0006 §Cleanup notes). One-shot operator workflow,
-   no module surface.
-3. **(c) Out of scope.** Manual handoff. If the artifact-hosting
-   account is brand-new, this is the cheapest option.
+**Resolved:** `map(string)`. Matches the sibling
+`modules/ecr/pull-through-cache/` module's pattern. Phase 1 tasks
+already assume this — no doc changes needed.
 
-**Tentative recommendation:** (b). Documented in Phase 10 README; no
-module surface added. If the artifact-hosting account is being
-green-fielded for this work (no pre-existing OCI repos), even (c) is
-fine.
+### Q6 — `IMMUTABLE_WITH_EXCLUSION` provider pin — RESOLVED (`~> 6.2`)
 
-**Action needed:** confirm (b) — or tell me there are existing OCI
-repos that need a migration story.
+**Resolved:** keep the fleet pin `~> 6.2`. The currently-installed
+provider (`v6.45.0`) satisfies the `>= 6.8.0` minimum for
+`IMMUTABLE_WITH_EXCLUSION`. No fallback path needed; no provider
+pin bump. Phase 1 task already encodes this.
 
-### Q5 — `var.tags` shape: typed object or simple `map(string)`?
+### Q7 — Output via SSM Parameter Store — STILL OPEN
 
-Fleet inconsistency:
+Direction from first-round review: "Need more info on this but I like
+the idea."
 
-- `modules/eks/cluster/`, `modules/eks/addons/`,
-  `modules/eks/managed-node-group/`, `modules/eks/pod-identity-access/`
-  use a **typed object** (`{ Account, ClusterName, ClusterType,
-  Environment, Region }`) that mirrors the Boilerplate-generated
-  Terragrunt config.
-- `modules/ecr/pull-through-cache/` uses simple `map(string)` (it's
-  account-scoped, not cluster-scoped — no `ClusterName` to slot in).
+**Concrete shape SSM Parameter Store can take here.** The publisher
+policy ARN is account-scoped — IAM policies don't cross account
+boundaries by reference. So an SSM Parameter holding just the ARN
+helps **same-account** consumers (CI roles in the artifact-hosting
+account) discover the policy without hand-coding the ARN. For
+**cross-account** consumers (CI roles in workload accounts publishing
+to the artifact-hosting account's ECR), the ARN is useless — they
+need either (a) the policy *JSON shape* to recreate the policy
+locally in their own account, or (b) to assume a role in the
+artifact-hosting account that already has the policy attached.
 
-This module is also account-scoped (not cluster-scoped).
+That suggests three meaningful SSM Parameter shapes:
 
-**Tentative recommendation:** `map(string)` — matches the
-pull-through-cache module's pattern (the closest sibling). Phase 1
-tasks assume `map(string)`.
+1. **(a) Publisher policy ARN only.** Same-account discovery. Path
+   like `/platform/ecr-oci-publisher-policy-arn`. Cheapest; covers
+   only the same-account consumer story.
+2. **(b) Publisher policy JSON only.** Cross-account-friendly —
+   workload accounts read the JSON via `data.aws_ssm_parameter` (if
+   they have cross-account `ssm:GetParameter` permissions on the
+   parameter) and recreate the policy locally. Parameter path like
+   `/platform/ecr-oci-publisher-policy-json`. Heavier; requires
+   cross-account SSM permissions wiring.
+3. **(c) Both.** ARN at `/platform/ecr-oci-publisher-policy-arn`,
+   JSON at `/platform/ecr-oci-publisher-policy-json`. Covers both
+   audiences.
 
-**Action needed:** confirm `map(string)`, or specify a typed object
-shape if Terragrunt-side tagging conventions require it.
+**Follow-up questions for you:**
 
-### Q6 — `IMMUTABLE_WITH_EXCLUSION` provider version guard
+1. Are the **publisher CI roles** that will attach this policy in
+   the **same AWS account** as the artifact-hosting account, in
+   **different AWS accounts** (per-workload), or **both**?
+   - Same-account only → (a) is enough.
+   - Cross-account → (b) or (c).
+   - Both → (c).
+2. If (b) or (c): are you OK with the SSM Parameter exposing the
+   *full policy JSON* via a resource-based policy granting
+   `ssm:GetParameter` to `aws:PrincipalOrgID`? (Same trust model as
+   the org-wide pull policy on the ECR templates.) Or do you want a
+   tighter scope (specific account list, specific OU paths)?
+3. Should the module write the ARN to SSM unconditionally
+   (`var.publish_to_ssm = true` default), or off-by-default with the
+   path being caller-configurable?
 
-DESIGN-0006 §Tag mutability calls out: "Requires AWS Terraform
-provider >= 6.8.0. If pinned older, fall back to plain `IMMUTABLE`
-and forbid floating tags via CI lint."
+**Tentative recommendation pending your answer:** (a) for v1 (ARN
+only, same-account use case), behind a `var.publish_to_ssm` opt-in
+with a `var.ssm_parameter_path_arn` default. (b)/(c) becomes v2 when
+the cross-account publisher use case is concrete. Adds two
+resources to Phase 7: `aws_ssm_parameter.publisher_policy_arn[0]`
+gated on `var.publish_to_ssm`.
 
-**Verified:** the fleet pin `~> 6.2` allows `>= 6.2.0, < 7.0.0`. The
-currently-installed provider is `v6.45.0`. `IMMUTABLE_WITH_EXCLUSION`
-is supported. **No fallback needed.**
+### Q8 — Module-managed KMS key destruction safety — RESOLVED (doc + prevent_destroy)
 
-**No action needed.** Documented here for traceability — flag in a
-PR comment if the fleet pin ever tightens to `~> 6.2.0` (patch-only)
-or if we add a CI step that resolves the minimum-compatible provider.
-
-### Q7 — Output via SSM Parameter Store?
-
-DESIGN-0006 §API mentions in passing: "emit it as a Terraform
-`output` (or reference via SSM Parameter Store) so downstream CI /
-IRSA roles can attach it without copy-pasting policy JSON."
-
-The Phase 7 plan emits Terraform outputs only. An SSM Parameter
-Store wrapper (a parameter holding the publisher policy ARN under a
-well-known name like `/platform/ecr-oci-publisher-policy-arn`) would
-help cross-account consumers that can't reference the
-artifact-hosting account's Terraform outputs directly.
-
-**Tentative recommendation:** out of scope for v1. Add as a follow-up
-module / addition if cross-account consumer ergonomics become a real
-problem.
-
-**Action needed:** confirm out-of-scope, or expand v1 to include SSM
-Parameter Store outputs.
-
-### Q8 — Module-managed KMS key destruction safety
-
-If operators destroy the module while OCI artifact repos exist under
-the managed prefixes, the module-managed KMS key gets scheduled for
-deletion (`deletion_window_in_days = 30`). When the key actually
-deletes 30 days later, **all template-encrypted repos become
-unreadable** — affects every chart and module in the org.
-
-**Mitigations to consider:**
-
-1. Add a `prevent_destroy` lifecycle block on `aws_kms_key.ecr_oci`?
-   (Caller-level Terraform-state breakage if they really do want to
-   destroy.)
-2. Document the destruction order: empty + delete all repos under
-   `helm-charts/*` + `tf-modules/*` BEFORE running
-   `terraform destroy`. Phase 10 README plan already includes this.
-3. Add a key policy statement denying `kms:ScheduleKeyDeletion`
-   except from a break-glass principal? (Heavier; production-grade.)
-
-**Tentative recommendation:** (2) only (documentation). Defer the
-heavier mitigations to a future iteration if real operational pain
-shows up.
-
-**Action needed:** confirm doc-only mitigation, or escalate to
-`prevent_destroy` / key-policy guard for v1.
+**Resolved:** **both** doc-only mitigation AND `prevent_destroy`
+lifecycle block on `aws_kms_key.ecr_oci`. The Phase 3 task is updated
+to add `lifecycle { prevent_destroy = true }`; the Phase 10 README
+task is updated with the two-step destruction-unlock procedure
+(empty repos → remove `lifecycle` block in a deliberate PR →
+destroy). The `prevent_destroy` guard turns the destroy mistake from
+a 30-day-time-bomb into a plan-time error pointing the operator at
+the README procedure.
 
 ## References
 
