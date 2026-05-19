@@ -458,7 +458,7 @@ runs there). Grants ECR auth + scoped push + KMS encrypt.
 
 #### Tasks
 
-- [ ] In `publisher.tf`, add
+- [x] In `publisher.tf`, add
       `data "aws_iam_policy_document" "oci_publisher"` with three
       statements:
   - `sid = "EcrAuth"`: action `["ecr:GetAuthorizationToken"]`,
@@ -474,12 +474,12 @@ runs there). Grants ECR auth + scoped push + KMS encrypt.
   - `sid = "UseKmsForEncryption"`: actions
     `["kms:Encrypt", "kms:GenerateDataKey*", "kms:DescribeKey"]`,
     resources `[local.kms_key_arn]`.
-- [ ] In `publisher.tf`, add `aws_iam_policy.oci_publisher`:
+- [x] In `publisher.tf`, add `aws_iam_policy.oci_publisher`:
   - `name = local.publisher_policy_name`.
   - `description = "Permissions to push internal Helm charts and Terraform modules to ECR via create-on-push (consumed by CI / IRSA roles)"`.
   - `policy = data.aws_iam_policy_document.oci_publisher.json`.
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
