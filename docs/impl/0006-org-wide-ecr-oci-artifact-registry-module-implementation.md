@@ -629,8 +629,8 @@ overrides.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/tests/` directory.
-- [ ] Create `tests/default.tftest.hcl`:
+- [x] Create `modules/ecr/org-registry/tests/` directory.
+- [x] Create `tests/default.tftest.hcl`:
   - `run "plan_default"`:
     `name_prefix = "platform"`,
     `organizations_org_id = "o-test1234ab"`, all other defaults.
@@ -648,7 +648,7 @@ overrides.
     - 1 `aws_iam_policy.oci_publisher`.
     - 0 `aws_ssm_parameter` resources (`publish_to_ssm` defaults
       `false`).
-- [ ] Create `tests/byo_kms.tftest.hcl`:
+- [x] Create `tests/byo_kms.tftest.hcl`:
   - `run "plan_byo_kms"`:
     `kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/byo-1234"`,
     `organizations_org_id = "o-test1234ab"`.
@@ -659,7 +659,7 @@ overrides.
       the BYO ARN (known at plan time — no unknown-value issue).
     - The ECR-template role-policy's JSON contains the BYO ARN in its
       KMS-permissions statement.
-- [ ] Create `tests/lifecycle_json.tftest.hcl`:
+- [x] Create `tests/lifecycle_json.tftest.hcl`:
   - `run "default_retention"`:
     `pre_release_retention_days = 90`,
     `untagged_retention_days = 7`,
@@ -671,14 +671,14 @@ overrides.
   - `run "custom_retention"`: `pre_release_retention_days = 30`,
     `untagged_retention_days = 14`. Assertions: both templates'
     encoded JSON contains `"countNumber":30` and `"countNumber":14`.
-- [ ] Create `tests/repository_policy_json.tftest.hcl`:
+- [x] Create `tests/repository_policy_json.tftest.hcl`:
   - `run "plan_org_pull"`:
     `organizations_org_id = "o-test1234ab"`.
     Assertion that the helm_charts template's `repository_policy`
     contains both `"aws:PrincipalOrgID"` and the supplied org ID.
     Same assertion against the tf_modules template (proves the shared
     policy doc reaches both templates).
-- [ ] Create `tests/publisher_policy_scope.tftest.hcl`:
+- [x] Create `tests/publisher_policy_scope.tftest.hcl`:
   - `run "scope_managed_prefixes"`: assertions on the encoded
     `aws_iam_policy.oci_publisher.policy` JSON:
     - Contains the helm_charts-prefix ARN
@@ -686,7 +686,7 @@ overrides.
     - Contains the tf_modules-prefix ARN
       (`arn:aws:ecr:*:000000000000:repository/tf-modules/*`).
     - `ecr:GetAuthorizationToken` has Resource `"*"`.
-- [ ] Create `tests/prefix_override.tftest.hcl`:
+- [x] Create `tests/prefix_override.tftest.hcl`:
   - `run "custom_prefixes"`:
     `helm_charts_prefix = "internal-charts"`,
     `tf_modules_prefix = "internal-modules"`,
@@ -694,7 +694,7 @@ overrides.
     Assertions: each template's `prefix` attribute equals the custom
     value; the publisher policy's JSON contains
     `repository/internal-charts/*` and `repository/internal-modules/*`.
-- [ ] Create `tests/ssm.tftest.hcl`:
+- [x] Create `tests/ssm.tftest.hcl`:
   - `run "ssm_off_default"`:
     `organizations_org_id = "o-test1234ab"` (omit
     `publish_to_ssm` — default `false`). Assertions: 0
@@ -716,7 +716,7 @@ overrides.
     `data.aws_iam_policy_document.ssm_org_read`; resource-based
     policy JSON contains `"o-crossacct12"` under
     `aws:PrincipalOrgID`.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_pre_release_zero"`:
     `pre_release_retention_days = 0`,
     `organizations_org_id = "o-test1234ab"`.
@@ -738,7 +738,7 @@ overrides.
     `ssm_cross_account_org_id = "not-an-org-id"`,
     `organizations_org_id = "o-test1234ab"`.
     `expect_failures = [var.ssm_cross_account_org_id]`.
-- [ ] Verify `just tf test ecr/org-registry` works module-agnostically.
+- [x] Verify `just tf test ecr/org-registry` works module-agnostically.
 
 #### Success Criteria
 
