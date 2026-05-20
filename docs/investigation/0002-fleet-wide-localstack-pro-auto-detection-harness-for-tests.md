@@ -14,6 +14,19 @@ created: 2026-05-19
 **Date:** 2026-05-19
 
 <!--toc:start-->
+- [Question](#question)
+- [Hypothesis](#hypothesis)
+- [Context](#context)
+- [Approach](#approach)
+- [Environment](#environment)
+- [Findings](#findings)
+  - [Observation 1](#observation-1)
+  - [Observation 2](#observation-2)
+  - [Observation 3](#observation-3)
+  - [Observation 4](#observation-4)
+- [Conclusion](#conclusion)
+- [Recommendation](#recommendation)
+- [References](#references)
 <!--toc:end-->
 
 ## Question

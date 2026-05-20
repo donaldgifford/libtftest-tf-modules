@@ -1,7 +1,7 @@
 ---
 id: IMPL-0006
 title: "Org-wide ECR OCI Artifact Registry Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-18
 ---
@@ -9,7 +9,7 @@ created: 2026-05-18
 
 # IMPL 0006: Org-wide ECR OCI Artifact Registry Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-18
 
@@ -22,7 +22,7 @@ created: 2026-05-18
   - [Phase 1: Module scaffolding and variable surface](#phase-1-module-scaffolding-and-variable-surface)
     - [Tasks](#tasks)
     - [Success Criteria](#success-criteria)
-  - [Phase 2: Data sources and locals](#phase-2-data-sources-and-locals)
+  - [Phase 2: Data source and locals](#phase-2-data-source-and-locals)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
   - [Phase 3: KMS key (gated bring-your-own)](#phase-3-kms-key-gated-bring-your-own)
@@ -56,14 +56,14 @@ created: 2026-05-18
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
-  - [Q1 — name_prefix semantics: prefix every resource name, or hardcode singletons?](#q1--nameprefix-semantics-prefix-every-resource-name-or-hardcode-singletons)
-  - [Q2 — data.awsorganizationsorganization permission scope](#q2--dataawsorganizationsorganization-permission-scope)
-  - [Q3 — LocalStack Pro fidelity for data.awsorganizationsorganization](#q3--localstack-pro-fidelity-for-dataawsorganizationsorganization)
-  - [Q4 — Existing-repo migration tooling](#q4--existing-repo-migration-tooling)
-  - [Q5 — var.tags shape: typed object or simple map(string)?](#q5--vartags-shape-typed-object-or-simple-mapstring)
-  - [Q6 — IMMUTABLEWITHEXCLUSION provider version guard](#q6--immutablewithexclusion-provider-version-guard)
-  - [Q7 — Output via SSM Parameter Store?](#q7--output-via-ssm-parameter-store)
-  - [Q8 — Module-managed KMS key destruction safety](#q8--module-managed-kms-key-destruction-safety)
+  - [Q1 — name_prefix semantics — RESOLVED (b)](#q1--nameprefix-semantics--resolved-b)
+  - [Q2 — data.awsorganizationsorganization permission scope — RESOLVED (a)](#q2--dataawsorganizationsorganization-permission-scope--resolved-a)
+  - [Q3 — Pro-tier auto-detection in tests-localstack/ — RESOLVED (INV-0002 filed)](#q3--pro-tier-auto-detection-in-tests-localstack--resolved-inv-0002-filed)
+  - [Q4 — Existing-repo migration — RESOLVED (c)](#q4--existing-repo-migration--resolved-c)
+  - [Q5 — var.tags shape — RESOLVED (map(string))](#q5--vartags-shape--resolved-mapstring)
+  - [Q6 — IMMUTABLEWITHEXCLUSION provider pin — RESOLVED (~> 6.2)](#q6--immutablewithexclusion-provider-pin--resolved--62)
+  - [Q7 — Output via SSM Parameter Store — RESOLVED (c, opt-in, configurable cross-account)](#q7--output-via-ssm-parameter-store--resolved-c-opt-in-configurable-cross-account)
+  - [Q8 — Module-managed KMS key destruction safety — RESOLVED (doc + prevent_destroy)](#q8--module-managed-kms-key-destruction-safety--resolved-doc--preventdestroy)
 - [References](#references)
 <!--toc:end-->
 
@@ -172,14 +172,14 @@ inputs at plan time. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/` directory.
-- [ ] Copy scaffolding files verbatim from
+- [x] Create `modules/ecr/org-registry/` directory.
+- [x] Copy scaffolding files verbatim from
       `modules/ecr/pull-through-cache/`: `.terraform-docs.yml`,
       `.tflint.hcl`, `README.md` stub, `USAGE.md` skeleton.
-- [ ] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
+- [x] Create `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
       `>= 1.1` (matches the fleet pin; resolves to >= 6.8.0 in practice,
       which is the minimum for `IMMUTABLE_WITH_EXCLUSION`).
-- [ ] Create `variables.tf` with the input surface from DESIGN-0006:
+- [x] Create `variables.tf` with the input surface from DESIGN-0006:
   - Required: `name_prefix` (`string`).
   - Required: `organizations_org_id` (`string`) — the AWS Organizations
     ID (`o-...` format) used in the `aws:PrincipalOrgID` condition on
@@ -211,28 +211,30 @@ inputs at plan time. No resources yet.
       the policy locally. Default null = same-account-only mode (no
       cross-account access on the params).
     - `tags` (`map(string)`, default `{}`).
-- [ ] Add `validation` block on `pre_release_retention_days`:
+- [x] Add `validation` block on `pre_release_retention_days`:
       `pre_release_retention_days >= 1` (ECR rejects 0).
-- [ ] Add `validation` block on `untagged_retention_days`:
+- [x] Add `validation` block on `untagged_retention_days`:
       `untagged_retention_days >= 1`.
-- [ ] Add `validation` block on each of `helm_charts_prefix` /
+- [x] Add `validation` block on each of `helm_charts_prefix` /
       `tf_modules_prefix`: match the AWS provider v6 schema rule for
       `aws_ecr_repository_creation_template.prefix` —
       `length(value) >= 2 && length(value) <= 256 &&
       can(regex("^[a-zA-Z0-9_./-]+$", value))`. Reject the literal
       `"ROOT"` (we're using prefix-scoped templates, not the catch-all).
-- [ ] Add `validation` block on `organizations_org_id`: must match
+- [x] Add `validation` block on `organizations_org_id`: must match
       `^o-[a-z0-9]{10,32}$` (AWS Organizations ID format). Required
       input — no null fallback.
-- [ ] Add `validation` block on `ssm_cross_account_org_id`: when
+- [x] Add `validation` block on `ssm_cross_account_org_id`: when
       non-null, same format check as `organizations_org_id`.
-- [ ] Add `validation` block on `ssm_parameter_path_arn` and
+- [x] Add `validation` block on `ssm_parameter_path_arn` and
       `ssm_parameter_path_json`: must start with `/` (SSM parameter
       paths require leading slash).
-- [ ] Create empty `main.tf`, `kms.tf`, `iam.tf`, `templates.tf`,
+- [x] Create empty `main.tf`, `kms.tf`, `iam.tf`, `templates.tf`,
       `publisher.tf`, `ssm.tf`, `locals.tf`, `outputs.tf` files.
-- [ ] Run `terraform init && terraform validate`.
-- [ ] Run `tflint --init && tflint`.
+- [x] Run `terraform init && terraform validate`.
+- [x] Run `tflint --init && tflint` (unused-var/provider warnings
+      expected at this scaffolding stage; resolved naturally as
+      Phases 2-7 wire each variable into a resource).
 
 #### Success Criteria
 
@@ -264,28 +266,28 @@ composition.
 
 #### Tasks
 
-- [ ] In `main.tf`, add `data "aws_caller_identity" "current" {}`
+- [x] In `main.tf`, add `data "aws_caller_identity" "current" {}`
       ([ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       identity-class carve-out — same shape as
       `modules/ecr/pull-through-cache/`).
-- [ ] In `locals.tf`, derive `local.account_id =
+- [x] In `locals.tf`, derive `local.account_id =
       data.aws_caller_identity.current.account_id` (used to scope IAM
       ARNs to this account's ECR repositories).
-- [ ] In `locals.tf`, derive
+- [x] In `locals.tf`, derive
       `local.kms_key_arn = coalesce(var.kms_key_arn,
       try(aws_kms_key.ecr_oci[0].arn, null))`. Meaningful conditional
       work — both templates and the ECR-template IAM role reference
       this single value (no aliasing local; consumed at the use site).
-- [ ] In `locals.tf`, compose the deterministic resource-name locals:
+- [x] In `locals.tf`, compose the deterministic resource-name locals:
       `kms_alias_name = "alias/${var.name_prefix}-ecr-oci"`,
       `template_role_name = "${var.name_prefix}-ecr-template"`,
       `publisher_policy_name = "${var.name_prefix}-oci-publisher"`.
-- [ ] **Do NOT** alias `var.organizations_org_id` into a local. Per
+- [x] **Do NOT** alias `var.organizations_org_id` into a local. Per
       [ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       and CLAUDE.md ("reference at the use site, not via aliasing
       locals"), `var.organizations_org_id` is referenced directly at
       its single use site in Phase 5's `org_pull` policy document.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -308,7 +310,7 @@ so the same code path works for both bring-your-own and module-managed.
 
 #### Tasks
 
-- [ ] In `kms.tf`, add `aws_kms_key.ecr_oci` count-gated on
+- [x] In `kms.tf`, add `aws_kms_key.ecr_oci` count-gated on
       `var.kms_key_arn == null`:
   - `description = "ECR encryption key for OCI artifact repos (${var.helm_charts_prefix}/*, ${var.tf_modules_prefix}/*)"`.
   - `enable_key_rotation = true`.
@@ -319,10 +321,10 @@ so the same code path works for both bring-your-own and module-managed.
     deletion while OCI repos may still depend on it. Operators
     unblock destruction by removing the `lifecycle` block in a
     deliberate PR (see Phase 11 README's destruction procedure).
-- [ ] In `kms.tf`, add `aws_kms_alias.ecr_oci` count-gated identically:
+- [x] In `kms.tf`, add `aws_kms_alias.ecr_oci` count-gated identically:
   - `name = local.kms_alias_name`.
   - `target_key_id = aws_kms_key.ecr_oci[0].key_id`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -348,16 +350,16 @@ KMS encryption or `resource_tags`. This role is assumed by the
 
 #### Tasks
 
-- [ ] In `iam.tf`, add
+- [x] In `iam.tf`, add
       `data "aws_iam_policy_document" "ecr_template_assume"` with one
       statement allowing `sts:AssumeRole` for the `ecr.amazonaws.com`
       service principal.
-- [ ] In `iam.tf`, add `aws_iam_role.ecr_template`:
+- [x] In `iam.tf`, add `aws_iam_role.ecr_template`:
   - `name = local.template_role_name`.
   - `description = "Assumed by ECR when creating repos via creation templates (managed by org-registry module)"`.
   - `assume_role_policy = data.aws_iam_policy_document.ecr_template_assume.json`.
   - `tags = var.tags`.
-- [ ] In `iam.tf`, add
+- [x] In `iam.tf`, add
       `data "aws_iam_policy_document" "ecr_template"` with two
       statements:
   - `sid = "ManageRepoConfig"`: actions `["ecr:CreateRepository",
@@ -368,11 +370,11 @@ KMS encryption or `resource_tags`. This role is assumed by the
   - `sid = "UseKmsKey"`: actions `["kms:Encrypt", "kms:Decrypt",
     "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]`,
     resources `[local.kms_key_arn]`.
-- [ ] In `iam.tf`, add `aws_iam_role_policy.ecr_template`:
+- [x] In `iam.tf`, add `aws_iam_role_policy.ecr_template`:
   - `name = "${var.name_prefix}-ecr-template-permissions"`.
   - `role = aws_iam_role.ecr_template.id`.
   - `policy = data.aws_iam_policy_document.ecr_template.json`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -398,7 +400,7 @@ Questions).
 
 #### Tasks
 
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `data "aws_iam_policy_document" "org_pull"`:
   - One statement granting `["ecr:BatchGetImage",
     "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability",
@@ -408,7 +410,7 @@ Questions).
     "aws:PrincipalOrgID"; values = [var.organizations_org_id] }`.
     Per Q2 (a): reference `var.organizations_org_id` directly here
     (the only use site); no aliasing local.
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `aws_ecr_repository_creation_template.helm_charts`:
   - `prefix = var.helm_charts_prefix`.
   - `applied_for = ["CREATE_ON_PUSH"]`.
@@ -426,13 +428,13 @@ Questions).
   - `repository_policy = data.aws_iam_policy_document.org_pull.json`.
   - `resource_tags = merge(var.tags, { artifact_type = "helm-chart",
     managed_by = "platform" })`.
-- [ ] In `templates.tf`, add
+- [x] In `templates.tf`, add
       `aws_ecr_repository_creation_template.tf_modules` — identical
       shape to `helm_charts` except:
   - `prefix = var.tf_modules_prefix`.
   - `description = "Internal Terraform modules published as OCI artifacts"`.
   - `resource_tags`'s `artifact_type = "terraform-module"`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -456,7 +458,7 @@ runs there). Grants ECR auth + scoped push + KMS encrypt.
 
 #### Tasks
 
-- [ ] In `publisher.tf`, add
+- [x] In `publisher.tf`, add
       `data "aws_iam_policy_document" "oci_publisher"` with three
       statements:
   - `sid = "EcrAuth"`: action `["ecr:GetAuthorizationToken"]`,
@@ -472,12 +474,12 @@ runs there). Grants ECR auth + scoped push + KMS encrypt.
   - `sid = "UseKmsForEncryption"`: actions
     `["kms:Encrypt", "kms:GenerateDataKey*", "kms:DescribeKey"]`,
     resources `[local.kms_key_arn]`.
-- [ ] In `publisher.tf`, add `aws_iam_policy.oci_publisher`:
+- [x] In `publisher.tf`, add `aws_iam_policy.oci_publisher`:
   - `name = local.publisher_policy_name`.
   - `description = "Permissions to push internal Helm charts and Terraform modules to ECR via create-on-push (consumed by CI / IRSA roles)"`.
   - `policy = data.aws_iam_policy_document.oci_publisher.json`.
   - `tags = var.tags`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -503,7 +505,7 @@ templates' org-wide pull policy.
 
 #### Tasks
 
-- [ ] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_arn`:
+- [x] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_arn`:
   - `count = var.publish_to_ssm ? 1 : 0`.
   - `name = var.ssm_parameter_path_arn`
     (default `/platform/ecr-oci-publisher-policy-arn`).
@@ -513,7 +515,7 @@ templates' org-wide pull policy.
     (Advanced is required to attach a resource-based policy).
   - `description = "ARN of the org-wide ECR OCI publisher IAM policy. Attach to CI / IRSA roles in the artifact-hosting account."`.
   - `tags = var.tags`.
-- [ ] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_json`:
+- [x] In `ssm.tf`, add `aws_ssm_parameter.publisher_policy_json`:
   - Same `count` gate.
   - `name = var.ssm_parameter_path_json`
     (default `/platform/ecr-oci-publisher-policy-json`).
@@ -525,22 +527,19 @@ templates' org-wide pull policy.
   - `tier` same expression as the ARN parameter.
   - `description = "Full JSON of the org-wide ECR OCI publisher IAM policy. Cross-account consumers read this and recreate the policy in their own accounts."`.
   - `tags = var.tags`.
-- [ ] **Cross-account resource-based policies on the parameters.**
-      When `var.ssm_cross_account_org_id != null`, grant org-wide
-      `ssm:GetParameter` on both parameters. **Provider schema
-      caveat (per IMPL-0005 Q3 pattern):** verify at implementation
-      time whether `hashicorp/aws ~> 6.2` exposes a dedicated
-      resource for SSM parameter resource-based policies (e.g.,
-      `aws_ssm_resource_data_sync` is NOT it; the candidate is
-      `aws_ssm_resource_policy` if/when it exists, or an inline
-      `policy` attribute on `aws_ssm_parameter`). If neither exists
-      in v6, document the gap in README under "Cross-account
-      consumer wiring" and emit the policy JSON as an additional
-      output for operators to attach via AWS CLI
-      (`aws ssm put-resource-policy`). Mirror the IMPL-0005
-      `prefix = "*"` → `prefix = "ROOT"` divergence pattern:
-      schema-driven adjustment, documented inline.
-- [ ] Add `data.aws_iam_policy_document.ssm_org_read[0]`
+- [x] **Cross-account resource-based policies on the parameters.**
+      **Schema gap confirmed:** `hashicorp/aws ~> 6.2` (v6.45.0) does
+      NOT expose `aws_ssm_resource_policy` and `aws_ssm_parameter`
+      has no inline access-policy attribute. Mirrors the IMPL-0005
+      `prefix = "*"` → `prefix = "ROOT"` divergence pattern. The
+      module emits `data.aws_iam_policy_document.ssm_org_read` JSON
+      as an additional output (`ssm_org_read_policy_json`); README
+      documents the `aws ssm put-resource-policy` CLI recipe for
+      operators to attach manually after apply. Parameter `tier`
+      flips to `Advanced` when
+      `var.ssm_cross_account_org_id != null` to satisfy the
+      Advanced-tier prerequisite for resource-based policies.
+- [x] Add `data.aws_iam_policy_document.ssm_org_read[0]`
       (count-gated on `var.ssm_cross_account_org_id != null`) with
       one statement:
   - `actions = ["ssm:GetParameter", "ssm:GetParameters"]`.
@@ -549,7 +548,9 @@ templates' org-wide pull policy.
   - `principals { type = "*"; identifiers = ["*"] }` constrained
     by `condition { test = "StringEquals"; variable =
     "aws:PrincipalOrgID"; values = [var.ssm_cross_account_org_id] }`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Re-run `terraform validate` and `tflint` (one unused-data
+      warning on `ssm_org_read` clears in Phase 8 when outputs
+      reference it).
 
 #### Success Criteria
 
@@ -579,7 +580,7 @@ Changes section.
 
 #### Tasks
 
-- [ ] In `outputs.tf`, add:
+- [x] In `outputs.tf`, add:
   - `helm_charts_template_id` — the helm_charts template's `id`
     attribute (per v6 schema, the resource exposes `id` not `arn`; cf.
     [IMPL-0005](0005-ecr-pull-through-cache-module-implementation.md)
@@ -595,12 +596,16 @@ Changes section.
     `try(aws_ssm_parameter.publisher_policy_arn[0].name, null)`.
   - `publisher_policy_ssm_json_parameter_name` — same for the JSON
     parameter.
-- [ ] Add clear `description` strings on each output explaining the
+  - `ssm_org_read_policy_json` (added per Phase 7 schema gap) —
+    resource-based policy JSON for operators to attach manually
+    via `aws ssm put-resource-policy` (null when cross-account
+    distribution is not configured).
+- [x] Add clear `description` strings on each output explaining the
       consumer use case (e.g., "attach this to CI / IRSA roles";
       "cross-account consumers read this SSM parameter to recreate
       the publisher policy in their own account").
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Re-run `terraform validate` and `tflint`.
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Re-run `terraform validate` and `tflint`.
 
 #### Success Criteria
 
@@ -624,8 +629,8 @@ overrides.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/tests/` directory.
-- [ ] Create `tests/default.tftest.hcl`:
+- [x] Create `modules/ecr/org-registry/tests/` directory.
+- [x] Create `tests/default.tftest.hcl`:
   - `run "plan_default"`:
     `name_prefix = "platform"`,
     `organizations_org_id = "o-test1234ab"`, all other defaults.
@@ -643,7 +648,7 @@ overrides.
     - 1 `aws_iam_policy.oci_publisher`.
     - 0 `aws_ssm_parameter` resources (`publish_to_ssm` defaults
       `false`).
-- [ ] Create `tests/byo_kms.tftest.hcl`:
+- [x] Create `tests/byo_kms.tftest.hcl`:
   - `run "plan_byo_kms"`:
     `kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/byo-1234"`,
     `organizations_org_id = "o-test1234ab"`.
@@ -654,7 +659,7 @@ overrides.
       the BYO ARN (known at plan time — no unknown-value issue).
     - The ECR-template role-policy's JSON contains the BYO ARN in its
       KMS-permissions statement.
-- [ ] Create `tests/lifecycle_json.tftest.hcl`:
+- [x] Create `tests/lifecycle_json.tftest.hcl`:
   - `run "default_retention"`:
     `pre_release_retention_days = 90`,
     `untagged_retention_days = 7`,
@@ -666,14 +671,14 @@ overrides.
   - `run "custom_retention"`: `pre_release_retention_days = 30`,
     `untagged_retention_days = 14`. Assertions: both templates'
     encoded JSON contains `"countNumber":30` and `"countNumber":14`.
-- [ ] Create `tests/repository_policy_json.tftest.hcl`:
+- [x] Create `tests/repository_policy_json.tftest.hcl`:
   - `run "plan_org_pull"`:
     `organizations_org_id = "o-test1234ab"`.
     Assertion that the helm_charts template's `repository_policy`
     contains both `"aws:PrincipalOrgID"` and the supplied org ID.
     Same assertion against the tf_modules template (proves the shared
     policy doc reaches both templates).
-- [ ] Create `tests/publisher_policy_scope.tftest.hcl`:
+- [x] Create `tests/publisher_policy_scope.tftest.hcl`:
   - `run "scope_managed_prefixes"`: assertions on the encoded
     `aws_iam_policy.oci_publisher.policy` JSON:
     - Contains the helm_charts-prefix ARN
@@ -681,7 +686,7 @@ overrides.
     - Contains the tf_modules-prefix ARN
       (`arn:aws:ecr:*:000000000000:repository/tf-modules/*`).
     - `ecr:GetAuthorizationToken` has Resource `"*"`.
-- [ ] Create `tests/prefix_override.tftest.hcl`:
+- [x] Create `tests/prefix_override.tftest.hcl`:
   - `run "custom_prefixes"`:
     `helm_charts_prefix = "internal-charts"`,
     `tf_modules_prefix = "internal-modules"`,
@@ -689,7 +694,7 @@ overrides.
     Assertions: each template's `prefix` attribute equals the custom
     value; the publisher policy's JSON contains
     `repository/internal-charts/*` and `repository/internal-modules/*`.
-- [ ] Create `tests/ssm.tftest.hcl`:
+- [x] Create `tests/ssm.tftest.hcl`:
   - `run "ssm_off_default"`:
     `organizations_org_id = "o-test1234ab"` (omit
     `publish_to_ssm` — default `false`). Assertions: 0
@@ -711,7 +716,7 @@ overrides.
     `data.aws_iam_policy_document.ssm_org_read`; resource-based
     policy JSON contains `"o-crossacct12"` under
     `aws:PrincipalOrgID`.
-- [ ] Create `tests/validation.tftest.hcl`:
+- [x] Create `tests/validation.tftest.hcl`:
   - `run "negative_pre_release_zero"`:
     `pre_release_retention_days = 0`,
     `organizations_org_id = "o-test1234ab"`.
@@ -733,7 +738,7 @@ overrides.
     `ssm_cross_account_org_id = "not-an-org-id"`,
     `organizations_org_id = "o-test1234ab"`.
     `expect_failures = [var.ssm_cross_account_org_id]`.
-- [ ] Verify `just tf test ecr/org-registry` works module-agnostically.
+- [x] Verify `just tf test ecr/org-registry` works module-agnostically.
 
 #### Success Criteria
 
@@ -762,8 +767,8 @@ API.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/tests-localstack/` directory.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Create `modules/ecr/org-registry/tests-localstack/` directory.
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl`:
   - Provider block with comprehensive `endpoints` map (`ecr`, `iam`,
     `kms`, `sts`, `organizations` if covered) following the
     pull-through-cache module's working config.
@@ -782,7 +787,7 @@ API.
     template IDs populated, role + policy ARNs populated). Preserve
     as commented-out HCL so future LocalStack releases enable it by
     uncomment-only.
-- [ ] Implement **Pro-tier auto-detection** per Q3 in the
+- [x] Implement **Pro-tier auto-detection** per Q3 in the
       `just tf test-localstack ecr/org-registry` invocation. The
       `tests-localstack/` suite uses `var.organizations_org_id`
       (BYO org ID) so the AWS Organizations API call is not exercised
@@ -793,7 +798,7 @@ API.
       they are also missing from Community. Both tiers therefore land
       at the same plan-only smoke surface for this module. Document
       this in `FINDINGS.md`.
-- [ ] Create `tests-localstack/FINDINGS.md` capturing:
+- [x] Create `tests-localstack/FINDINGS.md` capturing:
   - **Finding #1 (inherited from IMPL-0005 Phase 9):** LocalStack
     Pro 2026.5.0 returns 501 for
     `CreateRepositoryCreationTemplate`. Both this module's templates
@@ -817,7 +822,7 @@ API.
     `helm push` through the create-on-push path; auto-vivification
     of `helm-charts/*` repos; lifecycle-policy enforcement on
     auto-created repos; cross-account pull validation.
-- [ ] Verify `just tf test-localstack ecr/org-registry` works
+- [x] Verify `just tf test-localstack ecr/org-registry` works
       module-agnostically.
 
 #### Success Criteria
@@ -841,7 +846,7 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
 
 #### Tasks
 
-- [ ] Update `modules/ecr/org-registry/README.md`:
+- [x] Update `modules/ecr/org-registry/README.md`:
   - Short pointer to USAGE.md.
   - Overview + RFC-0002 / ADR-0016 / DESIGN-0006 cross-references.
   - **Prerequisite: org ID supply.** "Pass the org ID literal to
@@ -892,18 +897,18 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
       Skipping step 1 leaves OCI artifact repos depending on a key
       that's scheduled for deletion — all repos under the managed
       prefixes become unreadable on day 30.
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
       provider references
       ([ADR-0011](../adr/0011-runtimeclass-delivered-out-of-band-not-by-terraform.md)).
-- [ ] Final pass: confirm zero aliasing locals that re-export remote
+- [x] Final pass: confirm zero aliasing locals that re-export remote
       state ([ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       / CLAUDE.md). This module reads no remote state; the only data
       source is `aws_caller_identity`. The org ID is a required
       input (Q2 (a) resolution) — referenced at the use site, never
       aliased.
-- [ ] Verify `just tf all ecr/org-registry` passes.
-- [ ] Update CLAUDE.md to add the "Org-wide ECR OCI Artifact Registry
+- [x] Verify `just tf all ecr/org-registry` passes.
+- [x] Update CLAUDE.md to add the "Org-wide ECR OCI Artifact Registry
       module shape" section under `modules/ecr/` describing inputs,
       data sources, resources, outputs, and the two test suites
       (mirrors the pull-through-cache section format).
