@@ -37,5 +37,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0003 | Addons Module Implementation | Completed | 2026-05-15 | Donald Gifford | [0003-addons-module-implementation.md](0003-addons-module-implementation.md) |
 | IMPL-0004 | Pod Identity Access Module Implementation | Completed | 2026-05-15 | Donald Gifford | [0004-pod-identity-access-module-implementation.md](0004-pod-identity-access-module-implementation.md) |
 | IMPL-0005 | ECR Pull-Through Cache Module Implementation | Completed | 2026-05-15 | Donald Gifford | [0005-ecr-pull-through-cache-module-implementation.md](0005-ecr-pull-through-cache-module-implementation.md) |
-| IMPL-0006 | Org-wide ECR OCI Artifact Registry Module Implementation | Draft | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry-module-implementation.md](0006-org-wide-ecr-oci-artifact-registry-module-implementation.md) |
+| IMPL-0006 | Org-wide ECR OCI Artifact Registry Module Implementation | Completed | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry-module-implementation.md](0006-org-wide-ecr-oci-artifact-registry-module-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->

@@ -1,7 +1,7 @@
 ---
 id: IMPL-0006
 title: "Org-wide ECR OCI Artifact Registry Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-18
 ---
@@ -9,7 +9,7 @@ created: 2026-05-18
 
 # IMPL 0006: Org-wide ECR OCI Artifact Registry Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-18
 
@@ -22,7 +22,7 @@ created: 2026-05-18
   - [Phase 1: Module scaffolding and variable surface](#phase-1-module-scaffolding-and-variable-surface)
     - [Tasks](#tasks)
     - [Success Criteria](#success-criteria)
-  - [Phase 2: Data sources and locals](#phase-2-data-sources-and-locals)
+  - [Phase 2: Data source and locals](#phase-2-data-source-and-locals)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
   - [Phase 3: KMS key (gated bring-your-own)](#phase-3-kms-key-gated-bring-your-own)
@@ -56,14 +56,14 @@ created: 2026-05-18
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
-  - [Q1 — name_prefix semantics: prefix every resource name, or hardcode singletons?](#q1--nameprefix-semantics-prefix-every-resource-name-or-hardcode-singletons)
-  - [Q2 — data.awsorganizationsorganization permission scope](#q2--dataawsorganizationsorganization-permission-scope)
-  - [Q3 — LocalStack Pro fidelity for data.awsorganizationsorganization](#q3--localstack-pro-fidelity-for-dataawsorganizationsorganization)
-  - [Q4 — Existing-repo migration tooling](#q4--existing-repo-migration-tooling)
-  - [Q5 — var.tags shape: typed object or simple map(string)?](#q5--vartags-shape-typed-object-or-simple-mapstring)
-  - [Q6 — IMMUTABLEWITHEXCLUSION provider version guard](#q6--immutablewithexclusion-provider-version-guard)
-  - [Q7 — Output via SSM Parameter Store?](#q7--output-via-ssm-parameter-store)
-  - [Q8 — Module-managed KMS key destruction safety](#q8--module-managed-kms-key-destruction-safety)
+  - [Q1 — name_prefix semantics — RESOLVED (b)](#q1--nameprefix-semantics--resolved-b)
+  - [Q2 — data.awsorganizationsorganization permission scope — RESOLVED (a)](#q2--dataawsorganizationsorganization-permission-scope--resolved-a)
+  - [Q3 — Pro-tier auto-detection in tests-localstack/ — RESOLVED (INV-0002 filed)](#q3--pro-tier-auto-detection-in-tests-localstack--resolved-inv-0002-filed)
+  - [Q4 — Existing-repo migration — RESOLVED (c)](#q4--existing-repo-migration--resolved-c)
+  - [Q5 — var.tags shape — RESOLVED (map(string))](#q5--vartags-shape--resolved-mapstring)
+  - [Q6 — IMMUTABLEWITHEXCLUSION provider pin — RESOLVED (~> 6.2)](#q6--immutablewithexclusion-provider-pin--resolved--62)
+  - [Q7 — Output via SSM Parameter Store — RESOLVED (c, opt-in, configurable cross-account)](#q7--output-via-ssm-parameter-store--resolved-c-opt-in-configurable-cross-account)
+  - [Q8 — Module-managed KMS key destruction safety — RESOLVED (doc + prevent_destroy)](#q8--module-managed-kms-key-destruction-safety--resolved-doc--preventdestroy)
 - [References](#references)
 <!--toc:end-->
 
@@ -846,7 +846,7 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
 
 #### Tasks
 
-- [ ] Update `modules/ecr/org-registry/README.md`:
+- [x] Update `modules/ecr/org-registry/README.md`:
   - Short pointer to USAGE.md.
   - Overview + RFC-0002 / ADR-0016 / DESIGN-0006 cross-references.
   - **Prerequisite: org ID supply.** "Pass the org ID literal to
@@ -897,18 +897,18 @@ the post-apply smoke recipe, and how CI / IRSA roles attach
       Skipping step 1 leaves OCI artifact repos depending on a key
       that's scheduled for deletion — all repos under the managed
       prefixes become unreadable on day 30.
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Final pass: confirm zero `kubernetes` / `kubectl` / `helm`
       provider references
       ([ADR-0011](../adr/0011-runtimeclass-delivered-out-of-band-not-by-terraform.md)).
-- [ ] Final pass: confirm zero aliasing locals that re-export remote
+- [x] Final pass: confirm zero aliasing locals that re-export remote
       state ([ADR-0001](../adr/0001-cross-module-composition-via-terraformremotestate.md)
       / CLAUDE.md). This module reads no remote state; the only data
       source is `aws_caller_identity`. The org ID is a required
       input (Q2 (a) resolution) — referenced at the use site, never
       aliased.
-- [ ] Verify `just tf all ecr/org-registry` passes.
-- [ ] Update CLAUDE.md to add the "Org-wide ECR OCI Artifact Registry
+- [x] Verify `just tf all ecr/org-registry` passes.
+- [x] Update CLAUDE.md to add the "Org-wide ECR OCI Artifact Registry
       module shape" section under `modules/ecr/` describing inputs,
       data sources, resources, outputs, and the two test suites
       (mirrors the pull-through-cache section format).
