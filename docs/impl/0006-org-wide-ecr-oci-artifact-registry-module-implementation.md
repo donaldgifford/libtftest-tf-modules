@@ -767,8 +767,8 @@ API.
 
 #### Tasks
 
-- [ ] Create `modules/ecr/org-registry/tests-localstack/` directory.
-- [ ] Create `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Create `modules/ecr/org-registry/tests-localstack/` directory.
+- [x] Create `tests-localstack/apply_localstack.tftest.hcl`:
   - Provider block with comprehensive `endpoints` map (`ecr`, `iam`,
     `kms`, `sts`, `organizations` if covered) following the
     pull-through-cache module's working config.
@@ -787,7 +787,7 @@ API.
     template IDs populated, role + policy ARNs populated). Preserve
     as commented-out HCL so future LocalStack releases enable it by
     uncomment-only.
-- [ ] Implement **Pro-tier auto-detection** per Q3 in the
+- [x] Implement **Pro-tier auto-detection** per Q3 in the
       `just tf test-localstack ecr/org-registry` invocation. The
       `tests-localstack/` suite uses `var.organizations_org_id`
       (BYO org ID) so the AWS Organizations API call is not exercised
@@ -798,7 +798,7 @@ API.
       they are also missing from Community. Both tiers therefore land
       at the same plan-only smoke surface for this module. Document
       this in `FINDINGS.md`.
-- [ ] Create `tests-localstack/FINDINGS.md` capturing:
+- [x] Create `tests-localstack/FINDINGS.md` capturing:
   - **Finding #1 (inherited from IMPL-0005 Phase 9):** LocalStack
     Pro 2026.5.0 returns 501 for
     `CreateRepositoryCreationTemplate`. Both this module's templates
@@ -822,7 +822,7 @@ API.
     `helm push` through the create-on-push path; auto-vivification
     of `helm-charts/*` repos; lifecycle-policy enforcement on
     auto-created repos; cross-account pull validation.
-- [ ] Verify `just tf test-localstack ecr/org-registry` works
+- [x] Verify `just tf test-localstack ecr/org-registry` works
       module-agnostically.
 
 #### Success Criteria
