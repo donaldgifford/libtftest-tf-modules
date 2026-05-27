@@ -113,12 +113,12 @@ the surface area + validations.
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/` directory; copy scaffolding files
+- [x] Create `modules/rds/serverless/` directory; copy scaffolding files
       verbatim from `modules/ecr/org-registry/` (`.terraform-docs.yml`,
       `.tflint.hcl`) per the per-module conventions in CLAUDE.md.
-- [ ] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
+- [x] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform
       `>= 1.1` (matches fleet pin).
-- [ ] Author `variables.tf` with the full input contract from
+- [x] Author `variables.tf` with the full input contract from
       DESIGN-0007 §Input surface, including:
   - Required: `region`, `remote_state_bucket`, `vpc_name`,
     `identifier_prefix`, `engine`, `min_acu`, `max_acu` (per Q2
@@ -155,12 +155,12 @@ the surface area + validations.
     `enhanced_monitoring_role_arn` (default null per Q6 — caller-
     supplied; module does not provision the IAM role),
     `tags` (default `{}`).
-- [ ] Each variable carries a `description`, `type`, `default`
+- [x] Each variable carries a `description`, `type`, `default`
       (optional only), `nullable` (where applicable), and a `validation`
       block for any input with a constrained shape. Critically, place
       `nullable` AFTER `validation` per the custom tflint rule (sibling
       pattern in `modules/ecr/org-registry/variables.tf`).
-- [ ] Validation blocks for:
+- [x] Validation blocks for:
   - `engine`: regex `^aurora-(postgresql|mysql)$`.
   - `engine_version` (if non-null): regex matching engine-major (e.g.,
     `^(\d+\.\d+|\d+)$`).
@@ -172,9 +172,9 @@ the surface area + validations.
   - `identifier_prefix`: regex `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`
     (AWS RDS identifier shape, 1-63 chars).
   - `allowed_consumer_sg_ids`: each entry matches `^sg-[a-f0-9]+$`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments
       (resources land in later phases).
-- [ ] Create `modules/rds/serverless/README.md` stub (one-line pointer
+- [x] Create `modules/rds/serverless/README.md` stub (one-line pointer
       to `USAGE.md`).
 
 #### Success Criteria
