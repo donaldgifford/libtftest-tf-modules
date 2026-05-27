@@ -333,7 +333,7 @@ level params. Both resolved against `local.resolved_parameter_family`.
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/parameter_groups.tf`:
+- [x] Create `modules/rds/serverless/parameter_groups.tf`:
   - `aws_rds_cluster_parameter_group.this`:
     - `name_prefix = "${var.identifier_prefix}-cluster-"`.
     - `family = local.resolved_parameter_family`.
@@ -347,7 +347,7 @@ level params. Both resolved against `local.resolved_parameter_family`.
     - `description = "Instance parameter group for ${var.identifier_prefix}"`.
     - `tags = var.tags`.
     - `lifecycle { create_before_destroy = true }`.
-- [ ] No custom `parameter` blocks in v1 — operators override defaults
+- [x] No custom `parameter` blocks in v1 — operators override defaults
       by passing a `parameter_family` that points at a different family
       (e.g., engine-minor pin). Per-parameter customization deferred
       until a concrete consumer materializes (additive variable surface
