@@ -1,7 +1,7 @@
 ---
 id: IMPL-0007
 title: "Aurora Serverless v2 Module Implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-27
 ---
@@ -9,7 +9,7 @@ created: 2026-05-27
 
 # IMPL 0007: Aurora Serverless v2 Module Implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-27
 
@@ -20,20 +20,55 @@ created: 2026-05-27
   - [Out of Scope](#out-of-scope)
 - [Implementation Phases](#implementation-phases)
   - [Phase 1: Module scaffolding + variable surface](#phase-1-module-scaffolding--variable-surface)
+    - [Tasks](#tasks)
+    - [Success Criteria](#success-criteria)
   - [Phase 2: Data sources + locals (parameter family map)](#phase-2-data-sources--locals-parameter-family-map)
-  - [Phase 3: KMS key (gated BYO with prevent_destroy)](#phase-3-kms-key-gated-byo-with-prevent_destroy)
+    - [Tasks](#tasks-1)
+    - [Success Criteria](#success-criteria-1)
+  - [Phase 3: KMS key (gated BYO with prevent_destroy)](#phase-3-kms-key-gated-byo-with-preventdestroy)
+    - [Tasks](#tasks-2)
+    - [Success Criteria](#success-criteria-2)
   - [Phase 4: Subnet group + security group](#phase-4-subnet-group--security-group)
+    - [Tasks](#tasks-3)
+    - [Success Criteria](#success-criteria-3)
   - [Phase 5: Parameter groups (cluster + instance)](#phase-5-parameter-groups-cluster--instance)
+    - [Tasks](#tasks-4)
+    - [Success Criteria](#success-criteria-4)
   - [Phase 6: Aurora Serverless v2 cluster](#phase-6-aurora-serverless-v2-cluster)
+    - [Tasks](#tasks-5)
+    - [Success Criteria](#success-criteria-5)
   - [Phase 7: Cluster instance (db.serverless)](#phase-7-cluster-instance-dbserverless)
+    - [Tasks](#tasks-6)
+    - [Success Criteria](#success-criteria-6)
   - [Phase 8: Outputs (consumer contract)](#phase-8-outputs-consumer-contract)
+    - [Tasks](#tasks-7)
+    - [Success Criteria](#success-criteria-7)
   - [Phase 9: terraform test plan-only suite](#phase-9-terraform-test-plan-only-suite)
+    - [Tasks](#tasks-8)
+    - [Success Criteria](#success-criteria-8)
   - [Phase 10: tests-localstack gap-discovery suite](#phase-10-tests-localstack-gap-discovery-suite)
+    - [Tasks](#tasks-9)
+    - [Success Criteria](#success-criteria-9)
   - [Phase 11: README, USAGE, audits, CLAUDE.md update](#phase-11-readme-usage-audits-claudemd-update)
+    - [Tasks](#tasks-10)
+    - [Success Criteria](#success-criteria-10)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
-- [Open Questions (all resolved)](#open-questions)
+- [Open Questions](#open-questions)
+  - [Q1 — VPC remote-state contract field name for database subnets — RESOLVED (b)](#q1--vpc-remote-state-contract-field-name-for-database-subnets--resolved-b)
+  - [Q2 — Default minacu / maxacu bounds — RESOLVED (a, with suggested ranges in description)](#q2--default-minacu--maxacu-bounds--resolved-a-with-suggested-ranges-in-description)
+  - [Q3 — engine_version = null default handling — RESOLVED (a)](#q3--engineversion--null-default-handling--resolved-a)
+  - [Q4 — Default master_username per engine — RESOLVED (other — single default "admin")](#q4--default-masterusername-per-engine--resolved-other--single-default-admin)
+  - [Q5 — tests-localstack apply matrix — RESOLVED (a)](#q5--tests-localstack-apply-matrix--resolved-a)
+  - [Q6 — Performance Insights + Enhanced Monitoring defaults — RESOLVED (b)](#q6--performance-insights--enhanced-monitoring-defaults--resolved-b)
+  - [Q7 — backupretentionperiod + windows defaults — RESOLVED (a)](#q7--backupretentionperiod--windows-defaults--resolved-a)
+  - [Q8 — apply_immediately default — RESOLVED (a)](#q8--applyimmediately-default--resolved-a)
+  - [Q9 — finalsnapshotidentifier shape — RESOLVED (a)](#q9--finalsnapshotidentifier-shape--resolved-a)
+  - [Q10 — Engine-major version validation — RESOLVED (a)](#q10--engine-major-version-validation--resolved-a)
+  - [Q11 — Expose database_name input — RESOLVED (a)](#q11--expose-databasename-input--resolved-a)
+  - [Q12 — Master user secret KMS key — RESOLVED (a)](#q12--master-user-secret-kms-key--resolved-a)
+  - [Q13 — Test framework engine matrix file layout — RESOLVED (a)](#q13--test-framework-engine-matrix-file-layout--resolved-a)
 - [References](#references)
 <!--toc:end-->
 
@@ -680,7 +715,7 @@ adoption" state.
 
 #### Tasks
 
-- [ ] Expand `modules/rds/serverless/README.md` with:
+- [x] Expand `modules/rds/serverless/README.md` with:
   - Prerequisites (VPC module landed first, S3 backend bucket exists,
     LocalStack tier note).
   - Instantiation patterns: minimal Postgres example, minimal MySQL
@@ -698,16 +733,16 @@ adoption" state.
       window.
     - Scaling boundary changes (`min_acu` / `max_acu`) are in-place-
       apply-safe.
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Add a "Aurora Serverless v2 module shape" section to
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Add a "Aurora Serverless v2 module shape" section to
       `CLAUDE.md` (~150-line block following the
       `modules/ecr/org-registry` precedent).
-- [ ] Update `CLAUDE.md` repository-purpose section to list the new
+- [x] Update `CLAUDE.md` repository-purpose section to list the new
       `modules/rds/` family — note serverless as the first to land.
-- [ ] Update IMPL-0007 status from `Draft` → `Completed`; tick all
+- [x] Update IMPL-0007 status from `Draft` → `Completed`; tick all
       tasks in this file.
-- [ ] `just docs lint` passes.
-- [ ] Final audit pass: `just tf all rds/serverless`
+- [x] `just docs lint` passes.
+- [x] Final audit pass: `just tf all rds/serverless`
       (validate + lint + fmt + test) passes cleanly.
 
 #### Success Criteria

@@ -34,7 +34,14 @@ created: 2026-05-27
 - [Data Model](#data-model)
 - [Testing Strategy](#testing-strategy)
 - [Migration / Rollout Plan](#migration--rollout-plan)
-- [Open Questions (all resolved)](#open-questions)
+- [Open Questions](#open-questions)
+  - [Q1 — count vs foreach on read-replica instances — RESOLVED (foreach)](#q1--count-vs-foreach-on-read-replica-instances--resolved-foreach)
+  - [Q2 — RDS-managed master password vs caller-managed Secrets Manager — RESOLVED (AWS-managed default)](#q2--rds-managed-master-password-vs-caller-managed-secrets-manager--resolved-aws-managed-default)
+  - [Q3 — Parameter family resolution: static map vs data source — RESOLVED (static map)](#q3--parameter-family-resolution-static-map-vs-data-source--resolved-static-map)
+  - [Q4 — Engine version pinning strategy — RESOLVED (optional + auto-minor on)](#q4--engine-version-pinning-strategy--resolved-optional--auto-minor-on)
+  - [Q5 — Connectivity contract — RESOLVED (SG-source-list, IAM auth opt-in)](#q5--connectivity-contract--resolved-sg-source-list-iam-auth-opt-in)
+  - [Q6 — Cross-instance read replicas on modules/rds/instance — RESOLVED (separate module, deferred)](#q6--cross-instance-read-replicas-on-modulesrdsinstance--resolved-separate-module-deferred)
+  - [Q7 — tests-localstack tier handling — RESOLVED (Community default, Pro also supported)](#q7--tests-localstack-tier-handling--resolved-community-default-pro-also-supported)
 - [References](#references)
 <!--toc:end-->
 
