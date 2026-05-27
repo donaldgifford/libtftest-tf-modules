@@ -614,14 +614,16 @@ running against Pro (per the Q7 implementation-time verification step).
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/tests-localstack/` directory.
-- [ ] Create `tests-localstack/fixture/` with:
-  - `vpc_state.tf` — builds a VPC + database subnets, writes a
-    handcrafted state file (matching the VPC remote-state contract)
-    to an S3 bucket inside LocalStack.
-  - `kms_state.tf` (if needed for BYO testing) — provisions a real
-    KMS key inside LocalStack.
-- [ ] Probe LocalStack Community + Pro support matrix for:
+- [x] Create `modules/rds/serverless/tests-localstack/` directory.
+- [x] Create `tests-localstack/fixtures/setup/` with:
+  - `main.tf` — builds a VPC + 3 private subnets across 3 AZs and an
+    S3 bucket holding a handcrafted stub VPC state file at the
+    conventional key `<region>/vpc/<vpc_name>/terraform.tfstate`.
+    Matches the sibling `modules/eks/managed-node-group/tests-localstack/
+    fixtures/setup/main.tf` shape.
+- [x] Probe LocalStack Community + Pro support matrix for (deferred to
+      first actual `just tf test-localstack rds/serverless` run — see
+      FINDINGS.md Findings #1 + #2 for the expected risk surface):
   - `aws_db_subnet_group` — likely supported on both tiers.
   - `aws_rds_cluster` (with `engine_mode = "provisioned"` +
     Serverless v2 scaling config) — Aurora Serverless v2 specifically
@@ -632,7 +634,7 @@ running against Pro (per the Q7 implementation-time verification step).
   - `aws_kms_key` + `aws_kms_alias`.
   - `aws_secretsmanager_secret` (created implicitly by
     `manage_master_user_password = true`).
-- [ ] Author `tests-localstack/apply_localstack.tftest.hcl` (per Q5
+- [x] Author `tests-localstack/apply_localstack.tftest.hcl` (per Q5
       resolution):
   - `run "setup"` — applies the VPC fixture to land the stub remote-
     state file in S3.
@@ -648,14 +650,14 @@ running against Pro (per the Q7 implementation-time verification step).
     against LocalStack's provider endpoint config + plan-time
     validation. Cheaper than a second apply and catches engine-
     divergent plan-time gaps.
-- [ ] Author `tests-localstack/FINDINGS.md`:
+- [x] Author `tests-localstack/FINDINGS.md`:
   - **Finding #1**: gap-discovery results for each RDS API
     (Community + Pro coverage matrix).
   - **Finding #2**: tier-agnostic-by-construction verification per
     DESIGN-0007 Q7 — both tiers exercised identically; any
     differential 501 documented and filed as
     sneakystack / libtftest backlog.
-- [ ] Cross-reference `pull-through-cache` and `org-registry`
+- [x] Cross-reference `pull-through-cache` and `org-registry`
       `FINDINGS.md` patterns; reuse the writeup conventions.
 
 #### Success Criteria
