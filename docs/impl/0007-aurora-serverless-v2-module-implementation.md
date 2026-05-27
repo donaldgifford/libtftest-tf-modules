@@ -373,7 +373,7 @@ encryption at rest, deletion protection on by default.
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/cluster.tf`:
+- [x] Create `modules/rds/serverless/cluster.tf`:
   - `aws_rds_cluster.this`:
     - `cluster_identifier = var.identifier_prefix`.
     - `database_name = var.database_name` (per Q11 — null OK; no
