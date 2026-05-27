@@ -198,7 +198,10 @@ map in `locals.tf` per DESIGN-0007 Q3 resolution.
 #### Tasks
 
 - [x] Add `data.aws_caller_identity.current` (ADR-0001 identity carve-
-      out — used for tags and any future ARN scoping).
+      out — used for tags and any future ARN scoping). **Phase 7
+      cleanup**: removed during Phase 7 since nothing in the module
+      emits account-scoped ARNs. Restore additively when a Phase that
+      needs account ID lands.
 - [x] Add `data.terraform_remote_state.vpc` with `backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`. Consumed
@@ -446,7 +449,7 @@ metadata-only object.
 
 #### Tasks
 
-- [ ] Append to `modules/rds/serverless/cluster.tf` (or split into
+- [x] Append to `modules/rds/serverless/cluster.tf` (or split into
       `instance.tf` if the file grows past ~150 lines):
   - `aws_rds_cluster_instance.this`:
     - `cluster_identifier = aws_rds_cluster.this.id`.
@@ -470,7 +473,7 @@ metadata-only object.
       helpers" boundary).
     - `tags = var.tags`.
     - Alphabetical attribute ordering per the tflint rule.
-- [ ] `var.performance_insights_enabled` (default `false`),
+- [x] `var.performance_insights_enabled` (default `false`),
       `var.enhanced_monitoring_interval` (default `0`),
       `var.enhanced_monitoring_role_arn` (default `null`) already added
       to `variables.tf` in Phase 1 per Q6 resolution.

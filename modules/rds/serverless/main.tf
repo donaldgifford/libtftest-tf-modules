@@ -1,13 +1,11 @@
 #--------------------------------------------------------------
-# Data sources — caller identity + VPC remote state
+# Data sources — VPC remote state
 #
-# Caller identity is the ADR-0001 carve-out (read; do not
-# parameterize). VPC remote state delivers vpc_id +
-# private_subnet_ids per IMPL-0007 Q1 (reuses the existing
-# EKS-cluster remote-state contract).
+# VPC remote state delivers vpc_id + private_subnet_ids per
+# IMPL-0007 Q1 (reuses the existing EKS-cluster remote-state
+# contract). data.aws_caller_identity.current is deliberately
+# omitted — nothing in this module emits account-scoped ARNs.
 #--------------------------------------------------------------
-
-data "aws_caller_identity" "current" {}
 
 data "terraform_remote_state" "vpc" {
   backend = "s3"

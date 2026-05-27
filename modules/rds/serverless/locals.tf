@@ -3,8 +3,6 @@
 #--------------------------------------------------------------
 
 locals {
-  account_id = data.aws_caller_identity.current.account_id
-
   # KMS key ARN — BYO (var.kms_key_arn != null) OR module-managed
   # (aws_kms_key.this[0] from kms.tf, Phase 3). try() keeps Phase 2
   # plan-valid before Phase 3 lands and after BYO short-circuits the
