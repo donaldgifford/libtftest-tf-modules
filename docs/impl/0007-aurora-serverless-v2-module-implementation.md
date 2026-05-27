@@ -540,8 +540,8 @@ required; runs in ~1-2 seconds.
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/tests/` directory.
-- [ ] Author `tests/default.tftest.hcl`:
+- [x] Create `modules/rds/serverless/tests/` directory.
+- [x] Author `tests/default.tftest.hcl`:
   - One `run` per engine (`aurora-postgresql` + `aurora-mysql`).
   - Asserts on resource counts (1 cluster, 1 instance, 1 cluster
     parameter group, 1 db parameter group, 1 subnet group, 1 SG, 1
@@ -555,26 +555,26 @@ required; runs in ~1-2 seconds.
     file produced inline via `override_data { ... values = { ... } }`).
   - Uses `override_data` to stub
     `data.aws_caller_identity.current`.
-- [ ] Author `tests/byo_kms.tftest.hcl`:
+- [x] Author `tests/byo_kms.tftest.hcl`:
   - `var.kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/byo-test"`.
   - Asserts zero `aws_kms_key.this` resources and zero
     `aws_kms_alias.this` resources.
   - Asserts cluster's `kms_key_id` references the BYO ARN.
-- [ ] Author `tests/parameter_family_resolution.tftest.hcl`:
+- [x] Author `tests/parameter_family_resolution.tftest.hcl`:
   - Run 1: `engine = "aurora-postgresql"`, `engine_version = "16"` →
     asserts `local.resolved_parameter_family = "aurora-postgresql16"`.
   - Run 2: `engine = "aurora-mysql"`, `engine_version = "8.0"` →
     asserts `"aurora-mysql8.0"`.
   - Run 3: `parameter_family = "aurora-postgresql15"` (override) →
     asserts override wins.
-- [ ] Author `tests/sg_ingress.tftest.hcl`:
+- [x] Author `tests/sg_ingress.tftest.hcl`:
   - `var.allowed_consumer_sg_ids = ["sg-aaa1234567", "sg-bbb7654321"]`
     → asserts exactly two
     `aws_vpc_security_group_ingress_rule.consumer` resources with the
     expected `referenced_security_group_id` values.
   - Empty list → zero ingress rules (cluster reachable from nowhere —
     operator-explicit posture).
-- [ ] Author `tests/validation.tftest.hcl` with `expect_failures` on:
+- [x] Author `tests/validation.tftest.hcl` with `expect_failures` on:
   - `var.engine = "postgres"` (rejected — only aurora-* engines).
   - `var.engine_version = "16-beta"` (rejected by Q10 loose regex —
     accepts only `\d+` or `\d+.\d+`).
@@ -587,13 +587,13 @@ required; runs in ~1-2 seconds.
     identifier shape lowercase only).
   - `var.skip_final_snapshot = false` + `var.final_snapshot_identifier = null`
     (rejected by Q9 precondition on the cluster resource).
-- [ ] Author `tests/iam_db_auth.tftest.hcl`:
+- [x] Author `tests/iam_db_auth.tftest.hcl`:
   - Default → `iam_database_authentication_enabled = false`.
   - With `var.iam_database_authentication_enabled = true` → cluster
     attribute resolves to true.
-- [ ] All test files start with a `provider "aws"` block matching the
+- [x] All test files start with a `provider "aws"` block matching the
       sibling pattern (LocalStack-style fake credentials + skips).
-- [ ] BYO KMS used in any test that asserts on `local.kms_key_arn`-
+- [x] BYO KMS used in any test that asserts on `local.kms_key_arn`-
       dependent attributes so the value is plan-known (lesson learned
       from IMPL-0006 — module-managed KMS ARN is unknown at plan).
 
