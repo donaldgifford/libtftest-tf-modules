@@ -282,7 +282,7 @@ from `var.allowed_consumer_sg_ids`.
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/network.tf` (or fold into
+- [x] Create `modules/rds/serverless/network.tf` (or fold into
       `main.tf` — match existing single-file conventions for small
       modules; split per concern when files grow):
   - `aws_db_subnet_group.this`:
@@ -296,10 +296,10 @@ from `var.allowed_consumer_sg_ids`.
     - `name = "${var.identifier_prefix}-rds-serverless"`.
     - `vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id`.
     - `tags = var.tags`.
-- [ ] Engine-default-port resolution via locals:
+- [x] Engine-default-port resolution via locals:
   - `local.engine_default_port_map = { "aurora-postgresql" = 5432, "aurora-mysql" = 3306 }`.
   - `local.engine_default_port = local.engine_default_port_map[var.engine]`.
-- [ ] Three granular `aws_vpc_security_group_*_rule` resources (the
+- [x] Three granular `aws_vpc_security_group_*_rule` resources (the
       cluster module's pattern — no inline ingress/egress on the SG
       itself):
   - One `aws_vpc_security_group_ingress_rule` per entry in
@@ -310,8 +310,9 @@ from `var.allowed_consumer_sg_ids`.
     `ip_protocol = "tcp"`.
   - One `aws_vpc_security_group_egress_rule` for all-outbound (RDS needs
     outbound to AWS endpoints).
-- [ ] Verify the SG-source-list rule count matches
-      `length(var.allowed_consumer_sg_ids)` in the test suite.
+- [x] Verify the SG-source-list rule count matches
+      `length(var.allowed_consumer_sg_ids)` in the test suite (deferred
+      assertion to Phase 9 `sg_ingress.tftest.hcl`).
 
 #### Success Criteria
 
