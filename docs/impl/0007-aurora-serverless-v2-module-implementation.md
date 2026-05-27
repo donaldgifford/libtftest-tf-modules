@@ -496,7 +496,7 @@ Renaming or removing an output breaks consumers.
 
 #### Tasks
 
-- [ ] Author `modules/rds/serverless/outputs.tf` with the following
+- [x] Author `modules/rds/serverless/outputs.tf` with the following
       outputs, each carrying a `description`:
   - `cluster_identifier` (= `aws_rds_cluster.this.id`).
   - `cluster_resource_id` (= `aws_rds_cluster.this.cluster_resource_id`
@@ -518,10 +518,10 @@ Renaming or removing an output breaks consumers.
   - `db_cluster_parameter_group_name`.
   - `db_parameter_group_name`.
   - `cluster_instance_identifier`.
-- [ ] No `sensitive = true` flags — none of these outputs are secret
+- [x] No `sensitive = true` flags — none of these outputs are secret
       values (the secret ARN is metadata; the secret value is in
       Secrets Manager).
-- [ ] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
+- [x] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
 
 #### Success Criteria
 
