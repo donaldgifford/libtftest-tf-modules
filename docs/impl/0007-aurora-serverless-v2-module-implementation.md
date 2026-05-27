@@ -197,14 +197,14 @@ map in `locals.tf` per DESIGN-0007 Q3 resolution.
 
 #### Tasks
 
-- [ ] Add `data.aws_caller_identity.current` (ADR-0001 identity carve-
+- [x] Add `data.aws_caller_identity.current` (ADR-0001 identity carve-
       out — used for tags and any future ARN scoping).
-- [ ] Add `data.terraform_remote_state.vpc` with `backend = "s3"`,
+- [x] Add `data.terraform_remote_state.vpc` with `backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`. Consumed
       outputs (per Q1 resolution): `private_subnet_ids`, `vpc_id` —
       reuses the existing EKS-cluster remote-state contract.
-- [ ] Populate `locals.tf`:
+- [x] Populate `locals.tf`:
   - `account_id = data.aws_caller_identity.current.account_id`.
   - `kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))`
     (Phase 3 declares the gated KMS resource; the `try()` keeps Phase 2
@@ -229,7 +229,7 @@ map in `locals.tf` per DESIGN-0007 Q3 resolution.
   - **No `default_master_username_map` local** — Q4 resolution picks a
     single default `"admin"` baked into the variable; no per-engine
     indirection.
-- [ ] Reference data-source + local values at the use site (no
+- [x] Reference data-source + local values at the use site (no
       aliasing locals for plain passthroughs per ADR-0001 / CLAUDE.md).
 
 #### Success Criteria
@@ -251,7 +251,7 @@ empty the cluster + lift the lifecycle block deliberately to destroy).
 
 #### Tasks
 
-- [ ] Create `modules/rds/serverless/kms.tf`:
+- [x] Create `modules/rds/serverless/kms.tf`:
   - `aws_kms_key.this` with `count = var.kms_key_arn == null ? 1 : 0`,
     `enable_key_rotation = true`, `deletion_window_in_days = 30`,
     `description = "KMS key for Aurora Serverless v2 cluster ${var.identifier_prefix} encryption at rest"`,
@@ -259,7 +259,7 @@ empty the cluster + lift the lifecycle block deliberately to destroy).
   - `aws_kms_alias.this` with same count gate; `name =
     local.kms_alias_name`, `target_key_id = aws_kms_key.this[0].key_id`.
   - `tags = var.tags`.
-- [ ] Verify `local.kms_key_arn` resolves correctly in BOTH modes:
+- [x] Verify `local.kms_key_arn` resolves correctly in BOTH modes:
   - BYO mode (`var.kms_key_arn != null`): the literal ARN flows through.
   - Module-managed mode: `try(aws_kms_key.this[0].arn, null)` resolves
     to the managed key's ARN at plan time.

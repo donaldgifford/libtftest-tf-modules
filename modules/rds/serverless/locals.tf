@@ -1,11 +1,60 @@
 #--------------------------------------------------------------
 # Computed locals
-#
-# Populated in Phase 2:
-#   - account_id (from data.aws_caller_identity.current)
-#   - kms_key_arn (coalesce of var.kms_key_arn + module-managed key)
-#   - parameter_family_map (static engine + major → family lookup)
-#   - default_major_map (per-engine default major when var.engine_version is null, per IMPL-0007 Q3)
-#   - engine_default_port_map (5432 / 3306)
-#   - resolved_parameter_family (coalesce of var.parameter_family + lookup)
 #--------------------------------------------------------------
+
+locals {
+  account_id = data.aws_caller_identity.current.account_id
+
+  # KMS key ARN — BYO (var.kms_key_arn != null) OR module-managed
+  # (aws_kms_key.this[0] from kms.tf, Phase 3). try() keeps Phase 2
+  # plan-valid before Phase 3 lands and after BYO short-circuits the
+  # count gate. Same coalesce-with-try pattern used in
+  # modules/ecr/org-registry/locals.tf.
+  kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))
+
+  kms_alias_name = "alias/${var.identifier_prefix}-rds-serverless"
+
+  # Static engine + major → Aurora parameter family lookup (per
+  # DESIGN-0007 Q3 / IMPL-0007 Q3 resolution). Engine-family drift is
+  # rare; Renovate bumps this map as new engine majors GA.
+  #
+  # Postgres families are keyed by major (16, 15, 14); MySQL families
+  # are keyed by major.minor (8.0, 5.7). The lookup key is built
+  # engine-aware below.
+  #
+  # TODO: revisit data.aws_rds_engine_version when family drift becomes
+  # painful enough to justify a data-source lookup per plan.
+  parameter_family_map = {
+    "aurora-postgresql:16" = "aurora-postgresql16"
+    "aurora-postgresql:15" = "aurora-postgresql15"
+    "aurora-postgresql:14" = "aurora-postgresql14"
+    "aurora-mysql:8.0"     = "aurora-mysql8.0"
+  }
+
+  # Per-engine default version segment used when var.engine_version is
+  # null (per IMPL-0007 Q3). The shape matches what the family map
+  # expects: bare major for postgres, major.minor for MySQL. Renovate
+  # bumps as new engine versions GA — annual cadence per engine.
+  default_major_map = {
+    "aurora-postgresql" = "16"
+    "aurora-mysql"      = "8.0"
+  }
+
+  # When var.engine_version is non-null, normalize it to the
+  # family-map's expected shape: postgres takes the leading integer;
+  # MySQL keeps major.minor verbatim. When null, fall back to the
+  # default-major map.
+  engine_version_normalized = var.engine_version != null ? (var.engine == "aurora-postgresql" ? split(".", var.engine_version)[0] : var.engine_version) : local.default_major_map[var.engine]
+
+  engine_family_lookup_key = "${var.engine}:${local.engine_version_normalized}"
+
+  resolved_parameter_family = coalesce(var.parameter_family, lookup(local.parameter_family_map, local.engine_family_lookup_key, null))
+
+  # Engine default TCP port — used by the SG ingress rules in Phase 4.
+  engine_default_port_map = {
+    "aurora-postgresql" = 5432
+    "aurora-mysql"      = 3306
+  }
+
+  engine_default_port = local.engine_default_port_map[var.engine]
+}
