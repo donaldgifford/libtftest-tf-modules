@@ -39,4 +39,5 @@ docz create design "Your Design Title"
 | DESIGN-0005 | ECR Pull-Through Cache Module | Draft | 2026-05-15 | Donald Gifford | [0005-ecr-pull-through-cache-module.md](0005-ecr-pull-through-cache-module.md) |
 | DESIGN-0006 | Org-wide ECR OCI Artifact Registry | Draft | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry.md](0006-org-wide-ecr-oci-artifact-registry.md) |
 | DESIGN-0007 | RDS module layout: instance, Aurora cluster, Aurora read replica, Aurora Serverless | Draft | 2026-05-27 | Donald Gifford | [0007-rds-module-layout-instance-aurora-cluster-aurora-read-replica.md](0007-rds-module-layout-instance-aurora-cluster-aurora-read-replica.md) |
+| DESIGN-0008 | EFS module layout for EFS CSI on EKS | Draft | 2026-05-27 | Donald Gifford | [0008-efs-module-layout-for-efs-csi-on-eks.md](0008-efs-module-layout-for-efs-csi-on-eks.md) |
 <!-- END DOCZ AUTO-GENERATED -->
