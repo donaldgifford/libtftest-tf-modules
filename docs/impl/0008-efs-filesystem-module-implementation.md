@@ -1,7 +1,7 @@
 ---
 id: IMPL-0008
 title: "EFS filesystem module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-05-28
 ---
@@ -9,7 +9,7 @@ created: 2026-05-28
 
 # IMPL 0008: EFS filesystem module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-05-28
 
@@ -528,7 +528,7 @@ Final polish.
 
 #### Tasks
 
-- [ ] Expand `modules/efs/filesystem/README.md` with:
+- [x] Expand `modules/efs/filesystem/README.md` with:
   - Prerequisites (VPC stack, EKS cluster stack, S3 backend,
     LocalStack tier note).
   - Instantiation patterns: minimal example, BYO KMS, multi-
@@ -543,17 +543,17 @@ Final polish.
     mount target `tags` API gap (per IMPL Open Question Q9);
     `creation_token` collision on destroy + re-apply (per IMPL
     Open Question Q10).
-- [ ] Regenerate `USAGE.md` via `terraform-docs .`.
-- [ ] Add an "EFS filesystem module shape" section to `CLAUDE.md`
+- [x] Regenerate `USAGE.md` via `terraform-docs .`.
+- [x] Add an "EFS filesystem module shape" section to `CLAUDE.md`
       following the rds-serverless precedent (~150-line block).
-- [ ] Update `CLAUDE.md` repository-purpose section to list the
+- [x] Update `CLAUDE.md` repository-purpose section to list the
       new `modules/efs/` family.
-- [ ] Update IMPL-0008 status from `Draft` → `Completed`; tick
+- [x] Update IMPL-0008 status from `Draft` → `Completed`; tick
       all tasks in this file.
-- [ ] `just docs lint` passes (modulo the pre-existing MD024 /
+- [x] `just docs lint` passes (modulo the pre-existing MD024 /
       MD051 noise inherent to the docz IMPL template — same
       pattern as IMPL-0005..0007).
-- [ ] Final audit pass: `just tf all efs/filesystem`
+- [x] Final audit pass: `just tf all efs/filesystem`
       (validate + lint + fmt + test) passes cleanly.
 
 #### Success Criteria
