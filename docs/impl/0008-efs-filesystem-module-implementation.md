@@ -110,13 +110,13 @@ just the surface area + validations.
 
 #### Tasks
 
-- [ ] Create `modules/efs/` directory; create `modules/efs/filesystem/`
+- [x] Create `modules/efs/` directory; create `modules/efs/filesystem/`
       sub-directory; copy scaffolding files verbatim from
       `modules/rds/serverless/` (`.terraform-docs.yml`,
       `.tflint.hcl`) per the per-module conventions in CLAUDE.md.
-- [ ] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`,
+- [x] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`,
       Terraform `>= 1.1`.
-- [ ] Author `variables.tf` with the full DESIGN-0008 input
+- [x] Author `variables.tf` with the full DESIGN-0008 input
       contract:
   - Required: `region`, `remote_state_bucket`, `vpc_name`,
     `cluster_name`, `identifier_prefix`.
@@ -129,12 +129,12 @@ just the surface area + validations.
     `backup_policy_enabled` (default false per Q7),
     `access_points` (default `{}` per Q6 — see Open Question Q3
     for inner shape), `tags` (default `{}`).
-- [ ] Each variable carries `description`, `type`, `default`
+- [x] Each variable carries `description`, `type`, `default`
       (optional only), `validation` block where shape-constrained,
       and `nullable = false` AFTER `validation` per the custom
       tflint `variable_attribute_order` rule (sibling pattern in
       `modules/rds/serverless/variables.tf`).
-- [ ] Validation blocks for:
+- [x] Validation blocks for:
   - `identifier_prefix`: regex shape
     (`^[a-z][a-z0-9-]{0,61}[a-z0-9]$` — same as RDS serverless)
     AND length ≤ 64 (EFS `creation_token` max).
@@ -146,9 +146,9 @@ just the surface area + validations.
     `^sg-[a-f0-9]+$`.
   - `access_points`: per Open Question Q3 / Q4 (POSIX UID/GID
     bounds).
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf` with header
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf` with header
       comments (resources land in Phase 2+).
-- [ ] Create `modules/efs/filesystem/README.md` stub (one-line
+- [x] Create `modules/efs/filesystem/README.md` stub (one-line
       pointer to `USAGE.md`).
 
 #### Success Criteria
@@ -171,16 +171,16 @@ coalesce + the NFS port literal.
 
 #### Tasks
 
-- [ ] Add `data.terraform_remote_state.vpc` with `backend = "s3"`,
+- [x] Add `data.terraform_remote_state.vpc` with `backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`.
       Consumed outputs: `private_subnet_ids`, `vpc_id` (see Open
       Question Q1).
-- [ ] Add `data.terraform_remote_state.eks` with `backend = "s3"`,
+- [x] Add `data.terraform_remote_state.eks` with `backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/eks/${var.cluster_name}/terraform.tfstate`.
       Consumed output: `node_security_group_id`.
-- [ ] Populate `locals.tf`:
+- [x] Populate `locals.tf`:
   - `kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))`
     — same coalesce-with-`try()` pattern as
     `modules/rds/serverless/locals.tf`. Keeps Phase 2 plan-valid
@@ -188,7 +188,7 @@ coalesce + the NFS port literal.
   - `kms_alias_name = "alias/${var.identifier_prefix}-efs"`.
   - `nfs_port = 2049` (literal — single port; no engine-port map
     needed unlike RDS).
-- [ ] Reference data-source + local values at the use site (no
+- [x] Reference data-source + local values at the use site (no
       aliasing locals for plain passthroughs per ADR-0001 /
       CLAUDE.md).
 
@@ -206,7 +206,7 @@ per DESIGN-0008 Q5 + IMPL Open Question Q6 resolution.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/kms.tf`:
+- [x] Create `modules/efs/filesystem/kms.tf`:
   - `aws_kms_key.this` with `count = var.kms_key_arn == null ? 1 : 0`,
     `description = "KMS key for EFS filesystem ${var.identifier_prefix} encryption at rest"`,
     `enable_key_rotation = true`,
@@ -216,7 +216,7 @@ per DESIGN-0008 Q5 + IMPL Open Question Q6 resolution.
   - `aws_kms_alias.this` with same count gate;
     `name = local.kms_alias_name`,
     `target_key_id = aws_kms_key.this[0].key_id`.
-- [ ] Verify `local.kms_key_arn` resolves correctly in BOTH modes
+- [x] Verify `local.kms_key_arn` resolves correctly in BOTH modes
       (BYO short-circuits; module-managed resolves to managed key's
       ARN at plan).
 
@@ -235,7 +235,7 @@ remote state) and optional additional consumer SGs.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/network.tf`:
+- [x] Create `modules/efs/filesystem/network.tf`:
   - `aws_security_group.this`:
     - `name = "${var.identifier_prefix}-efs"`.
     - `description = "EFS filesystem ${var.identifier_prefix} security group"`.
@@ -260,7 +260,7 @@ remote state) and optional additional consumer SGs.
       `ip_protocol = "-1"`,
       `description = "All-outbound egress for AWS API endpoints"`,
       `tags = var.tags`.
-- [ ] Granular SG rule resources (not inline ingress/egress on the
+- [x] Granular SG rule resources (not inline ingress/egress on the
       SG itself) per the EKS-cluster / rds-serverless pattern.
 
 #### Success Criteria
@@ -280,7 +280,7 @@ max availability).
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/filesystem.tf`:
+- [x] Create `modules/efs/filesystem/filesystem.tf`:
   - `aws_efs_file_system.this`:
     - `creation_token = var.identifier_prefix` (per DESIGN-0008 Q10).
     - `encrypted = true`.
@@ -300,7 +300,7 @@ max availability).
   - Alphabetical attribute ordering per the custom
     `resource_parameter_order` tflint rule (scalar args first, then
     dynamic / lifecycle blocks).
-- [ ] Create `modules/efs/filesystem/mount_targets.tf`:
+- [x] Create `modules/efs/filesystem/mount_targets.tf`:
   - `aws_efs_mount_target.this`:
     - `for_each = toset(data.terraform_remote_state.vpc.outputs.private_subnet_ids)`.
     - `file_system_id = aws_efs_file_system.this.id`.
@@ -325,7 +325,7 @@ Empty map (default) produces zero resources.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/access_points.tf`:
+- [x] Create `modules/efs/filesystem/access_points.tf`:
   - `aws_efs_access_point.this`:
     - `for_each = var.access_points`.
     - `file_system_id = aws_efs_file_system.this.id`.
@@ -352,7 +352,7 @@ Empty map (default) produces zero resources.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/backup.tf`:
+- [x] Create `modules/efs/filesystem/backup.tf`:
   - `aws_efs_backup_policy.this`:
     - `count = var.backup_policy_enabled ? 1 : 0`.
     - `file_system_id = aws_efs_file_system.this.id`.
@@ -373,7 +373,7 @@ remote-state consumers and PV manifest references.
 
 #### Tasks
 
-- [ ] Author `modules/efs/filesystem/outputs.tf`:
+- [x] Author `modules/efs/filesystem/outputs.tf`:
   - `filesystem_id` — plugs into `volumeHandle` in PV manifests
     (the `<filesystem_id>::<access_point_id>` shape).
   - `filesystem_arn` — for IAM policies scoped to this filesystem.
@@ -386,7 +386,7 @@ remote-state consumers and PV manifest references.
     `local.kms_key_arn`.
   - `access_point_ids` — map keyed by `var.access_points` map key.
   - `access_point_arns` — same shape.
-- [ ] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
+- [x] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
 
 #### Success Criteria
 
