@@ -39,4 +39,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0005 | ECR Pull-Through Cache Module Implementation | Completed | 2026-05-15 | Donald Gifford | [0005-ecr-pull-through-cache-module-implementation.md](0005-ecr-pull-through-cache-module-implementation.md) |
 | IMPL-0006 | Org-wide ECR OCI Artifact Registry Module Implementation | Completed | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry-module-implementation.md](0006-org-wide-ecr-oci-artifact-registry-module-implementation.md) |
 | IMPL-0007 | Aurora Serverless v2 Module Implementation | Completed | 2026-05-27 | Donald Gifford | [0007-aurora-serverless-v2-module-implementation.md](0007-aurora-serverless-v2-module-implementation.md) |
+| IMPL-0008 | EFS filesystem module implementation | Draft | 2026-05-28 | Donald Gifford | [0008-efs-filesystem-module-implementation.md](0008-efs-filesystem-module-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->
