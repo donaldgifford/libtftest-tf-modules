@@ -403,8 +403,8 @@ LocalStack required; runs in ~1.5s.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/tests/` directory.
-- [ ] Author `tests/default.tftest.hcl`:
+- [x] Create `modules/efs/filesystem/tests/` directory.
+- [x] Author `tests/default.tftest.hcl`:
   - BYO KMS so `local.kms_key_arn` is plan-known.
   - Asserts: filesystem encrypted, `kms_key_id` flows BYO ARN,
     `performance_mode = "generalPurpose"`, `throughput_mode = "elastic"`,
@@ -415,32 +415,32 @@ LocalStack required; runs in ~1.5s.
     - `data.terraform_remote_state.vpc` (3 private subnets, 1
       vpc_id).
     - `data.terraform_remote_state.eks` (node_security_group_id).
-- [ ] Author `tests/byo_kms.tftest.hcl` — focused BYO shape (zero
+- [x] Author `tests/byo_kms.tftest.hcl` — focused BYO shape (zero
       managed KMS resources, BYO ARN flowthrough).
-- [ ] Author `tests/managed_kms.tftest.hcl` — `var.kms_key_arn =
+- [x] Author `tests/managed_kms.tftest.hcl` — `var.kms_key_arn =
       null` produces 1 KMS key + 1 alias.
-- [ ] Author `tests/access_points.tftest.hcl`:
+- [x] Author `tests/access_points.tftest.hcl`:
   - Empty map → 0 access points.
   - 2-entry map → 2 access points; `posix_user.uid` flows per key;
     `Name` tag = map key.
-- [ ] Author `tests/lifecycle_policy.tftest.hcl`:
+- [x] Author `tests/lifecycle_policy.tftest.hcl`:
   - Default → both IA + Archive transition blocks present.
   - `var.lifecycle_policy = null` → zero lifecycle policy blocks.
   - Override `transition_to_ia = "AFTER_60_DAYS"` → only the IA
     block changes.
-- [ ] Author `tests/sg_ingress.tftest.hcl`:
+- [x] Author `tests/sg_ingress.tftest.hcl`:
   - 2-entry `additional_allowed_consumer_sg_ids` → 2 extra
     ingress rules.
   - Empty list → 0 extra ingress rules (the `from_nodes` rule
     remains).
-- [ ] Author `tests/mount_target_count.tftest.hcl`:
+- [x] Author `tests/mount_target_count.tftest.hcl`:
   - 3-subnet stub → 3 mount targets.
   - 1-subnet stub → 1 mount target (the cluster-on-single-AZ
     case).
-- [ ] Author `tests/backup_policy.tftest.hcl`:
+- [x] Author `tests/backup_policy.tftest.hcl`:
   - Default → 0 backup policies.
   - Opt-in → 1 backup policy, `status = "ENABLED"`.
-- [ ] Author `tests/validation.tftest.hcl` with `expect_failures`
+- [x] Author `tests/validation.tftest.hcl` with `expect_failures`
       on:
   - `var.identifier_prefix = "InvalidUpperCase"`.
   - `var.identifier_prefix` 65+ chars (over EFS creation_token
@@ -453,11 +453,11 @@ LocalStack required; runs in ~1.5s.
   - Cross-var precondition: `throughput_mode = "elastic"` +
     `provisioned_throughput_in_mibps = 100` (filesystem
     lifecycle.precondition fires).
-- [ ] All test files supply `override_data` for BOTH remote-state
+- [x] All test files supply `override_data` for BOTH remote-state
       data sources so terraform test doesn't try real S3 reads
       before var/precondition validation fires (the IMPL-0007
       Phase 9 lesson).
-- [ ] BYO KMS used in any test that asserts on
+- [x] BYO KMS used in any test that asserts on
       `local.kms_key_arn`-dependent attributes (IMPL-0006 lesson).
 
 #### Success Criteria
