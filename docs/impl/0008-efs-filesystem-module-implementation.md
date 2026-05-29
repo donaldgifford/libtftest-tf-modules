@@ -475,8 +475,8 @@ implementation time.
 
 #### Tasks
 
-- [ ] Create `modules/efs/filesystem/tests-localstack/` directory.
-- [ ] Create `tests-localstack/fixtures/setup/main.tf` (per IMPL
+- [x] Create `modules/efs/filesystem/tests-localstack/` directory.
+- [x] Create `tests-localstack/fixtures/setup/main.tf` (per IMPL
       Open Question Q8 — recommended path doesn't provision a
       real EKS cluster, just stubs the node SG):
   - VPC + 3 private subnets across 3 AZs.
@@ -489,14 +489,14 @@ implementation time.
       (node_security_group_id output).
   - Sibling pattern: `modules/eks/managed-node-group/tests-localstack/fixtures/setup/main.tf`
     (simplified per Q8 — no real EKS cluster).
-- [ ] Probe LocalStack EFS coverage at implementation time:
+- [x] Probe LocalStack EFS coverage at implementation time:
   - `aws_efs_file_system` (create + KMS encryption).
   - `aws_efs_mount_target` (creation in private subnets — known
     LocalStack edge).
   - `aws_efs_access_point`.
   - `aws_efs_backup_policy` (depends on LocalStack AWS Backup
     support — likely Pro-only).
-- [ ] Author `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Author `tests-localstack/apply_localstack.tftest.hcl`:
   - `run "setup"` — apply the fixture.
   - `run "apply_default"` — apply the module with default vars +
     one access point in the map (validates the access-point
@@ -505,7 +505,7 @@ implementation time.
     `var.backup_policy_enabled = true` (likely the highest-risk
     surface; gracefully document via IMPL-0005 Phase 9 fallback
     if it 501s).
-- [ ] Author `tests-localstack/FINDINGS.md`:
+- [x] Author `tests-localstack/FINDINGS.md`:
   - Finding #1: EFS coverage matrix (Community + Pro).
   - Finding #2: Backup policy / AWS Backup integration — likely
     Pro-gated; document the tier-specific behavior.
