@@ -339,7 +339,7 @@ layer; scoped to the AIP ARNs this module provisions.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/iam.tf`:
+- [x] Create `modules/bedrock/claude-code/iam.tf`:
   - `aws_iam_user.this`:
     - `name = "${var.identifier_prefix}-claude-code"` (or `var.cost_tag.value`
       if no separate identifier — confirm in Phase 1 var design;
@@ -369,12 +369,12 @@ layer; scoped to the AIP ARNs this module provisions.
   - `aws_iam_user_policy_attachment.this`:
     - `user = aws_iam_user.this.name`.
     - `policy_arn = aws_iam_policy.bedrock_invoke.arn`.
-- [ ] Add explicit "we do NOT attach `AmazonBedrockLimitedAccess`" note
+- [x] Add explicit "we do NOT attach `AmazonBedrockLimitedAccess`" note
       as a top-of-file comment in `iam.tf` — DESIGN-0009 §1 calls this
       out as an intentional contrast, and the comment documents *why*
       the absence is deliberate (the only allowed "why" comment per
       CLAUDE.md guidance).
-- [ ] Add explicit precondition: every `var.models[k].provider` is in
+- [x] Add explicit precondition: every `var.models[k].provider` is in
       the eight-provider allowed set (defense in depth alongside the
       Phase 1 variable validation — covers the case where validation
       is silently bypassed by a future provider change).
@@ -395,24 +395,24 @@ set + any user tags. Per DESIGN-0009 §1 + Q5.
 
 ##### Tasks
 
-- [ ] **Pre-task: Resolve Q2** — verify against `hashicorp/aws ~> 6.2`
+- [x] **Pre-task: Resolve Q2** — verify against `hashicorp/aws ~> 6.2`
       provider schema docs that the resource is named
       `aws_bedrock_inference_profile` with attribute `model_source`
       (or whatever the actual v6 schema uses).
       [Provider docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
       Update Phase 4 tasks once Q2 resolves.
-- [ ] Create `modules/bedrock/claude-code/inference_profiles.tf`:
+- [x] Create `modules/bedrock/claude-code/inference_profiles.tf`:
   - `aws_bedrock_inference_profile.this`:
     - `for_each = var.models`.
     - `name = each.key`.
     - `model_source { copy_from = each.value.model_id }` (subject to Q2
       schema verification — actual block name may differ).
     - `tags = merge(var.tags, local.cost_tag_map)`.
-- [ ] Populate `locals.tf` with
+- [x] Populate `locals.tf` with
       `local.aip_arns = { for k, v in aws_bedrock_inference_profile.this : k => v.arn }`
       — single source for Phase 3 IAM scoping (forward reference at
       use site, no second alias).
-- [ ] Wire `local.aip_arns` into the Phase 3 IAM policy document's
+- [x] Wire `local.aip_arns` into the Phase 3 IAM policy document's
       Resource list (the forward reference from Phase 3 resolves here).
 
 ##### Success Criteria
@@ -431,7 +431,7 @@ gated on `var.slack_enabled`.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/alerting.tf`:
+- [x] Create `modules/bedrock/claude-code/alerting.tf`:
   - `aws_sns_topic.alerts`:
     - `name = "${aws_iam_user.this.name}-alerts"`.
     - `tags = merge(var.tags, local.cost_tag_map)`.
