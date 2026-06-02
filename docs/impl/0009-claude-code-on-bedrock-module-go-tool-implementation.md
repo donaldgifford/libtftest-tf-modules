@@ -470,7 +470,7 @@ default to 50/80/100% actual + 100% forecasted.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/budget.tf`:
+- [x] Create `modules/bedrock/claude-code/budget.tf`:
   - `aws_budgets_budget.this`:
     - `name = "${aws_iam_user.this.name}-budget"`.
     - `budget_type = "COST"`.

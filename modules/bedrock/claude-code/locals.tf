@@ -41,4 +41,11 @@ locals {
     for k, v in var.models :
     startswith(v.model_id, "arn:") ? v.model_id : "arn:aws:bedrock:${var.region}::foundation-model/${v.model_id}"
   ]
+
+  # Budget notification blocks: one ACTUAL per threshold percentage plus
+  # a single FORECASTED at the forecast threshold (budget.tf, Phase 6).
+  budget_notifications = concat(
+    [for t in var.budget_thresholds_percent : { type = "ACTUAL", threshold = t }],
+    [{ type = "FORECASTED", threshold = var.budget_forecast_threshold_percent }],
+  )
 }
