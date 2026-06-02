@@ -297,15 +297,15 @@ if the tag key is bad.
 
 ##### Tasks
 
-- [ ] Add `data.aws_caller_identity.current` (used here for the
+- [x] Add `data.aws_caller_identity.current` (used here for the
       future precondition + later by IAM scope) — ADR-0001 carve-out
       for identity-class data sources.
-- [ ] Add `data.aws_organizations_organization.current` with
+- [x] Add `data.aws_organizations_organization.current` with
       `count = var.cost_allocation_tag_activation == "local" ? 1 : 0`
       — used by the optional precondition guardrail in DESIGN-0009 §1.
       Wrapped in `try()` for the permissive Q7 semantics
       (lookup-failure-treated-as-standalone).
-- [ ] Create `modules/bedrock/claude-code/cost_allocation.tf`:
+- [x] Create `modules/bedrock/claude-code/cost_allocation.tf`:
   - `aws_ce_cost_allocation_tag.this`:
     - `count = var.cost_allocation_tag_activation == "local" ? 1 : 0`.
     - `tag_key = var.cost_tag.key`.
@@ -314,7 +314,7 @@ if the tag key is bad.
     `local` is selected but the caller account doesn't appear to be
     the org management account. Per DESIGN-0009 Q7 — permissive
     interpretation: skip on org-API lookup failure.
-- [ ] Populate `locals.tf` with `local.account_id =
+- [x] Populate `locals.tf` with `local.account_id =
       data.aws_caller_identity.current.account_id` (Phase 3 IAM
       policy scopes off this) and `local.cost_tag_map = { (var.cost_tag.key) = var.cost_tag.value }`
       (re-used by IAM user tags, AIP tags, Budget filter — single

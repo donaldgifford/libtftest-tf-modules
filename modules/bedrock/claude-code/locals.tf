@@ -14,4 +14,12 @@
 #--------------------------------------------------------------
 
 locals {
+  account_id = data.aws_caller_identity.current.account_id
+
+  # Single source-of-truth for the attribution tag pair. Re-used by the
+  # IAM user/policy tags (Phase 3), AIP tags (Phase 4), the CloudWatch
+  # alarm tags (Phase 7), and (indirectly) the budget filter (Phase 6).
+  # Kept separate from var.tags — this is a load-bearing dimension, not
+  # a generic tag.
+  cost_tag_map = { (var.cost_tag.key) = var.cost_tag.value }
 }
