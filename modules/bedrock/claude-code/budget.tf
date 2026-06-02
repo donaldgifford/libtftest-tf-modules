@@ -19,11 +19,13 @@ resource "aws_budgets_budget" "this" {
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
-  # AWS Cost Explorer user-defined tag filter shape: user:<key>$<value>
-  # ($$ is the HCL escape for a literal $).
+  # AWS Cost Explorer user-defined tag filter shape: user:<key>$<value>.
+  # format() keeps the literal "$" separator out of HCL interpolation
+  # (a "$${...}" template escape would render a literal "${...}", not a
+  # "$" followed by the value).
   cost_filter {
     name   = "TagKeyValue"
-    values = ["user:${var.cost_tag.key}$${var.cost_tag.value}"]
+    values = [format("user:%s$%s", var.cost_tag.key, var.cost_tag.value)]
   }
 
   dynamic "notification" {

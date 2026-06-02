@@ -578,8 +578,8 @@ IMPL-0007 / IMPL-0008.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/tests/` directory.
-- [ ] Author `tests/default.tftest.hcl`:
+- [x] Create `modules/bedrock/claude-code/tests/` directory.
+- [x] Author `tests/default.tftest.hcl`:
   - Default inputs (us-west-2, empty `models` map per Q3
     recommendation, default thresholds).
   - Asserts: 1 IAM user + 1 IAM policy + 1 attachment + 1 SNS topic +
@@ -589,20 +589,20 @@ IMPL-0007 / IMPL-0008.
   - `override_data` stubs for
     `data.aws_caller_identity.current` (account_id) and
     `data.aws_organizations_organization.current` (id, master_account_id).
-- [ ] Author `tests/models_map.tftest.hcl`:
+- [x] Author `tests/models_map.tftest.hcl`:
   - 3-entry `models` map covering Anthropic Claude Opus/Sonnet/Haiku.
   - Asserts: 3 AIPs, 3 alarms, IAM policy Resource list has 6 ARNs
     (3 AIPs + 3 FMs), AIP names match map keys.
-- [ ] Author `tests/multi_provider.tftest.hcl`:
+- [x] Author `tests/multi_provider.tftest.hcl`:
   - 4-entry `models` map: anthropic.opus + amazon.nova +
     meta.llama + openai.gpt55 (per DESIGN-0009 Q5 — Day-1
     multi-provider).
   - Asserts: 4 AIPs (provider-agnostic creation); cost tags applied
     uniformly.
-- [ ] Author `tests/cost_allocation_modes.tftest.hcl`:
+- [x] Author `tests/cost_allocation_modes.tftest.hcl`:
   - 3 runs: `local` (default — 1 tag resource), `payer` (0 tag
     resources), `none` (0 tag resources).
-- [ ] Author `tests/slack.tftest.hcl`:
+- [x] Author `tests/slack.tftest.hcl`:
   - 4 runs: default (no Slack); `slack_enabled = true,
     slack_delivery = "chatbot", slack_target = "https://..."` (1
     Slack sub with `protocol = "https"`); `slack_enabled = true,
@@ -610,11 +610,11 @@ IMPL-0007 / IMPL-0008.
     (1 Slack sub with `protocol = "lambda"`); negative — Slack
     precondition (Q10): `slack_enabled = true, slack_target = null`
     rejected at plan.
-- [ ] Author `tests/budget.tftest.hcl`:
+- [x] Author `tests/budget.tftest.hcl`:
   - Default thresholds → 3 actual + 1 forecasted notification blocks.
   - Custom thresholds `[25, 75]` + forecast `90` → 2 actual + 1
     forecasted blocks.
-- [ ] Author `tests/validation.tftest.hcl` with `expect_failures` on:
+- [x] Author `tests/validation.tftest.hcl` with `expect_failures` on:
   - `var.region = "invalid-region"`.
   - `var.cost_allocation_tag_activation = "wrong"`.
   - `var.slack_delivery = "teams"`.
@@ -623,7 +623,7 @@ IMPL-0007 / IMPL-0008.
   - `var.budget_amount = 0`.
   - `var.budget_thresholds_percent = [150]`.
   - `var.cost_tag.key = ""`.
-- [ ] All test files supply `override_data` for both data sources to
+- [x] All test files supply `override_data` for both data sources to
       avoid real AWS lookups before var validation fires (IMPL-0007
       Phase 9 lesson).
 
