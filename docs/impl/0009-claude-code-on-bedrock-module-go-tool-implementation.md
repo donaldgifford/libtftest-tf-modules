@@ -540,7 +540,7 @@ DESIGN-0009 §Related Work).
 
 ##### Tasks
 
-- [ ] Author `modules/bedrock/claude-code/outputs.tf`:
+- [x] Author `modules/bedrock/claude-code/outputs.tf`:
   - `iam_user_name` — for the Go tool's `--user` flag.
   - `iam_user_arn` — IAM-principal cost allocation pivot.
   - `aip_arns` — map keyed by `var.models` logical name → AIP ARN.
@@ -554,11 +554,11 @@ DESIGN-0009 §Related Work).
     `cost_allocation_tag_activation = "payer"`, the operator runs
     `aws ce update-cost-allocation-tags-status` in the management
     account using these values; README documents the recipe).
-- [ ] Explicitly **NO `bedrock_api_key`-style output.** DESIGN-0009 §1:
+- [x] Explicitly **NO `bedrock_api_key`-style output.** DESIGN-0009 §1:
       "Deliberately no credential output — the secret is never produced
       by Terraform." Add a top-of-file `outputs.tf` comment documenting
       this absence with a pointer to the Go tool.
-- [ ] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
+- [x] Re-run `terraform-docs .` to render outputs into `USAGE.md`.
 
 ##### Success Criteria
 

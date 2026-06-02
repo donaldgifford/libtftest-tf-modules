@@ -8,7 +8,9 @@
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| aws | 6.47.0 |
 
 ## Modules
 
@@ -16,7 +18,21 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [aws_bedrock_inference_profile.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrock_inference_profile) | resource |
+| [aws_budgets_budget.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) | resource |
+| [aws_ce_cost_allocation_tag.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ce_cost_allocation_tag) | resource |
+| [aws_cloudwatch_metric_alarm.token_count](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_iam_policy.bedrock_invoke](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_user.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user) | resource |
+| [aws_iam_user_policy_attachment.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy_attachment) | resource |
+| [aws_sns_topic.alerts](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic) | resource |
+| [aws_sns_topic_subscription.email](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription) | resource |
+| [aws_sns_topic_subscription.slack](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.bedrock_invoke](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_organizations_organization.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/organizations_organization) | data source |
 
 ## Inputs
 
@@ -41,5 +57,13 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| aip\_arns | Map of var.models logical name -> application inference profile ARN. The load-bearing output: the developer-onboarding stack reads this to populate Claude Code's settings.json (ANTHROPIC\_MODEL / ANTHROPIC\_SMALL\_FAST\_MODEL) and the IAM policy scopes invoke permissions to these ARNs. |
+| budget\_name | Name of the tag-filtered AWS Budget. Useful for cross-stack references and for operators inspecting budget state via the AWS CLI. |
+| cost\_tag\_key | The cost-allocation tag key (var.cost\_tag.key). Passthrough for the payer-account component: when cost\_allocation\_tag\_activation = 'payer', the operator runs `aws ce update-cost-allocation-tags-status` in the management account with this key (README documents the recipe). |
+| cost\_tag\_value | The cost-allocation tag value (var.cost\_tag.value). Passthrough surfacing the attribution dimension's value alongside cost\_tag\_key for the payer-account activation recipe and for downstream cost-report tooling. |
+| iam\_user\_arn | ARN of the backing IAM user — the IAM-principal pivot for cost allocation and for scoping cross-account trust policies. |
+| iam\_user\_name | Name of the backing IAM user. Pass to the bedrock-keyctl tool's --user flag to mint/rotate/revoke the bearer token (the service-specific credential for bedrock.amazonaws.com). |
+| sns\_topic\_arn | ARN of the alert SNS topic. Consumers wanting to attach their own subscriber type (PagerDuty, a custom Lambda, a second Slack workspace) reference this directly rather than re-deriving it. |
 <!-- END_TF_DOCS -->
