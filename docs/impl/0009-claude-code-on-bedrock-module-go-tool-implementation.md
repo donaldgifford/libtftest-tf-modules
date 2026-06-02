@@ -644,13 +644,13 @@ findings.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/tests-localstack/` directory.
-- [ ] Author `tests-localstack/setup.tftest.hcl` building the fixture:
+- [x] Create `modules/bedrock/claude-code/tests-localstack/` directory.
+- [x] Author `tests-localstack/setup.tftest.hcl` building the fixture:
   - S3 bucket for stub state (unused for this module — Bedrock is
     fleet-shared, no upstream remote-state reads needed) — actually
     the simplest possible fixture; no VPC, no cluster, no other
     state.
-- [ ] Author `tests-localstack/apply_localstack.tftest.hcl`:
+- [x] Author `tests-localstack/apply_localstack.tftest.hcl`:
   - `plan_smoke` run (active): plans the module against LocalStack
     endpoints with a 1-entry `models` map. Verifies provider endpoint
     resolution + plan-time validation only.
@@ -658,7 +658,7 @@ findings.
     full module apply against LocalStack. Re-enable when LocalStack
     lands `aws_bedrock_inference_profile` + AWS Budgets +
     cost-allocation tag activation.
-- [ ] Author `tests-localstack/FINDINGS.md` documenting the gaps —
+- [x] Author `tests-localstack/FINDINGS.md` documenting the gaps —
       per the IMPL-0005 / IMPL-0006 / IMPL-0008 pattern. Specifically
       capture:
   - LocalStack Pro tier verification (does Pro 2026.5.0 stub Bedrock
