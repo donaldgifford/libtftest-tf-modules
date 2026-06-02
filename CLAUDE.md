@@ -25,10 +25,19 @@ Tracked in git. As of this writing:
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
   siblings (e.g. `modules/efs/replica/` if cross-region replication ever lands).
+- **`modules/bedrock/`** — `claude-code` (IMPL-0009, in progress — Claude Code
+  on Bedrock governed access + cost attribution per DESIGN-0009 / RFC-0003).
+  Provider-agnostic at the Bedrock layer: IAM user + least-privilege policy,
+  one application inference profile (AIP) per `var.models` entry, SNS + email
+  (optional Slack) alerting, tag-filtered AWS Budget, per-AIP CloudWatch
+  token alarm, conditional cost-allocation tag activation. The credential
+  (bearer token) is deliberately NOT minted by Terraform — see
+  `tools/bedrock-keyctl` below. The `claude-code/` sub-directory leaves room
+  for siblings like `modules/bedrock/guardrails/`.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
-(ADR-0001..0016), `docs/rfc/` (RFC-0001..0002), and `docs/design/`
-(DESIGN-0001..0008).
+(ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), and `docs/design/`
+(DESIGN-0001..0009).
 
 ## Tooling
 

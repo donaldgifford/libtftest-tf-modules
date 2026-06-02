@@ -221,14 +221,14 @@ just surface area + validations.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/` parent directory; create
+- [x] Create `modules/bedrock/` parent directory; create
       `modules/bedrock/claude-code/` sub-directory (subject to Q1).
-- [ ] Copy `.terraform-docs.yml` + `.tflint.hcl` verbatim from
+- [x] Copy `.terraform-docs.yml` + `.tflint.hcl` verbatim from
       `modules/efs/filesystem/` per the per-module conventions in
       CLAUDE.md.
-- [ ] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`,
+- [x] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`,
       Terraform `>= 1.1`.
-- [ ] Author `variables.tf` with the full DESIGN-0009 input contract:
+- [x] Author `variables.tf` with the full DESIGN-0009 input contract:
   - Required: `region` (default `"us-west-2"` per DESIGN-0009 Q5
     — has a default, so technically optional; "required-with-default"
     is the recommended posture for region inputs across the fleet);
@@ -254,11 +254,11 @@ just surface area + validations.
     note the cost-allocation tag's key/value flows from `var.cost_tag`
     separately and is *not* merged from `var.tags` (it's a load-bearing
     attribution dimension, not a generic tag).
-- [ ] Each variable carries `description`, `type`, `default` (optional
+- [x] Each variable carries `description`, `type`, `default` (optional
       only), `validation` block where shape-constrained, and
       `nullable = false` AFTER `validation` per the custom tflint
       `variable_attribute_order` rule.
-- [ ] Validation blocks for:
+- [x] Validation blocks for:
   - `region`: regex `^[a-z]{2}-[a-z]+-[0-9]$`.
   - `cost_allocation_tag_activation`: `contains(["local","payer","none"], var.cost_allocation_tag_activation)`.
   - `slack_delivery`: `contains(["chatbot","lambda"], var.slack_delivery)`.
@@ -270,9 +270,9 @@ just surface area + validations.
   - `budget_thresholds_percent`: each entry in `[1, 100]`.
   - `cost_tag.key`: non-empty, matches `^[A-Za-z][A-Za-z0-9_:-]{0,127}$`
     (AWS tag-key shape — 128 char max, first char alphabetic).
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments
       (resources land in Phase 2+).
-- [ ] Create `modules/bedrock/claude-code/README.md` stub
+- [x] Create `modules/bedrock/claude-code/README.md` stub
       (one-line pointer to `USAGE.md`).
 
 ##### Success Criteria
