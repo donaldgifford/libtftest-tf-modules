@@ -505,7 +505,7 @@ DESIGN-0009 §1 + Q3 resolution. One alarm per AIP.
 
 ##### Tasks
 
-- [ ] Create `modules/bedrock/claude-code/cloudwatch.tf`:
+- [x] Create `modules/bedrock/claude-code/cloudwatch.tf`:
   - `aws_cloudwatch_metric_alarm.token_count`:
     - `for_each = aws_bedrock_inference_profile.this`.
     - `alarm_name = "${aws_iam_user.this.name}-${each.key}-tokens"`.
