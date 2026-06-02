@@ -22,4 +22,23 @@ locals {
   # Kept separate from var.tags — this is a load-bearing dimension, not
   # a generic tag.
   cost_tag_map = { (var.cost_tag.key) = var.cost_tag.value }
+
+  # Backing IAM user name — explicit override or derived from the cost
+  # tag value. Seeds the IAM policy, SNS topic, budget, and alarm names.
+  user_name = coalesce(var.user_name, "${var.cost_tag.value}-claude-code")
+
+  # AIP ARNs keyed by the models logical name. Single source for the IAM
+  # policy's AllowAipInvoke resource list — read at the use site in
+  # iam.tf, no second alias (ADR-0001 / CLAUDE.md).
+  aip_arns = { for k, v in aws_bedrock_inference_profile.this : k => v.arn }
+
+  # Foundation-model ARNs backing each AIP. Bedrock evaluates IAM
+  # against BOTH the AIP and the wrapped foundation model at invoke
+  # time, so the policy lists both. model_id is normally a full FM ARN;
+  # a bare model ID is expanded to the regional foundation-model ARN as
+  # a convenience.
+  model_fm_arns = [
+    for k, v in var.models :
+    startswith(v.model_id, "arn:") ? v.model_id : "arn:aws:bedrock:${var.region}::foundation-model/${v.model_id}"
+  ]
 }
