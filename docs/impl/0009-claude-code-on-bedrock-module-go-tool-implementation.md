@@ -692,10 +692,10 @@ SDK v2, interfaces around IAM/Bedrock/sink).
 
 ##### Tasks
 
-- [ ] Create `tools/bedrock-keyctl/` directory.
-- [ ] Run `go mod init` per Q6 resolution (module path TBD on Q6
+- [x] Create `tools/bedrock-keyctl/` directory.
+- [x] Run `go mod init` per Q6 resolution (module path TBD on Q6
       resolution).
-- [ ] Add dependencies (constrain to AWS SDK v2 + minimal others —
+- [x] Add dependencies (constrain to AWS SDK v2 + minimal others —
       target ≤ 5 direct deps per Uber-style minimalism):
   - `github.com/aws/aws-sdk-go-v2/...` (config, credentials/stscreds,
     service/iam, service/bedrock, service/bedrockruntime,
@@ -705,7 +705,7 @@ SDK v2, interfaces around IAM/Bedrock/sink).
     `forge`).
   - **No** `github.com/hashicorp/vault/api` in v1 per Q7
     resolution (c) — Vault sink deferred to v1.1.
-- [ ] Author the interface surface at `tools/bedrock-keyctl/internal/awsapi/`:
+- [x] Author the interface surface at `tools/bedrock-keyctl/internal/awsapi/`:
   - `IAMClient` — `CreateServiceSpecificCredential`,
     `UpdateServiceSpecificCredential`, `DeleteServiceSpecificCredential`,
     `ListServiceSpecificCredentials`.
@@ -714,13 +714,13 @@ SDK v2, interfaces around IAM/Bedrock/sink).
   - `MarketplaceClient` — `Subscribe`, `DescribeSubscriptions`
     (Q8 may collapse these).
   - `STSClient` — `AssumeRole`, `GetCallerIdentity`.
-- [ ] Author `tools/bedrock-keyctl/internal/sink/`:
+- [x] Author `tools/bedrock-keyctl/internal/sink/`:
   - `Sink` interface with `Write(ctx, key, payload []byte) error`
     + `Read(ctx, key) ([]byte, error)` + `Delete(ctx, key) error`.
   - Phase 12 ships the two implementations.
-- [ ] Author `tools/bedrock-keyctl/cmd/root.go` with cobra root command
+- [x] Author `tools/bedrock-keyctl/cmd/root.go` with cobra root command
       + global flags (`--region`, `--log-level`, `--dry-run`).
-- [ ] Add `tools/bedrock-keyctl/main.go` with the cobra Execute
+- [x] Add `tools/bedrock-keyctl/main.go` with the cobra Execute
       bootstrap.
 
 ##### Success Criteria

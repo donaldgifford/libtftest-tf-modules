@@ -39,6 +39,27 @@ The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), and `docs/design/`
 (DESIGN-0001..0009).
 
+### In-tree Go tooling (`tools/`)
+
+- **`tools/bedrock-keyctl/`** — the repo's first in-tree Go CLI (IMPL-0009
+  Part II, in progress). Own `go.mod`
+  (`github.com/donaldgifford/libtftest-tf-modules/tools/bedrock-keyctl`),
+  Go 1.26.4. Mints/rotates/revokes the IAM service-specific credential
+  Claude Code consumes via `AWS_BEARER_TOKEN_BEDROCK` and enables Bedrock
+  model access per provider. Architecture: interface-first (`internal/awsapi`
+  IAM/Bedrock/Marketplace/STS clients, `internal/sink` secret sink), an
+  opaque `internal/credential.SecretValue` (redacting `String`/`MarshalJSON`
+  + `Reveal(SinkToken)`) that enforces the secret-never-logged invariant
+  structurally, `internal/enablement` provider dispatch, `internal/targeting`
+  cross-account resolution, cobra `cmd/`. Per-tool `.golangci.yml` (Uber set
+  minus the unconfigured root `goheader`). Quality gates:
+  `go build/vet/test`, `golangci-lint run`, `govulncheck ./...`,
+  `go-licenses check ./... --ignore github.com/donaldgifford/libtftest-tf-modules`
+  (the `--ignore` skips the tool's own unlicensed packages; third-party deps
+  are all Apache/MIT/BSD). The Go pin in `mise.toml` was bumped 1.26.2 →
+  1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
+  crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
+
 ## Tooling
 
 All tool versions are pinned in `mise.toml`. Bootstrap with `mise install`
