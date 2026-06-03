@@ -60,7 +60,8 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
   crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
   Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
-  (Phase 15). `rotate` is the two-key zero-downtime handoff — it mints +
+  (Phase 15), `enable-models` (Phase 16, Paths A+B). `rotate` is the two-key
+  zero-downtime handoff — it mints +
   verifies + writes the new secret to the sink *before* touching the old
   credential (so a failed verify rolls the new key back and leaves the old one
   Active), then deactivates → grace-sleeps → deletes the old. Verification uses
@@ -69,7 +70,14 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   `--verify-profile`. `revoke` targets a credential by ID: deactivate → delete
   from IAM → (optional `--sink`) purge the secret, IAM-before-sink so a revoked
   key never lingers valid for an in-flight request; `--force` skips the
-  confirmation prompt for CI. `enable-models` lands in Phases 16-18.
+  confirmation prompt for CI. `enable-models` dispatches per-provider via
+  `internal/enablement`: Path A (anthropic) submits the one-time use-case form
+  (`PutUseCaseForModelAccess`, idempotent — the SDK `ConflictException` is
+  translated to the `awsapi.ErrUseCaseAlreadyExists` domain sentinel so
+  enablement stays SDK-error-free), Path B (amazon) is a no-op, Path C
+  (meta/mistral/cohere/ai21/stability/openai marketplace) + cross-account
+  `--target-accounts` land in Phases 17-18. Results print as a tab-aligned
+  MODEL|PROVIDER|ACTION|OUTCOME table.
 
 ## Tooling
 

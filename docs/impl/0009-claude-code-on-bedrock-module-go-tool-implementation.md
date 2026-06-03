@@ -891,7 +891,7 @@ form; Path B is a no-op printing "no action needed."
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/cmd/enable_models.go`:
+- [x] Author `tools/bedrock-keyctl/cmd/enable_models.go`:
   - Flags: `--models <list>` (required — comma-separated
     `<provider>.<model_id>` pairs OR JSON file path via `@file.json`),
     `--target-accounts <mode>` (default per Q13).
@@ -899,7 +899,7 @@ form; Path B is a no-op printing "no action needed."
   - For `--target-accounts = current`: dispatch each model to its
     provider path. Phase 17 + 18 add Path C + the cross-account
     modes.
-- [ ] Author `tools/bedrock-keyctl/internal/enablement/anthropic.go`:
+- [x] Author `tools/bedrock-keyctl/internal/enablement/anthropic.go`:
   - `EnableAnthropic(ctx, BedrockClient, model_id) Result` —
     calls `PutUseCaseForModelAccess` with the standard form payload
     (use-case description, company name, intended-use field — see
@@ -909,11 +909,11 @@ form; Path B is a no-op printing "no action needed."
     `--use-case-payload @file.json` in v1.1).
   - Idempotent: catch `AlreadyExists`-style errors and return
     `Outcome=NoActionNeeded`.
-- [ ] Author `tools/bedrock-keyctl/internal/enablement/amazon.go`:
+- [x] Author `tools/bedrock-keyctl/internal/enablement/amazon.go`:
   - `EnableAmazon(ctx, model_id) Result` — returns
     `Outcome=NoActionNeeded` with the message "Amazon models
     auto-enabled in all commercial regions; no action required."
-- [ ] Add result-table printing: model | provider | action |
+- [x] Add result-table printing: model | provider | action |
       outcome. Tab-aligned for readability.
 
 ##### Success Criteria

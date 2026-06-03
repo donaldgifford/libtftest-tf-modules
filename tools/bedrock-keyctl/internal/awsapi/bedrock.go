@@ -2,13 +2,21 @@ package awsapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
+	bedrocktypes "github.com/aws/aws-sdk-go-v2/service/bedrock/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	smithybearer "github.com/aws/smithy-go/auth/bearer"
 )
+
+// ErrUseCaseAlreadyExists signals that the Anthropic use-case form was
+// already submitted for this account, so enablement is a no-op. It is
+// translated from the SDK ConflictException here so callers (the
+// enablement package) stay free of SDK error coupling.
+var ErrUseCaseAlreadyExists = errors.New("bedrock use-case form already submitted")
 
 // BedrockClient covers the three Bedrock operations the tool needs:
 // inference-profile verification (rotate), the Anthropic use-case form
@@ -79,6 +87,10 @@ func (c *bedrockClient) PutUseCaseForModelAccess(ctx context.Context, formData [
 		FormData: formData,
 	})
 	if err != nil {
+		var conflict *bedrocktypes.ConflictException
+		if errors.As(err, &conflict) {
+			return ErrUseCaseAlreadyExists
+		}
 		return fmt.Errorf("put use-case for model access: %w", err)
 	}
 	return nil

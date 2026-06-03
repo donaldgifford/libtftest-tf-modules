@@ -79,7 +79,7 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newMintCmd(opts))
 	cmd.AddCommand(newRotateCmd(opts))
 	cmd.AddCommand(newRevokeCmd(opts))
-	// enable-models lands in Phases 16-18.
+	cmd.AddCommand(newEnableModelsCmd(opts))
 
 	return cmd
 }
