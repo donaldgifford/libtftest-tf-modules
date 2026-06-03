@@ -59,14 +59,17 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   are all Apache/MIT/BSD). The Go pin in `mise.toml` was bumped 1.26.2 →
   1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
   crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
-  Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14). `rotate`
-  is the two-key zero-downtime handoff — it mints + verifies + writes the new
-  secret to the sink *before* touching the old credential (so a failed verify
-  rolls the new key back and leaves the old one Active), then deactivates →
-  grace-sleeps → deletes the old. Verification uses a bearer-token Bedrock
-  client (`awsapi.NewBedrockClientWithToken`, smithy `StaticTokenProvider`)
-  built from the new credential, gated behind `--verify-profile`. `revoke` /
-  `enable-models` land in Phases 15-18.
+  Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
+  (Phase 15). `rotate` is the two-key zero-downtime handoff — it mints +
+  verifies + writes the new secret to the sink *before* touching the old
+  credential (so a failed verify rolls the new key back and leaves the old one
+  Active), then deactivates → grace-sleeps → deletes the old. Verification uses
+  a bearer-token Bedrock client (`awsapi.NewBedrockClientWithToken`, smithy
+  `StaticTokenProvider`) built from the new credential, gated behind
+  `--verify-profile`. `revoke` targets a credential by ID: deactivate → delete
+  from IAM → (optional `--sink`) purge the secret, IAM-before-sink so a revoked
+  key never lingers valid for an in-flight request; `--force` skips the
+  confirmation prompt for CI. `enable-models` lands in Phases 16-18.
 
 ## Tooling
 

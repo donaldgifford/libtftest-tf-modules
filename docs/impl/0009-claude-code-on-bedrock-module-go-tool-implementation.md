@@ -861,7 +861,7 @@ Targeted deactivate + delete of a specific credential. Per DESIGN-0009
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/cmd/revoke.go`:
+- [x] Author `tools/bedrock-keyctl/cmd/revoke.go`:
   - Flags: `--user <name>` (required),
     `--credential-id <id>` (required), `--sink <uri>` (optional —
     when set, deletes the secret from the sink AFTER the credential
@@ -873,7 +873,7 @@ Targeted deactivate + delete of a specific credential. Per DESIGN-0009
     3. If `--sink` provided: `sink.Delete`. (Order matters — IAM
        first ensures no in-flight invocation succeeds against a
        sink-only-deleted key.)
-- [ ] Add `--force` flag for skipping confirmation when run
+- [x] Add `--force` flag for skipping confirmation when run
       non-interactively (CI / scripts).
 
 ##### Success Criteria
