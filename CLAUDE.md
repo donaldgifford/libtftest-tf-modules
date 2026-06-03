@@ -83,8 +83,13 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   invocation trigger is the working path; a `ValidationException` from the
   generic trigger body is translated to `ErrModelInputRejected` and read as
   proof of access (past the subscribe gate). Cross-account `--target-accounts`
-  lands in Phase 18. Results print as a tab-aligned MODEL|PROVIDER|ACTION|OUTCOME
-  table.
+  (Phase 18, `internal/targeting`) resolves three modes: `current` and
+  `org-management` run in the ambient account with no AssumeRole (org-management
+  flags non-Anthropic providers with a warning row since only Anthropic's form
+  cascades to members), `<account-id-list>` AssumeRoles (`--assume-role-name`,
+  default `bedrock-enablement`) into each 12-digit account and swaps the client
+  credentials per target. Results print as a per-account tab-aligned
+  MODEL|PROVIDER|ACTION|OUTCOME table.
 
 ## Tooling
 

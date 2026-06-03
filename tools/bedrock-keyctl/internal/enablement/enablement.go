@@ -29,6 +29,11 @@ const (
 	OutcomeNoActionNeeded Outcome = "no-action-needed"
 	// OutcomeFailed means the enablement step errored.
 	OutcomeFailed Outcome = "failed"
+	// OutcomeWarning means the model was deliberately not enabled for
+	// this target (e.g. a non-Anthropic provider under org-management,
+	// which does not cascade) — non-fatal, directs the operator
+	// elsewhere.
+	OutcomeWarning Outcome = "warning"
 )
 
 // ModelSpec is one provider-qualified model to enable.
@@ -44,7 +49,8 @@ type Result struct {
 	Provider string
 	Action   string
 	Outcome  Outcome
-	// Err is the underlying failure when Outcome == OutcomeFailed.
+	// Err carries the failure (Outcome == OutcomeFailed) or the reason
+	// (Outcome == OutcomeWarning); nil otherwise.
 	Err error
 }
 
@@ -120,8 +126,27 @@ func (e *Enabler) Enable(ctx context.Context, m ModelSpec) Result {
 // EnableAll dispatches every model and returns the per-model results in
 // input order.
 func (e *Enabler) EnableAll(ctx context.Context, models []ModelSpec) []Result {
+	return e.EnableAllForTarget(ctx, models, false)
+}
+
+// EnableAllForTarget dispatches every model, returning results in input
+// order. When cascadeOnlyAnthropic is set (org-management targeting),
+// non-Anthropic providers are NOT dispatched: their enablement does not
+// cascade to member accounts, so they get a warning row directing the
+// operator to account-id-list targeting (DESIGN-0009 §3 matrix).
+func (e *Enabler) EnableAllForTarget(ctx context.Context, models []ModelSpec, cascadeOnlyAnthropic bool) []Result {
 	results := make([]Result, 0, len(models))
 	for i := range models {
+		if cascadeOnlyAnthropic && models[i].Provider != "anthropic" {
+			results = append(results, Result{
+				Model:    models[i].ModelID,
+				Provider: models[i].Provider,
+				Action:   "skipped (no org cascade)",
+				Outcome:  OutcomeWarning,
+				Err:      errors.New("does not cascade in org-management mode; use --target-accounts=<account-id-list>"),
+			})
+			continue
+		}
 		results = append(results, e.Enable(ctx, models[i]))
 	}
 	return results

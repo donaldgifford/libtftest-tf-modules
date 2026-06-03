@@ -971,7 +971,7 @@ warnings for non-Anthropic), `<account-id-list>` (AssumeRole loop).
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/internal/targeting/targeting.go`:
+- [x] Author `tools/bedrock-keyctl/internal/targeting/targeting.go`:
   - `ResolveTargets(ctx, STSClient, mode string) ([]Target, error)`:
     - `mode = "current"` → one Target: this account's credentials,
       no AssumeRole.
@@ -982,12 +982,12 @@ warnings for non-Anthropic), `<account-id-list>` (AssumeRole loop).
       with `AssumeRole(arn:aws:iam::<acct>:role/<--assume-role-name>)`.
   - `--assume-role-name` flag default `"bedrock-enablement"` per
     DESIGN-0009 §2.
-- [ ] Update Phase 16/17 dispatch to iterate over Targets, swapping
+- [x] Update Phase 16/17 dispatch to iterate over Targets, swapping
       the client constructor's credentials per Target.
-- [ ] Path C + `--target-accounts = org-management` → print a
+- [x] Path C + `--target-accounts = org-management` → print a
       WARNING row in the result table per DESIGN-0009 §3 matrix
       ("third-party providers don't cascade — use account-id-list").
-- [ ] Add idempotency-check optimization: for `<account-id-list>`,
+- [x] Add idempotency-check optimization: for `<account-id-list>`,
       query Marketplace `DescribeSubscriptions` per account first
       and skip already-subscribed models.
 
