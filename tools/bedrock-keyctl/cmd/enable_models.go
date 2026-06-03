@@ -15,6 +15,7 @@ func newEnableModelsCmd(g *GlobalOptions) *cobra.Command {
 	var (
 		modelsArg      string
 		targetAccounts string
+		subscribePath  string
 	)
 
 	cmd := &cobra.Command{
@@ -40,12 +41,23 @@ func newEnableModelsCmd(g *GlobalOptions) *cobra.Command {
 					targetAccounts)
 			}
 
+			path := enablement.SubscribePath(subscribePath)
+			if !enablement.ValidSubscribePath(path) {
+				return fmt.Errorf(
+					"--marketplace-subscribe-path=%q invalid; want auto, explicit, or invocation", subscribePath)
+			}
+
 			cfg, err := loadAWSConfig(ctx, g.Region)
 			if err != nil {
 				return err
 			}
 
-			results := enablement.NewEnabler(awsapi.NewBedrockClient(&cfg)).EnableAll(ctx, specs)
+			enabler := enablement.NewEnabler(
+				awsapi.NewBedrockClient(&cfg),
+				awsapi.NewMarketplaceClient(&cfg),
+				path,
+			)
+			results := enabler.EnableAll(ctx, specs)
 			if perr := enablement.PrintResults(cmd.OutOrStdout(), results); perr != nil {
 				return perr
 			}
@@ -58,6 +70,8 @@ func newEnableModelsCmd(g *GlobalOptions) *cobra.Command {
 		"comma-separated <provider>.<model_id> pairs, or @file.json (required)")
 	f.StringVar(&targetAccounts, "target-accounts", "current",
 		"cross-account targeting: current | org-management | <account-id-list> (Phase 18)")
+	f.StringVar(&subscribePath, "marketplace-subscribe-path", string(enablement.SubscribeAuto),
+		"Path C sub-path: auto | explicit | invocation")
 	cobra.CheckErr(cmd.MarkFlagRequired("models"))
 
 	return cmd

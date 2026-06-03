@@ -60,8 +60,8 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
   crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
   Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
-  (Phase 15), `enable-models` (Phase 16, Paths A+B). `rotate` is the two-key
-  zero-downtime handoff — it mints +
+  (Phase 15), `enable-models` (Phases 16-17, Paths A+B+C). `rotate` is the
+  two-key zero-downtime handoff — it mints +
   verifies + writes the new secret to the sink *before* touching the old
   credential (so a failed verify rolls the new key back and leaves the old one
   Active), then deactivates → grace-sleeps → deletes the old. Verification uses
@@ -75,9 +75,16 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   (`PutUseCaseForModelAccess`, idempotent — the SDK `ConflictException` is
   translated to the `awsapi.ErrUseCaseAlreadyExists` domain sentinel so
   enablement stays SDK-error-free), Path B (amazon) is a no-op, Path C
-  (meta/mistral/cohere/ai21/stability/openai marketplace) + cross-account
-  `--target-accounts` land in Phases 17-18. Results print as a tab-aligned
-  MODEL|PROVIDER|ACTION|OUTCOME table.
+  (meta/mistral/cohere/ai21/stability/openai marketplace) tries an explicit
+  subscribe then falls back to a no-op InvokeModel trigger
+  (`--marketplace-subscribe-path auto|explicit|invocation`, default auto). AWS
+  has no callable subscribe API for Bedrock catalog entries, so the real
+  `MarketplaceClient.Subscribe` returns `ErrSubscribeUnsupported` and the
+  invocation trigger is the working path; a `ValidationException` from the
+  generic trigger body is translated to `ErrModelInputRejected` and read as
+  proof of access (past the subscribe gate). Cross-account `--target-accounts`
+  lands in Phase 18. Results print as a tab-aligned MODEL|PROVIDER|ACTION|OUTCOME
+  table.
 
 ## Tooling
 

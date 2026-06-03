@@ -936,7 +936,7 @@ auto-trigger.
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/internal/enablement/marketplace.go`:
+- [x] Author `tools/bedrock-keyctl/internal/enablement/marketplace.go`:
   - `EnableMarketplace(ctx, MarketplaceClient, BedrockClient, model_id) Result`
     — Q8 resolution determines call sequence:
     1. If Q8.a (explicit subscribe): `MarketplaceClient.Subscribe`
@@ -948,9 +948,9 @@ auto-trigger.
        (Document the unavoidable ~1 token cost; v1 acceptable.)
   - Idempotency: catch `AlreadySubscribed`-style errors → return
     `Outcome=NoActionNeeded`.
-- [ ] Wire Path C into the Phase 16 dispatch table for the six
+- [x] Wire Path C into the Phase 16 dispatch table for the six
       provider keys.
-- [ ] Add `--marketplace-subscribe-path explicit|invocation` global
+- [x] Add `--marketplace-subscribe-path explicit|invocation` global
       flag that overrides Q8's default for operators who need to
       flip it without rebuilding.
 

@@ -74,12 +74,15 @@ var providerPaths = map[string]providerPath{
 
 // Enabler dispatches model enablement to the right per-provider path.
 type Enabler struct {
-	bedrock awsapi.BedrockClient
+	bedrock     awsapi.BedrockClient
+	marketplace awsapi.MarketplaceClient
+	subscribe   SubscribePath
 }
 
-// NewEnabler builds an Enabler over the given Bedrock client.
-func NewEnabler(bedrock awsapi.BedrockClient) *Enabler {
-	return &Enabler{bedrock: bedrock}
+// NewEnabler builds an Enabler over the given clients and the Path C
+// subscribe sub-path.
+func NewEnabler(bedrock awsapi.BedrockClient, marketplace awsapi.MarketplaceClient, subscribe SubscribePath) *Enabler {
+	return &Enabler{bedrock: bedrock, marketplace: marketplace, subscribe: subscribe}
 }
 
 // Enable routes one model to its provider's enablement path. An unknown
@@ -102,14 +105,7 @@ func (e *Enabler) Enable(ctx context.Context, m ModelSpec) Result {
 	case pathAmazon:
 		return EnableAmazon(ctx, m.ModelID)
 	case pathMarketplace:
-		// Path C (third-party Marketplace) lands in Phase 17.
-		return Result{
-			Model:    m.ModelID,
-			Provider: m.Provider,
-			Action:   "marketplace-subscribe",
-			Outcome:  OutcomeFailed,
-			Err:      errors.New("third-party Marketplace enablement lands in Phase 17"),
-		}
+		return EnableMarketplace(ctx, e.marketplace, e.bedrock, m, e.subscribe)
 	default:
 		return Result{
 			Model:    m.ModelID,

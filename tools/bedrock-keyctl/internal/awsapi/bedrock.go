@@ -9,14 +9,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	bedrocktypes "github.com/aws/aws-sdk-go-v2/service/bedrock/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	runtimetypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	smithybearer "github.com/aws/smithy-go/auth/bearer"
 )
 
-// ErrUseCaseAlreadyExists signals that the Anthropic use-case form was
-// already submitted for this account, so enablement is a no-op. It is
-// translated from the SDK ConflictException here so callers (the
+// Domain sentinels translated from SDK exceptions so callers (the
 // enablement package) stay free of SDK error coupling.
-var ErrUseCaseAlreadyExists = errors.New("bedrock use-case form already submitted")
+var (
+	// ErrUseCaseAlreadyExists signals the Anthropic use-case form was
+	// already submitted for this account — enablement is a no-op.
+	ErrUseCaseAlreadyExists = errors.New("bedrock use-case form already submitted")
+	// ErrAlreadySubscribed signals the principal is already subscribed
+	// to the model's Marketplace listing — Path C enablement is a no-op.
+	ErrAlreadySubscribed = errors.New("already subscribed to the model's Marketplace listing")
+	// ErrModelInputRejected signals an InvokeModel call reached input
+	// validation: the principal HAS model access (it is past the
+	// Marketplace subscribe gate), only the request body was rejected.
+	// Path C treats this as proof of access.
+	ErrModelInputRejected = errors.New("model invocation reached input validation (access granted, body rejected)")
+)
 
 // BedrockClient covers the three Bedrock operations the tool needs:
 // inference-profile verification (rotate), the Anthropic use-case form
@@ -104,6 +115,14 @@ func (c *bedrockClient) InvokeModel(ctx context.Context, modelID string, body []
 		Accept:      aws.String("application/json"),
 	})
 	if err != nil {
+		var conflict *runtimetypes.ConflictException
+		if errors.As(err, &conflict) {
+			return ErrAlreadySubscribed
+		}
+		var validation *runtimetypes.ValidationException
+		if errors.As(err, &validation) {
+			return ErrModelInputRejected
+		}
 		return fmt.Errorf("invoke model %s: %w", modelID, err)
 	}
 	return nil
