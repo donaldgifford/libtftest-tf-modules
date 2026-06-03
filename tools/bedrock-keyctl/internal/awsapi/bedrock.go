@@ -97,14 +97,21 @@ func (c *bedrockClient) PutUseCaseForModelAccess(ctx context.Context, formData [
 	_, err := c.control.PutUseCaseForModelAccess(ctx, &bedrock.PutUseCaseForModelAccessInput{
 		FormData: formData,
 	})
-	if err != nil {
-		var conflict *bedrocktypes.ConflictException
-		if errors.As(err, &conflict) {
-			return ErrUseCaseAlreadyExists
-		}
-		return fmt.Errorf("put use-case for model access: %w", err)
+	return classifyPutUseCaseErr(err)
+}
+
+// classifyPutUseCaseErr maps a PutUseCaseForModelAccess error to a
+// domain result: nil stays nil, a ConflictException becomes the
+// idempotent ErrUseCaseAlreadyExists sentinel, anything else is wrapped.
+func classifyPutUseCaseErr(err error) error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	var conflict *bedrocktypes.ConflictException
+	if errors.As(err, &conflict) {
+		return ErrUseCaseAlreadyExists
+	}
+	return fmt.Errorf("put use-case for model access: %w", err)
 }
 
 func (c *bedrockClient) InvokeModel(ctx context.Context, modelID string, body []byte) error {
@@ -114,16 +121,24 @@ func (c *bedrockClient) InvokeModel(ctx context.Context, modelID string, body []
 		ContentType: aws.String("application/json"),
 		Accept:      aws.String("application/json"),
 	})
-	if err != nil {
-		var conflict *runtimetypes.ConflictException
-		if errors.As(err, &conflict) {
-			return ErrAlreadySubscribed
-		}
-		var validation *runtimetypes.ValidationException
-		if errors.As(err, &validation) {
-			return ErrModelInputRejected
-		}
-		return fmt.Errorf("invoke model %s: %w", modelID, err)
+	return classifyInvokeErr(modelID, err)
+}
+
+// classifyInvokeErr maps an InvokeModel error to a domain result: a
+// ConflictException becomes ErrAlreadySubscribed, a ValidationException
+// becomes ErrModelInputRejected (access granted, body rejected), and
+// anything else is wrapped.
+func classifyInvokeErr(modelID string, err error) error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	var conflict *runtimetypes.ConflictException
+	if errors.As(err, &conflict) {
+		return ErrAlreadySubscribed
+	}
+	var validation *runtimetypes.ValidationException
+	if errors.As(err, &validation) {
+		return ErrModelInputRejected
+	}
+	return fmt.Errorf("invoke model %s: %w", modelID, err)
 }

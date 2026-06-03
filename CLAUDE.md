@@ -59,6 +59,16 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   are all Apache/MIT/BSD). The Go pin in `mise.toml` was bumped 1.26.2 →
   1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
   crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
+  NB: after a Go bump, run `mise install go@<pin>` so the active binary
+  matches the `go.mod` directive — otherwise `GOTOOLCHAIN=auto` resolves
+  stdlib via a toolchain *module* and `go-licenses` fails on `syscall`/
+  `os/signal`. Tests: mocks live in `internal/awsapi/mock_*.go` +
+  `internal/sink/mock_sink.go` (exported, shared across test packages);
+  the thin SDK-wrapper methods are unit-tested via a smithy Finalize
+  middleware stub (`sdk_test.go`) that short-circuits before the HTTP
+  send, so no LocalStack is needed. Coverage is measured with
+  `go test -coverpkg=./... ./...` (~88% aggregate; every logic package
+  ≥80%; only `Execute`/`main` bootstrap are uncovered).
   Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
   (Phase 15), `enable-models` (Phases 16-17, Paths A+B+C). `rotate` is the
   two-key zero-downtime handoff — it mints +

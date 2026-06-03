@@ -793,7 +793,7 @@ Per DESIGN-0009 §2: calls `iam.CreateServiceSpecificCredential` with
     4. Build the payload per Q5; call `sink.Write`.
     5. Print credential ID + expiry to stdout. **Never print
        `ServiceApiKeyValue`.**
-- [ ] Assertion in test suite (Phase 19): grep stdout for any 40+
+- [x] Assertion in test suite (Phase 19): grep stdout for any 40+
       char base64-ish string and fail loudly. Belt-and-suspenders
       against future log-statement regressions.
 
@@ -839,7 +839,7 @@ Zero-downtime contract.
     the NEW credential and leave the old one Active. If step 5+
     fail, the new credential is active and the old is still
     Active — operator runs `rotate` again or `revoke --credential-id`.
-- [ ] Test: simulate step-4 failure → assert new credential is
+- [x] Test: simulate step-4 failure → assert new credential is
       deleted, old is still Active in the mocked IAM state.
 
 ##### Success Criteria
@@ -1010,23 +1010,23 @@ secret-handling paths.
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/internal/awsapi/mock_iam.go` —
+- [x] Author `tools/bedrock-keyctl/internal/awsapi/mock_iam.go` —
       mock `IAMClient` with in-memory credential state.
-- [ ] Author `tools/bedrock-keyctl/internal/awsapi/mock_bedrock.go` —
+- [x] Author `tools/bedrock-keyctl/internal/awsapi/mock_bedrock.go` —
       mock `BedrockClient` recording PutUseCaseForModelAccess calls
       + serving Invoke + GetInferenceProfile.
-- [ ] Author `tools/bedrock-keyctl/internal/awsapi/mock_marketplace.go`
+- [x] Author `tools/bedrock-keyctl/internal/awsapi/mock_marketplace.go`
       — mock `MarketplaceClient`.
-- [ ] Author `tools/bedrock-keyctl/internal/awsapi/mock_sts.go` —
+- [x] Author `tools/bedrock-keyctl/internal/awsapi/mock_sts.go` —
       mock `STSClient` returning a configured AssumeRole envelope.
-- [ ] Author `tools/bedrock-keyctl/internal/sink/mock_sink.go` —
+- [x] Author `tools/bedrock-keyctl/internal/sink/mock_sink.go` —
       in-memory `Sink` for cross-cutting sink behavior assertions.
-- [ ] Cover the secret-never-logged invariant: a test that wraps
+- [x] Cover the secret-never-logged invariant: a test that wraps
       stdout/stderr and asserts no key value ever appears.
-- [ ] Cover the `rotate` zero-downtime contract: assert the exact
+- [x] Cover the `rotate` zero-downtime contract: assert the exact
       IAM call sequence under happy path AND under
       verification-failure path.
-- [ ] Cover all three `--target-accounts` modes with the
+- [x] Cover all three `--target-accounts` modes with the
       multi-account fixture.
 
 ##### Success Criteria

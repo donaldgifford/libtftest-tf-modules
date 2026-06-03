@@ -64,3 +64,10 @@ linters:
           - funlen
           - gosec
           - gocognit
+      # Test-double implementations: interface methods are self-
+      # explanatory and documented by the mock type; the value-receiver
+      # helpers (Seed) are test ergonomics, not hot paths.
+      - path: mock_.*\.go
+        linters:
+          - revive
+          - gocritic
