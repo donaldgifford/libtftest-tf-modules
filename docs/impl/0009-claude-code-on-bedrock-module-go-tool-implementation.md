@@ -743,7 +743,7 @@ implementation lands without a rewrite — only a new file +
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/internal/sink/secretsmanager.go`:
+- [x] Author `tools/bedrock-keyctl/internal/sink/secretsmanager.go`:
   - `SecretsManagerSink` implementing `Sink`.
   - `Write`: `CreateSecret` on first write, `PutSecretValue`
     on subsequent (the SM API for value rotation; `UpdateSecret`
@@ -751,14 +751,14 @@ implementation lands without a rewrite — only a new file +
   - Payload shape per Q5 resolution (a): JSON envelope
     `{"bedrock_api_key": "<token>", "credential_id": "<id>", "expires_at": "<iso8601>"}`.
   - Backed by the SDK v2 `secretsmanager.Client`.
-- [ ] Author `tools/bedrock-keyctl/internal/sink/parse.go`:
+- [x] Author `tools/bedrock-keyctl/internal/sink/parse.go`:
   - `ParseURI(uri string) (Sink, key string, err error)` — accepts
     `sm://<secret-name>` only in v1; explicitly rejects `vault://`
     with the message "Vault sink not yet implemented (deferred to
     v1.1); use sm://." Per Q7 resolution (c).
   - Unit test: parse a fixed set of valid + invalid URIs including
     the `vault://` rejection case.
-- [ ] Add `tools/bedrock-keyctl/internal/sink/sink_test.go` with
+- [x] Add `tools/bedrock-keyctl/internal/sink/sink_test.go` with
       table-driven tests using a mock AWS SecretsManager client.
 
 ##### Success Criteria
