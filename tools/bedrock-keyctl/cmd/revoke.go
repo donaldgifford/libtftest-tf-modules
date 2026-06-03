@@ -56,8 +56,10 @@ func newRevokeCmd(g *GlobalOptions) *cobra.Command {
 				return err
 			}
 
-			var s sink.Sink
-			var key string
+			var (
+				s   sink.Sink
+				key string
+			)
 			if sinkURI != "" {
 				s, key, err = sink.ParseURI(sinkURI, &cfg)
 				if err != nil {
@@ -112,7 +114,7 @@ func runRevoke(ctx context.Context, d *revokeDeps, r revokeRequest) error {
 			return err
 		}
 		if !ok {
-			warnf(d.out, "revoke aborted\n")
+			logf(d.out, "revoke aborted\n")
 			return nil
 		}
 	}
@@ -120,18 +122,18 @@ func runRevoke(ctx context.Context, d *revokeDeps, r revokeRequest) error {
 	if err := d.iam.SetCredentialStatus(ctx, r.user, r.credentialID, awsapi.StatusInactive); err != nil {
 		return fmt.Errorf("deactivate credential: %w", err)
 	}
-	warnf(d.out, "deactivated credential %s\n", r.credentialID)
+	logf(d.out, "deactivated credential %s\n", r.credentialID)
 
 	if err := d.iam.DeleteCredential(ctx, r.user, r.credentialID); err != nil {
 		return fmt.Errorf("delete credential: %w", err)
 	}
-	warnf(d.out, "deleted credential %s\n", r.credentialID)
+	logf(d.out, "deleted credential %s\n", r.credentialID)
 
 	if d.sink != nil {
 		if err := d.sink.Delete(ctx, d.key); err != nil {
 			return fmt.Errorf("delete secret from sink: %w", err)
 		}
-		warnf(d.out, "deleted secret %q from sink\n", d.key)
+		logf(d.out, "deleted secret %q from sink\n", d.key)
 	}
 
 	return nil
@@ -141,7 +143,7 @@ func runRevoke(ctx context.Context, d *revokeDeps, r revokeRequest) error {
 // other than y/yes (case-insensitive) is treated as no. EOF (e.g. a
 // closed stdin in a non-interactive run without --force) counts as no.
 func confirm(in io.Reader, out io.Writer, prompt string) (bool, error) {
-	warnf(out, "%s", prompt)
+	logf(out, "%s", prompt)
 
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {

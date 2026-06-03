@@ -138,7 +138,7 @@ func runRotate(ctx context.Context, d rotateDeps, r rotateRequest) error {
 			return
 		}
 		if derr := d.iam.DeleteCredential(ctx, r.user, cred.ID); derr != nil {
-			warnf(d.out, "warning: failed to roll back new credential %s: %v\n", cred.ID, derr)
+			logf(d.out, "warning: failed to roll back new credential %s: %v\n", cred.ID, derr)
 		}
 	}()
 
@@ -152,7 +152,7 @@ func runRotate(ctx context.Context, d rotateDeps, r rotateRequest) error {
 			return fmt.Errorf("verify new credential against profile %s: %w", r.verifyProfile, verr)
 		}
 	} else {
-		warnf(d.out, "warning: --verify-profile not set; new credential is not verified before the old is retired\n")
+		logf(d.out, "warning: --verify-profile not set; new credential is not verified before the old is retired\n")
 	}
 
 	if err := sink.WriteCredential(ctx, d.sink, r.key, cred.ID, cred.Secret, cred.ExpiresAt); err != nil {
@@ -191,14 +191,14 @@ func activeCredentialIDs(ctx context.Context, iam awsapi.IAMClient, user string)
 func retireOld(ctx context.Context, d rotateDeps, user string, ids []string, grace time.Duration) error {
 	for _, id := range ids {
 		if err := d.iam.SetCredentialStatus(ctx, user, id, awsapi.StatusInactive); err != nil {
-			warnf(d.out, "warning: failed to deactivate old credential %s: %v\n", id, err)
+			logf(d.out, "warning: failed to deactivate old credential %s: %v\n", id, err)
 			continue
 		}
-		warnf(d.out, "deactivated old credential %s\n", id)
+		logf(d.out, "deactivated old credential %s\n", id)
 	}
 
 	if grace > 0 && len(ids) > 0 {
-		warnf(d.out, "waiting %s grace period before deleting old credential(s)...\n", grace)
+		logf(d.out, "waiting %s grace period before deleting old credential(s)...\n", grace)
 		if err := d.sleep(ctx, grace); err != nil {
 			return fmt.Errorf("interrupted during grace period (old credential(s) deactivated, not deleted): %w", err)
 		}
@@ -206,10 +206,10 @@ func retireOld(ctx context.Context, d rotateDeps, user string, ids []string, gra
 
 	for _, id := range ids {
 		if err := d.iam.DeleteCredential(ctx, user, id); err != nil {
-			warnf(d.out, "warning: failed to delete old credential %s: %v\n", id, err)
+			logf(d.out, "warning: failed to delete old credential %s: %v\n", id, err)
 			continue
 		}
-		warnf(d.out, "deleted old credential %s\n", id)
+		logf(d.out, "deleted old credential %s\n", id)
 	}
 	return nil
 }
@@ -227,9 +227,9 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// warnf writes a best-effort progress or warning line. The write error
+// logf writes a best-effort progress or warning line. The write error
 // is intentionally ignored so a failed status write never masks the
 // primary rotation outcome.
-func warnf(w io.Writer, format string, args ...any) {
+func logf(w io.Writer, format string, args ...any) {
 	_, _ = fmt.Fprintf(w, format, args...)
 }

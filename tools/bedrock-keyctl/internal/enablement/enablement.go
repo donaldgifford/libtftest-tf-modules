@@ -166,6 +166,8 @@ func FirstFailure(results []Result) error {
 // PrintResults writes the per-model results as a tab-aligned table:
 // MODEL | PROVIDER | ACTION | OUTCOME.
 func PrintResults(w io.Writer, results []Result) error {
+	// tabwriter args: no min width, no tab width, 2-space cell padding,
+	// space pad char, no flags.
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintln(tw, "MODEL\tPROVIDER\tACTION\tOUTCOME"); err != nil {
 		return err

@@ -78,8 +78,7 @@ func resolveAccountList(ctx context.Context, sts awsapi.STSClient, list, assumeR
 		if err != nil {
 			return nil, fmt.Errorf("assume role in account %s: %w", id, err)
 		}
-		c := creds
-		targets = append(targets, Target{AccountID: id, Credentials: &c})
+		targets = append(targets, Target{AccountID: id, Credentials: &creds})
 	}
 	return targets, nil
 }

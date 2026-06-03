@@ -92,7 +92,7 @@ func dispatchTargets(ctx context.Context, base *aws.Config, out io.Writer, targe
 			cfg = configForCredentials(base, *t.Credentials)
 		}
 
-		warnf(out, "== account %s ==\n", t.AccountID)
+		logf(out, "== account %s ==\n", t.AccountID)
 		enabler := enablement.NewEnabler(
 			awsapi.NewBedrockClient(&cfg), awsapi.NewMarketplaceClient(&cfg), path)
 		results := enabler.EnableAllForTarget(ctx, specs, t.CascadeOnlyAnthropic)
