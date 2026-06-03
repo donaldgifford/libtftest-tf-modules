@@ -77,7 +77,8 @@ func newRootCmd() *cobra.Command {
 	pf.BoolVar(&opts.DryRun, "dry-run", false, "print intended actions without calling AWS mutating APIs")
 
 	cmd.AddCommand(newMintCmd(opts))
-	// rotate/revoke/enable-models land in Phases 14-18.
+	cmd.AddCommand(newRotateCmd(opts))
+	// revoke/enable-models land in Phases 15-18.
 
 	return cmd
 }

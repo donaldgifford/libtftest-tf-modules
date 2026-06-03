@@ -817,7 +817,7 @@ Zero-downtime contract.
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/cmd/rotate.go`:
+- [x] Author `tools/bedrock-keyctl/cmd/rotate.go`:
   - Flags: `--user <name>` (required), `--expiry-days <int>`
     (default per Q11), `--sink <uri>` (required),
     `--grace-period <duration>` (default per Q12 — Go duration

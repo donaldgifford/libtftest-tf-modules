@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	smithybearer "github.com/aws/smithy-go/auth/bearer"
 )
 
 // BedrockClient covers the three Bedrock operations the tool needs:
@@ -41,6 +42,25 @@ func NewBedrockClient(cfg *aws.Config) BedrockClient {
 	return &bedrockClient{
 		control: bedrock.NewFromConfig(*cfg),
 		runtime: bedrockruntime.NewFromConfig(*cfg),
+	}
+}
+
+// NewBedrockClientWithToken builds a BedrockClient that authenticates
+// with a Bedrock bearer token rather than SigV4 — the same auth path
+// Claude Code uses via AWS_BEARER_TOKEN_BEDROCK. rotate uses it to
+// verify a freshly minted credential works before retiring the old one,
+// exercising the exact credential the consumer will load.
+func NewBedrockClientWithToken(region, token string) BedrockClient {
+	tp := smithybearer.StaticTokenProvider{Token: smithybearer.Token{Value: token}}
+	return &bedrockClient{
+		control: bedrock.New(bedrock.Options{
+			Region:                  region,
+			BearerAuthTokenProvider: tp,
+		}),
+		runtime: bedrockruntime.New(bedrockruntime.Options{
+			Region:                  region,
+			BearerAuthTokenProvider: tp,
+		}),
 	}
 }
 
