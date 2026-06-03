@@ -780,7 +780,7 @@ Per DESIGN-0009 §2: calls `iam.CreateServiceSpecificCredential` with
 
 ##### Tasks
 
-- [ ] Author `tools/bedrock-keyctl/cmd/mint.go`:
+- [x] Author `tools/bedrock-keyctl/cmd/mint.go`:
   - Flags: `--user <name>` (required), `--expiry-days <int>`
     (default per Q11), `--sink <uri>` (required).
   - Behavior:
