@@ -65,5 +65,6 @@ No modules.
 | cost\_tag\_value | The cost-allocation tag value (var.cost\_tag.value). Passthrough surfacing the attribution dimension's value alongside cost\_tag\_key for the payer-account activation recipe and for downstream cost-report tooling. |
 | iam\_user\_arn | ARN of the backing IAM user — the IAM-principal pivot for cost allocation and for scoping cross-account trust policies. |
 | iam\_user\_name | Name of the backing IAM user. Pass to the bedrock-keyctl tool's --user flag to mint/rotate/revoke the bearer token (the service-specific credential for bedrock.amazonaws.com). |
+| key\_expiry\_days | Expected bearer-token rotation cadence in days (var.key\_expiry\_days, default 90 per DESIGN-0009 Q11). Passthrough only — Terraform does not mint the credential; this co-locates the operator-facing contract so the bedrock-keyctl tool / onboarding stack can read the intended --expiry-days from remote state. |
 | sns\_topic\_arn | ARN of the alert SNS topic. Consumers wanting to attach their own subscriber type (PagerDuty, a custom Lambda, a second Slack workspace) reference this directly rather than re-deriving it. |
 <!-- END_TF_DOCS -->

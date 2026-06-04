@@ -47,3 +47,8 @@ output "cost_tag_value" {
   description = "The cost-allocation tag value (var.cost_tag.value). Passthrough surfacing the attribution dimension's value alongside cost_tag_key for the payer-account activation recipe and for downstream cost-report tooling."
   value       = var.cost_tag.value
 }
+
+output "key_expiry_days" {
+  description = "Expected bearer-token rotation cadence in days (var.key_expiry_days, default 90 per DESIGN-0009 Q11). Passthrough only — Terraform does not mint the credential; this co-locates the operator-facing contract so the bedrock-keyctl tool / onboarding stack can read the intended --expiry-days from remote state."
+  value       = var.key_expiry_days
+}
