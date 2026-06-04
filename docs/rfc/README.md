@@ -35,4 +35,5 @@ docz create rfc "Your RFC Title"
 |----|-------|--------|------|--------|------|
 | RFC-0001 | Module Testing Strategy: terraform test as baseline, libtftest for runtime | Draft | 2026-05-15 | Donald Gifford | [0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md](0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) |
 | RFC-0002 | ECR Layout for Internal OCI Artifacts | Draft | 2026-05-18 | Donald Gifford | [0002-ecr-layout-for-internal-oci-artifacts.md](0002-ecr-layout-for-internal-oci-artifacts.md) |
+| RFC-0003 | Claude Code on Bedrock governed access provisioning and cost tracking | Draft | 2026-05-31 | Donald Gifford | [0003-claude-code-on-bedrock-governed-access-provisioning-and-cost.md](0003-claude-code-on-bedrock-governed-access-provisioning-and-cost.md) |
 <!-- END DOCZ AUTO-GENERATED -->
