@@ -21,7 +21,7 @@ jobs:
       tag: ${{ steps.bump.outputs.version }}
       skipped: ${{ steps.bump.outputs.skipped }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -45,7 +45,7 @@ jobs:
   #   needs: bump-version
   #   if: needs.bump-version.outputs.skipped != 'true'
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v6.0.2
   #       with:
   #         fetch-depth: 0
   #         ref: ${{ needs.bump-version.outputs.tag }}
@@ -87,7 +87,7 @@ jobs:
   #       with:
   #         egress-policy: audit
   #
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v6.0.2
   #       with:
   #         # Land the regen commit on main HEAD, not the freshly created
   #         # tag — the tag's tree should match what was merged.
@@ -130,7 +130,7 @@ jobs:
   #   outputs:
   #     digest: ${{ steps.bake.outputs.metadata }}
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v6.0.2
   #       with:
   #         ref: ${{ needs.bump-version.outputs.tag }}
   #
