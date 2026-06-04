@@ -40,5 +40,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0006 | Org-wide ECR OCI Artifact Registry Module Implementation | Completed | 2026-05-18 | Donald Gifford | [0006-org-wide-ecr-oci-artifact-registry-module-implementation.md](0006-org-wide-ecr-oci-artifact-registry-module-implementation.md) |
 | IMPL-0007 | Aurora Serverless v2 Module Implementation | Completed | 2026-05-27 | Donald Gifford | [0007-aurora-serverless-v2-module-implementation.md](0007-aurora-serverless-v2-module-implementation.md) |
 | IMPL-0008 | EFS filesystem module implementation | Completed | 2026-05-28 | Donald Gifford | [0008-efs-filesystem-module-implementation.md](0008-efs-filesystem-module-implementation.md) |
-| IMPL-0009 | Claude Code on Bedrock module + Go tool implementation | Draft | 2026-06-01 | Donald Gifford | [0009-claude-code-on-bedrock-module-go-tool-implementation.md](0009-claude-code-on-bedrock-module-go-tool-implementation.md) |
+| IMPL-0009 | Claude Code on Bedrock module + Go tool implementation | Completed | 2026-06-01 | Donald Gifford | [0009-claude-code-on-bedrock-module-go-tool-implementation.md](0009-claude-code-on-bedrock-module-go-tool-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->

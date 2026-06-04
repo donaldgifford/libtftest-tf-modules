@@ -25,7 +25,7 @@ Tracked in git. As of this writing:
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
   siblings (e.g. `modules/efs/replica/` if cross-region replication ever lands).
-- **`modules/bedrock/`** — `claude-code` (IMPL-0009, in progress — Claude Code
+- **`modules/bedrock/`** — `claude-code` (IMPL-0009, implemented — Claude Code
   on Bedrock governed access + cost attribution per DESIGN-0009 / RFC-0003).
   Provider-agnostic at the Bedrock layer: IAM user + least-privilege policy,
   one application inference profile (AIP) per `var.models` entry, SNS + email
@@ -42,7 +42,7 @@ The design and decision rationale for the fleet lives in `docs/adr/`
 ### In-tree Go tooling (`tools/`)
 
 - **`tools/bedrock-keyctl/`** — the repo's first in-tree Go CLI (IMPL-0009
-  Part II, in progress). Own `go.mod`
+  Part II, implemented). Own `go.mod`
   (`github.com/donaldgifford/libtftest-tf-modules/tools/bedrock-keyctl`),
   Go 1.26.4. Mints/rotates/revokes the IAM service-specific credential
   Claude Code consumes via `AWS_BEARER_TOKEN_BEDROCK` and enables Bedrock
@@ -69,7 +69,7 @@ The design and decision rationale for the fleet lives in `docs/adr/`
   send, so no LocalStack is needed. Coverage is measured with
   `go test -coverpkg=./... ./...` (~88% aggregate; every logic package
   ≥80%; only `Execute`/`main` bootstrap are uncovered).
-  Subcommands wired so far: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
+  Subcommands: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
   (Phase 15), `enable-models` (Phases 16-17, Paths A+B+C). `rotate` is the
   two-key zero-downtime handoff — it mints +
   verifies + writes the new secret to the sink *before* touching the old

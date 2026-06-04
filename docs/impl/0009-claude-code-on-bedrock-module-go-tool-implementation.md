@@ -1,7 +1,7 @@
 ---
 id: IMPL-0009
 title: "Claude Code on Bedrock module + Go tool implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-06-01
 ---
@@ -9,7 +9,7 @@ created: 2026-06-01
 
 # IMPL 0009: Claude Code on Bedrock module + Go tool implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-06-01
 
@@ -54,7 +54,7 @@ created: 2026-06-01
     - [Phase 11: Tool scaffolding + module wiring + interfaces](#phase-11-tool-scaffolding--module-wiring--interfaces)
       - [Tasks](#tasks-10)
       - [Success Criteria](#success-criteria-10)
-    - [Phase 12: Secret-sink implementations (Secrets Manager + Vault)](#phase-12-secret-sink-implementations-secrets-manager--vault)
+    - [Phase 12: Secret-sink implementation (Secrets Manager only)](#phase-12-secret-sink-implementation-secrets-manager-only)
       - [Tasks](#tasks-11)
       - [Success Criteria](#success-criteria-11)
     - [Phase 13: mint subcommand](#phase-13-mint-subcommand)
@@ -87,7 +87,7 @@ created: 2026-06-01
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
   - [Q1 — Terraform module directory placement — RESOLVED (a)](#q1--terraform-module-directory-placement--resolved-a)
-  - [Q2 — awsbedrockinference_profile resource schema verification — RESOLVED (a)](#q2--awsbedrockinferenceprofile-resource-schema-verification--resolved-a)
+  - [Q2 — `aws_bedrock_inference_profile` resource schema verification — RESOLVED (a)](#q2--aws_bedrock_inference_profile-resource-schema-verification--resolved-a)
   - [Q3 — Default var.models map shape — RESOLVED (a)](#q3--default-varmodels-map-shape--resolved-a)
   - [Q4 — CloudWatch token-metric alarm dimensions — RESOLVED (a)](#q4--cloudwatch-token-metric-alarm-dimensions--resolved-a)
   - [Q5 — Secrets Manager payload shape — RESOLVED (a)](#q5--secrets-manager-payload-shape--resolved-a)
@@ -1044,7 +1044,7 @@ secret-handling paths.
 
 ##### Tasks
 
-- [ ] Author `modules/bedrock/claude-code/README.md`:
+- [x] Author `modules/bedrock/claude-code/README.md`:
   - Two-paragraph overview + RFC/DESIGN/IMPL links.
   - Quickstart instantiation (us-west-2, Claude Opus/Sonnet/Haiku
     via DESIGN-0009 Q5's canonical AIP setup).
@@ -1065,7 +1065,7 @@ secret-handling paths.
   - "Destroying this module" warning — IAM credentials should be
     revoked first via `bedrock-keyctl revoke` to avoid orphaned
     bearer tokens.
-- [ ] Author `tools/bedrock-keyctl/README.md`:
+- [x] Author `tools/bedrock-keyctl/README.md`:
   - Build + install instructions (`go install ./...`).
   - Subcommand reference (mint / rotate / revoke / enable-models)
     with the canonical invocations from DESIGN-0009 §2.
@@ -1078,10 +1078,10 @@ secret-handling paths.
     once through an AIP, and confirm the cost-allocation tag
     surfaces in Cost Explorer after ~24h. This recipe lives in
     the README only — explicitly NOT a Phase / CI job per Q14.
-- [ ] Regenerate `modules/bedrock/claude-code/USAGE.md` via
+- [x] Regenerate `modules/bedrock/claude-code/USAGE.md` via
       `just tf docs bedrock/claude-code`.
-- [ ] Update `docs/impl/README.md` (docz auto-updates).
-- [ ] Update root `CLAUDE.md`:
+- [x] Update `docs/impl/README.md` (docz auto-updates).
+- [x] Update root `CLAUDE.md`:
   - Add `modules/bedrock/claude-code` to the §Repository purpose
     module inventory.
   - Add a `modules/bedrock/claude-code` shape section per the
@@ -1090,7 +1090,7 @@ secret-handling paths.
   - Add `tools/bedrock-keyctl` as a new top-level entry under a
     new §Tooling sub-section (since this is the repo's first
     in-tree Go CLI under `tools/`).
-- [ ] Run `just docs lint` — ensure new docs pass markdownlint with
+- [x] Run `just docs lint` — ensure new docs pass markdownlint with
       zero findings on new files (pre-existing findings on IMPL-0007
       / 0008 are not in scope).
 
