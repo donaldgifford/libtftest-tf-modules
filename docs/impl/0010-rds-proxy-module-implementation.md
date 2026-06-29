@@ -219,21 +219,21 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `main.tf` (or `data.tf`): `data "terraform_remote_state" "target"`
+- [x] `main.tf` (or `data.tf`): `data "terraform_remote_state" "target"`
       (`backend = "s3"`, `bucket = var.remote_state_bucket`,
       `key = "${var.region}/rds/${local.target_dir}/${var.target_identifier}/terraform.tfstate"`,
       `region = var.region`), with `local.target_dir` selected by
       `var.target_type` (`rds-instance → instance`, `aurora-cluster → cluster`,
       `serverless → serverless`).
-- [ ] `locals.tf`: alias the consumed outputs
+- [x] `locals.tf`: alias the consumed outputs
       (`local.master_user_secret_arn`, `local.db_security_group_id`,
       `local.db_subnet_ids`, `local.vpc_id`, `local.secret_kms_key_arn`,
       `local.engine`, `local.iam_auth_enabled`) at the use site from
       `data.terraform_remote_state.target.outputs.*`.
-- [ ] `locals.tf`: static engine → `engine_family` map (Postgres rows first per
+- [x] `locals.tf`: static engine → `engine_family` map (Postgres rows first per
       Q9-a: `postgres`/`aurora-postgresql → POSTGRESQL`, port `5432`) keyed on
       `local.engine`; `local.port = coalesce(var.db_port, <map default>)`.
-- [ ] Route the target identifier: `local.db_instance_identifier` /
+- [x] Route the target identifier: `local.db_instance_identifier` /
       `local.db_cluster_identifier` derived from `var.target_identifier` +
       `var.target_type` (exactly one is non-null on `aws_db_proxy_target`).
 
@@ -242,7 +242,10 @@ CMK all come from the single `data.terraform_remote_state.target`.
 - `just tf validate rds/proxy` passes.
 - A plan with a Postgres target (remote state stubbed via `override_data`)
   resolves `engine_family = POSTGRESQL`, port `5432`, and the correct
-  target-identifier routing.
+  target-identifier routing. NB: locals are not directly observable in a plan —
+  this resolution is asserted once Phase 6 wires `aws_db_proxy` (which sets
+  `engine_family = local.engine_family`) and the Phase 9 tests assert on it.
+  Verified concretely there.
 
 ---
 

@@ -19,3 +19,14 @@
 # The terraform_remote_state data source and the engine-family locals
 # land in Phase 3 (locals.tf + the data block below).
 #--------------------------------------------------------------
+
+data "terraform_remote_state" "target" {
+  backend = "s3"
+
+  config = {
+    bucket         = var.remote_state_bucket
+    key            = "${var.region}/rds/${local.target_dir}/${var.target_identifier}/terraform.tfstate"
+    region         = var.region
+    use_path_style = true
+  }
+}
