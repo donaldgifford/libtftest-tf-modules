@@ -299,19 +299,19 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `proxy.tf`: `aws_db_proxy.this` (`engine_family` from local, `role_arn`,
+- [x] `proxy.tf`: `aws_db_proxy.this` (`engine_family` from local, `role_arn`,
       `vpc_subnet_ids = local.db_subnet_ids`, `vpc_security_group_ids` =
       proxy SG, `require_tls`, `idle_client_timeout`, `debug_logging`, and an
       `auth` block: `auth_scheme = "SECRETS"`, `secret_arn =
       local.master_user_secret_arn`, `iam_auth = var.require_iam_auth ?
       "REQUIRED" : "DISABLED"`).
-- [ ] `aws_db_proxy_default_target_group.this` with `connection_pool_config`
+- [x] `aws_db_proxy_default_target_group.this` with `connection_pool_config`
       (`max_connections_percent`, `max_idle_connections_percent`,
       `connection_borrow_timeout`, `session_pinning_filters`, `init_query`).
-- [ ] `aws_db_proxy_target.this` setting `db_instance_identifier` (rds-instance)
+- [x] `aws_db_proxy_target.this` setting `db_instance_identifier` (rds-instance)
       XOR `db_cluster_identifier` (aurora-cluster / serverless) by
       `var.target_type`.
-- [ ] `lifecycle.precondition`s: V2 (`local.engine` in a supported family), V4
+- [x] `lifecycle.precondition`s: V2 (`local.engine` in a supported family), V4
       (`require_iam_auth` ⇒ `local.iam_auth_enabled` from remote state), V5
       (`local.master_user_secret_arn` is set, else IAM auth is configured).
 
