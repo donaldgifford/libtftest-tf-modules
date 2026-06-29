@@ -349,10 +349,10 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `outputs.tf`: `proxy_arn`, `proxy_name`, `proxy_endpoint` (writer),
+- [x] `outputs.tf`: `proxy_arn`, `proxy_name`, `proxy_endpoint` (writer),
       `read_only_endpoint` (the READ_ONLY endpoint or `null`),
       `proxy_security_group_id`, `proxy_role_arn`.
-- [ ] Descriptions documenting the contract — notably that
+- [x] Descriptions documenting the contract — notably that
       `proxy_security_group_id` is passed into the DB module's
       `allowed_consumer_sg_ids` on a subsequent apply (Q3-a wiring).
 

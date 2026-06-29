@@ -8,7 +8,10 @@
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| aws | 6.52.0 |
+| terraform | n/a |
 
 ## Modules
 
@@ -16,7 +19,20 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [aws_db_proxy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_proxy) | resource |
+| [aws_db_proxy_default_target_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_proxy_default_target_group) | resource |
+| [aws_db_proxy_endpoint.read_only](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_proxy_endpoint) | resource |
+| [aws_db_proxy_target.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_proxy_target) | resource |
+| [aws_iam_role.proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.proxy_secret_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_security_group.proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_vpc_security_group_egress_rule.to_db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule) | resource |
+| [aws_vpc_security_group_ingress_rule.consumer](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
+| [aws_iam_policy_document.proxy_secret_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.proxy_trust](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [terraform_remote_state.target](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 
 ## Inputs
 
@@ -43,5 +59,12 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| proxy\_arn | ARN of the RDS Proxy. |
+| proxy\_endpoint | Default (writer) proxy endpoint hostname. Applications connect here for read+write workloads, in place of the DB cluster/instance writer endpoint. |
+| proxy\_name | Name of the RDS Proxy (var.name). Used to compose this proxy's own remote-state key for downstream consumers. |
+| proxy\_role\_arn | ARN of the IAM role the proxy assumes to read and decrypt the target's AWS-managed master secret. |
+| proxy\_security\_group\_id | Security group ID of the proxy. Pass this into the target DB module's allowed\_consumer\_sg\_ids on a subsequent apply so the DB tier admits the proxy on the engine port (the reciprocal of the proxy's egress-to-DB rule — DESIGN-0010 Q3). |
+| read\_only\_endpoint | Hostname of the READ\_ONLY proxy endpoint when var.create\_read\_only\_endpoint is set on an Aurora target; null otherwise. Routes read traffic to Aurora readers. |
 <!-- END_TF_DOCS -->
