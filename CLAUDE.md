@@ -1,273 +1,154 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Repository purpose
 
-A monorepo of AWS Terraform modules intended to be tested with [libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go integration tests). Modules are organized by service under `modules/<service>/`. Tracked in git. As of this writing:
+A monorepo of AWS Terraform modules intended to be tested with
+[libtftest](https://github.com/donaldgifford/libtftest) (LocalStack-backed Go
+integration tests). Modules are organized by service under `modules/<service>/`.
+Tracked in git. As of this writing:
 
-- **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002), `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
-- **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously lived at `modules/eks/ecr-pull-through-cache` and was relocated when DESIGN-0006 surfaced a second ECR module). `org-registry` (IMPL-0006, implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
-- **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless v2 for Postgres + MySQL per DESIGN-0007). Three siblings still to ship per DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `cluster` (Aurora provisioned, single-writer default), `read-replica` (additional `aws_rds_cluster_instance`s composed via cluster module's remote state).
-- **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API companion to the EKS addons module's already-installed `aws-efs-csi-driver` per DESIGN-0008). The `filesystem/` sub-directory leaves room for future siblings (e.g. `modules/efs/replica/` if cross-region replication ever lands).
+- **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
+  `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+- **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
+  lived at `modules/eks/ecr-pull-through-cache` and was relocated when
+  DESIGN-0006 surfaced a second ECR module). `org-registry` (IMPL-0006,
+  implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
+- **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
+  v2 for Postgres + MySQL per DESIGN-0007). Three siblings still to ship per
+  DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `cluster` (Aurora
+  provisioned, single-writer default), `read-replica` (additional
+  `aws_rds_cluster_instance`s composed via cluster module's remote state).
+- **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
+  companion to the EKS addons module's already-installed `aws-efs-csi-driver`
+  per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
+  siblings (e.g. `modules/efs/replica/` if cross-region replication ever lands).
+- **`modules/bedrock/`** — `claude-code` (IMPL-0009, implemented — Claude Code
+  on Bedrock governed access + cost attribution per DESIGN-0009 / RFC-0003).
+  Provider-agnostic at the Bedrock layer: IAM user + least-privilege policy,
+  one application inference profile (AIP) per `var.models` entry, SNS + email
+  (optional Slack) alerting, tag-filtered AWS Budget, per-AIP CloudWatch
+  token alarm, conditional cost-allocation tag activation. The credential
+  (bearer token) is deliberately NOT minted by Terraform — see
+  `tools/bedrock-keyctl` below. The `claude-code/` sub-directory leaves room
+  for siblings like `modules/bedrock/guardrails/`.
 
-The design and decision rationale for the fleet lives in `docs/adr/` (ADR-0001..0016), `docs/rfc/` (RFC-0001..0002), and `docs/design/` (DESIGN-0001..0008).
+The design and decision rationale for the fleet lives in `docs/adr/`
+(ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), and `docs/design/`
+(DESIGN-0001..0009).
+
+### In-tree Go tooling (`tools/`)
+
+- **`tools/bedrock-keyctl/`** — the repo's first in-tree Go CLI (IMPL-0009
+  Part II, implemented). Own `go.mod`
+  (`github.com/donaldgifford/libtftest-tf-modules/tools/bedrock-keyctl`),
+  Go 1.26.4. Mints/rotates/revokes the IAM service-specific credential
+  Claude Code consumes via `AWS_BEARER_TOKEN_BEDROCK` and enables Bedrock
+  model access per provider. Architecture: interface-first (`internal/awsapi`
+  IAM/Bedrock/Marketplace/STS clients, `internal/sink` secret sink), an
+  opaque `internal/credential.SecretValue` (redacting `String`/`MarshalJSON`
+  + `Reveal(SinkToken)`) that enforces the secret-never-logged invariant
+  structurally, `internal/enablement` provider dispatch, `internal/targeting`
+  cross-account resolution, cobra `cmd/`. Per-tool `.golangci.yml` (Uber set
+  minus the unconfigured root `goheader`). Quality gates:
+  `go build/vet/test`, `golangci-lint run`, `govulncheck ./...`,
+  `go-licenses check ./... --ignore github.com/donaldgifford/libtftest-tf-modules`
+  (the `--ignore` skips the tool's own unlicensed packages; third-party deps
+  are all Apache/MIT/BSD). The Go pin in `mise.toml` was bumped 1.26.2 →
+  1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
+  crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
+  NB: after a Go bump, run `mise install go@<pin>` so the active binary
+  matches the `go.mod` directive — otherwise `GOTOOLCHAIN=auto` resolves
+  stdlib via a toolchain *module* and `go-licenses` fails on `syscall`/
+  `os/signal`. Tests: mocks live in `internal/awsapi/mock_*.go` +
+  `internal/sink/mock_sink.go` (exported, shared across test packages);
+  the thin SDK-wrapper methods are unit-tested via a smithy Finalize
+  middleware stub (`sdk_test.go`) that short-circuits before the HTTP
+  send, so no LocalStack is needed. Coverage is measured with
+  `go test -coverpkg=./... ./...` (~88% aggregate; every logic package
+  ≥80%; only `Execute`/`main` bootstrap are uncovered).
+  Subcommands: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
+  (Phase 15), `enable-models` (Phases 16-17, Paths A+B+C). `rotate` is the
+  two-key zero-downtime handoff — it mints +
+  verifies + writes the new secret to the sink *before* touching the old
+  credential (so a failed verify rolls the new key back and leaves the old one
+  Active), then deactivates → grace-sleeps → deletes the old. Verification uses
+  a bearer-token Bedrock client (`awsapi.NewBedrockClientWithToken`, smithy
+  `StaticTokenProvider`) built from the new credential, gated behind
+  `--verify-profile`. `revoke` targets a credential by ID: deactivate → delete
+  from IAM → (optional `--sink`) purge the secret, IAM-before-sink so a revoked
+  key never lingers valid for an in-flight request; `--force` skips the
+  confirmation prompt for CI. `enable-models` dispatches per-provider via
+  `internal/enablement`: Path A (anthropic) submits the one-time use-case form
+  (`PutUseCaseForModelAccess`, idempotent — the SDK `ConflictException` is
+  translated to the `awsapi.ErrUseCaseAlreadyExists` domain sentinel so
+  enablement stays SDK-error-free), Path B (amazon) is a no-op, Path C
+  (meta/mistral/cohere/ai21/stability/openai marketplace) tries an explicit
+  subscribe then falls back to a no-op InvokeModel trigger
+  (`--marketplace-subscribe-path auto|explicit|invocation`, default auto). AWS
+  has no callable subscribe API for Bedrock catalog entries, so the real
+  `MarketplaceClient.Subscribe` returns `ErrSubscribeUnsupported` and the
+  invocation trigger is the working path; a `ValidationException` from the
+  generic trigger body is translated to `ErrModelInputRejected` and read as
+  proof of access (past the subscribe gate). Cross-account `--target-accounts`
+  (Phase 18, `internal/targeting`) resolves three modes: `current` and
+  `org-management` run in the ambient account with no AssumeRole (org-management
+  flags non-Anthropic providers with a warning row since only Anthropic's form
+  cascades to members), `<account-id-list>` AssumeRoles (`--assume-role-name`,
+  default `bedrock-enablement`) into each 12-digit account and swaps the client
+  credentials per target. Results print as a per-account tab-aligned
+  MODEL|PROVIDER|ACTION|OUTCOME table.
 
 ## Tooling
 
-All tool versions are pinned in `mise.toml`. Bootstrap with `mise install` before doing anything else — the Terraform, terraform-docs, tflint, golangci-lint, docz, just, etc. binaries all come from mise.
+All tool versions are pinned in `mise.toml`. Bootstrap with `mise install`
+before doing anything else — the Terraform, terraform-docs, tflint,
+golangci-lint, docz, just, etc. binaries all come from mise.
 
 ## Common commands
 
 `justfile` recipes (run `just` to list, `just --list` for the full menu):
 
 - `just docs lint|fix|fmt` — markdownlint over `docs/**/*.md` and root `*.md`
-- `just tf <action> <module>` — per-module Terraform ops. `<module>` is the path under `modules/` (e.g. `eks/cluster`). Actions:
+- `just tf <action> <module>` — per-module Terraform ops. `<module>` is the path
+  under `modules/` (e.g. `eks/cluster`). Actions:
   - `validate` — `terraform init -backend=false && terraform validate`
   - `fmt` — `terraform fmt -check -recursive`
   - `lint` — `tflint --init && tflint`
   - `docs` — `terraform-docs .` (regenerates `USAGE.md`)
-  - `test` — plan-only `terraform test` over `tests/*.tftest.hcl`. No LocalStack, no env vars, ~1.2s.
-  - `test-localstack` — opt-in `terraform test -test-directory=tests-localstack` with `AWS_ENDPOINT_URL`/key/secret/region env vars pre-wired. Requires a LocalStack Pro container on `:4566`. ~75s.
+  - `test` — plan-only `terraform test` over `tests/*.tftest.hcl`. No
+    LocalStack, no env vars, ~1.2s.
+  - `test-localstack` — opt-in `terraform test -test-directory=tests-localstack`
+    with `AWS_ENDPOINT_URL`/key/secret/region env vars pre-wired. Requires a
+    LocalStack Pro container on `:4566`. ~75s.
   - `all` — runs validate + lint + fmt + test in order.
 
 Direct invocation still works (and is what the recipes call under the hood):
 
 - `terraform init && terraform validate` — validate a module
-- `tflint --init && tflint` — lint a module (each module has its own `.tflint.hcl`)
-- `terraform-docs .` — regenerate `USAGE.md` (terraform-docs is configured with `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->` markers)
+- `tflint --init && tflint` — lint a module (each module has its own
+  `.tflint.hcl`)
+- `terraform-docs .` — regenerate `USAGE.md` (terraform-docs is configured with
+  `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->`
+  markers)
 
-There is **no Makefile and no Go code** at the repo root, despite the inherited `.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI caveat" section below.
+There is **no Makefile and no Go code** at the repo root, despite the inherited
+`.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI
+caveat" section below.
 
 ## Documentation lifecycle
 
-Project design docs are managed by [docz](https://github.com/donaldgifford/docz), configured via `.docz.yaml`. Six doc types are enabled (rfc / adr / design / impl / plan / investigation) and land under `docs/<type>/`. Use the CLI:
+Project design docs are managed by
+[docz](https://github.com/donaldgifford/docz), configured via `.docz.yaml`. Six
+doc types are enabled (rfc / adr / design / impl / plan / investigation) and
+land under `docs/<type>/`. Use the CLI:
 
 - `docz create adr "Title"` / `docz create rfc "Title"` / etc.
 - `docz update` — regenerates the README index tables
 - `docz list` / `docz show <type>` — discovery
 
-Don't hand-edit the README index tables; they're regenerated. MkDocs (TechDocs) integration is configured in `.docz.yaml` under `wiki:` for downstream publishing.
-
-## Per-module conventions
-
-Each `modules/<service>/<name>/` directory is a self-contained Terraform module with this layout (services are `eks/` and `ecr/`; the per-service split is by AWS API surface):
-
-- `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `versions.tf` — module sources
-- `README.md` — short pointer; the rendered docs go into `USAGE.md`
-- `USAGE.md` — generated by terraform-docs (`<!-- BEGIN_TF_DOCS -->` block)
-- `.terraform-docs.yml` — per-module terraform-docs config (formatter `mb tbl`, sort by name, injects into `USAGE.md`)
-- `.tflint.hcl` — per-module tflint config, which enables three plugins: `terraform` (all preset), `aws` (v0.47.0), and a custom `terraform-style` plugin from `github.com/donaldgifford/tflint-ruleset-terraform-style`
-
-When adding a new module, copy these scaffolding files verbatim — they're uniform across modules by convention.
-
-### Cross-module composition: remote state, not module inputs
-
-Modules in this repo do **not** consume each other via direct Terraform module composition. Cross-module data (cluster name, endpoint, CA, node SG, KMS key, controller role ARNs, etc.) flows through `data.terraform_remote_state` against an S3 backend, using this key convention:
-
-```hcl
-data "terraform_remote_state" "eks" {
-  backend = "s3"
-  config = {
-    bucket = var.remote_state_bucket
-    key    = "${var.region}/eks/${var.cluster_name}/terraform.tfstate"
-    region = var.region
-  }
-}
-```
-
-Every consumer module therefore takes `remote_state_bucket`, `region`, and `cluster_name` as inputs and reads the rest. The cluster module (DESIGN-0002) is the source-of-truth state file; its outputs are a stable contract — renaming or removing one breaks every downstream module. This matches the **Gruntwork live-repo model** (infrastructure-modules + infrastructure-live, scaffolded with Gruntwork Boilerplate) that the parent org already runs.
-
-**Reference at the use site, not via aliasing locals.** Use `data.terraform_remote_state.eks.outputs.cluster_endpoint` directly where it's consumed; don't add `locals { cluster_endpoint = data.terraform_remote_state.eks.outputs.cluster_endpoint }`. Locals are reserved for meaningful computation (conditionals, multi-source combinations, derivations). The framing: modules behave as close to pure functions as Terraform allows, and remote state is the last-known-good ground truth (drift gets fixed at the source, never papered over). See ADR-0001 for the full rationale.
-
-### Pod Identity Agent lives on the addons module
-
-The `eks-pod-identity-agent` managed addon is installed by the **addons module**, alongside VPC CNI / kube-proxy / CoreDNS / EBS CSI. Inside the addons module, the agent's `aws_eks_addon` resource is applied first and every other addon `depends_on` it — the "agent before associations" invariant is intra-module ordering. The cluster module installs zero addons. Reason: the fleet's operational order is cluster → nodes → addons → pod-identity, and addon DaemonSets need a schedulable node to reach `ACTIVE` — so all addons must apply after node groups. See ADR-0003.
-
-### Terraform manages AWS API resources only
-
-Modules in this repo do **not** create Kubernetes-API objects. The `kubernetes`, `kubectl`, and `helm` Terraform providers are not used anywhere in the fleet. Pod Identity Associations look Kubernetes-y but are AWS API objects (`aws_eks_pod_identity_association`); EKS managed addons are also AWS API objects (`aws_eks_addon`) — both stay in Terraform. The boundary is "is this an AWS API call or a Kubernetes API call?", not "does this conceptually relate to Kubernetes?"
-
-Cluster-scoped Kubernetes manifests (`RuntimeClass`, `NetworkPolicy`, admission webhook configs, Gatekeeper templates, etc.) are delivered **out-of-band** via `kubectl apply` (homelab / dev) or Argo CD + Kustomize (production GitOps). When a module needs such an object to exist for it to function (the secure node group's gVisor `RuntimeClass` is the current example), the module's README documents the manifest plus copy-paste examples for both delivery mechanisms; the module itself does not create it. See ADR-0011.
-
-### Cluster module shape
-
-Implementation complete per IMPL-0001 (status: Completed). The module shape is now:
-
-- **Inputs**: typed `var.tags` object; cluster endpoint/log retention/KMS inputs; remote-state composition inputs (`var.region`, `var.remote_state_bucket`, `var.vpc_name`); preserved SSO Access Entry input surface.
-- **Data sources**: `data.aws_caller_identity.current` (ADR-0001 identity carve-out) + `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`) — that's it.
-- **Resources** (`main.tf` / `kms.tf` / `security_group.tf` / `access_entries.tf`):
-  - `aws_iam_role.cluster` + AmazonEKSClusterPolicy attachment.
-  - `aws_cloudwatch_log_group.cluster` with 30d retention.
-  - `aws_eks_cluster.this` with envelope encryption against `local.kms_key_arn`, `endpoint_public_access = true`, `authentication_mode = "API_AND_CONFIG_MAP"`.
-  - Module-managed `aws_kms_key.cluster[0]` + alias when `var.kms_key_arn` is null (rotation on, 30d deletion window).
-  - `aws_security_group.nodes` + three granular `aws_vpc_security_group_*_rule` resources.
-  - Gated `aws_eks_access_entry.sso[0]` + `aws_eks_access_policy_association.sso[0]`.
-- **Outputs** (remote-state contract): `cluster_name`, `cluster_version`, `cluster_endpoint`, `cluster_ca_data`, `cluster_oidc_issuer_url`, `cluster_security_group_id`, `node_security_group_id`, `kms_key_arn`. (`cluster_version` added post-IMPL-0001 per IMPL-0003 Q2 — consumed by the addons module for `data.aws_eks_addon_version` lookups and by managed-node-group for AMI selection.)
-- **Tests** — cluster is the **side-by-side reference module** per RFC-0001 and carries two test suites until it grows its first apply-time runtime invariant:
-  - `modules/eks/cluster/test/` — libtftest v0.2.0 Go suite (plan-only today). Run with `LIBTFTEST_CONTAINER_URL=http://localhost:4566 go test -tags=integration ./...` against a LocalStack Pro container. ~45s.
-  - `modules/eks/cluster/tests/` — `terraform test` HCL suite covering the same plan-time invariants via `override_data` for `data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`. Run with `terraform test` from the module dir. ~1.2s, no LocalStack needed.
-
-  No other module carries both frameworks; new modules default to `terraform test` per ADR-0013. See [RFC-0001](docs/rfc/0001-module-testing-strategy-terraform-test-as-baseline-libtftest.md) for the strategy, [ADR-0013](docs/adr/0013-use-terraform-test-for-plan-time-module-invariants.md) and [ADR-0014](docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) for the per-tool decisions.
-
-**IMPL-0001 supersedes a piece of DESIGN-0002**: the five Pod-Identity-trusting workload controller roles (cluster-autoscaler, ALB, external-dns, FluentD, CW metrics) re-home to DESIGN-0004 (`pod-identity-access`). The cluster module's only IAM role is the EKS service role.
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### Managed node group module shape
-
-Implementation complete per IMPL-0002 (status: Completed). The module shape is now:
-
-- **Inputs**: required (`remote_state_bucket`, `region`, `cluster_name`, `vpc_name`, `nodegroup_name`); typed `var.architecture` object (5 fields with 4 validation blocks) defaulting to arm64/AL2023_ARM_64_STANDARD/m7g+c7g; capacity/scaling (`instance_types`, `capacity_type`, `desired_size`, `min_size`, `max_size`, `disk_size_gib`); IAM opt-ins (`enable_ssm` for AmazonSSMManagedInstanceCore per ADR-0012, `extra_node_policies` for the ADR-0015 third-managed-policy carve-out); gVisor pinning (`gvisor_version`, `gvisor_sha512`); `containerd_pull_through_mirror` opt-in for the ECR cache module (off by default per IMPL-0005 Q8); `labels`/`taints`/`kubelet_extra_args`/`tags`.
-- **Data sources**: `data.terraform_remote_state.eks` + `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`). Cluster outputs (cluster_name, endpoint, CA, node_security_group_id, kms_key_arn) and VPC outputs (private_subnet_ids) consumed at the use site, no aliasing locals.
-- **Resources** (`iam.tf` / `launch_template.tf` / `user_data.tf` / `main.tf`):
-  - `aws_iam_role.node` + 2 always-on attachments (AmazonEKSWorkerNodePolicy, AmazonEC2ContainerRegistryPullOnly) + conditional AmazonSSMManagedInstanceCore + `for_each` extra attachments + `aws_iam_instance_profile.node`.
-  - `aws_launch_template.node`: IMDSv2 required, hop=2, metadata_tags enabled (ADR-0007); gp3 KMS-encrypted root EBS using the cluster module's KMS key from remote state; monitoring enabled; tag_specifications for instance + volume; create_before_destroy lifecycle.
-  - User data: multipart MIME body from `templates/user_data.sh.tftpl`. AL2023 nodeadm `NodeConfig` YAML registers with the cluster API endpoint + CA; shell part downloads runsc + containerd-shim-runsc-v1 from `storage.googleapis.com/gvisor/releases/${gvisor_version}/${gvisor_arch}` (Renovate-pinned per ADR-0010), verifies SHA-512, writes `/etc/containerd/runsc.toml` + `/etc/containerd/config.toml.d/runsc.toml` drop-in (platform=systrap, network=sandbox per ADR-0005), restarts containerd, asserts `runsc` plugin loaded via `ctr`.
-  - `aws_eks_node_group.this`: ami_type from `var.architecture.ami_type`, cluster_name/subnet_ids from remote state, scaling_config (desired/min/max), `lifecycle.ignore_changes` on `scaling_config[0].desired_size` (autoscaler-owned), always-on `workload-class=secure:NO_SCHEDULE` taint + dynamic `additional_taints`, `labels = local.runtime_labels` (workload-class + runtime + kubernetes.io/arch), `update_config.max_unavailable_percentage = 33`, `lifecycle.precondition` enforcing cross-arch instance type guard.
-- **Outputs** (consumer contract): `nodegroup_name`, `architecture`, `ami_type`, `node_role_arn`, `node_role_name`, `instance_profile_arn`, `launch_template_id`, `launch_template_latest_version`, `node_labels`, `node_taints`.
-- **Tests** — defaults to `terraform test` per ADR-0013, no libtftest Go suite (cluster is the side-by-side reference, not a per-module pattern):
-  - `modules/eks/managed-node-group/tests/` — plan-only suite. 3 files (`default.tftest.hcl` 15 assertions, `architecture.tftest.hcl` 4 runs incl. cross-arch precondition negative, `ssm_enabled.tftest.hcl`). Run with `just tf test eks/managed-node-group`. ~1.2s, no LocalStack.
-  - `modules/eks/managed-node-group/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + KMS + real `aws_eks_cluster` + node SG + S3 bucket with stub VPC/EKS state files; `apply_localstack.tftest.hcl::default_apply` applies the full module against LocalStack Pro. Run with `just tf test-localstack eks/managed-node-group`. Per `FINDINGS.md`: zero coverage gaps in LocalStack Pro 2026.5.0 for this module's AWS surface; kubelet-join validation + gVisor `runsc` init + Pod Identity Agent reachability are filed as out-of-scope libtftest backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### Addons module shape
-
-Implementation complete per IMPL-0003 (status: Completed). The module shape is now:
-
-- **Inputs**: required (`remote_state_bucket`, `region`, `cluster_name`, typed `var.tags` object matching the cluster module); per-addon version inputs (`pod_identity_agent_version`, `vpc_cni_version`, `kube_proxy_version`, `coredns_version`, `ebs_csi_version`, `efs_csi_version`) all defaulting to null per IMPL-0003 Q3; free-form `vpc_cni_configuration_values` and `coredns_configuration_values` passthroughs; `efs_csi_enabled` opt-in (default `false`). Validation: `pod_identity_agent_version == ""` rejected (the "tried to pin and forgot" safety net).
-- **Data sources** (`data.tf`): `data.terraform_remote_state.eks` with `use_path_style = true`; six `data.aws_eks_addon_version.<addon>` lookups (EFS gated) with `kubernetes_version = data.terraform_remote_state.eks.outputs.cluster_version` and `most_recent = true`. Each addon's `addon_version = coalesce(var.<name>_version, data.aws_eks_addon_version.<name>.version)` — null routes to the data source, a non-null literal pin short-circuits it.
-- **Resources** (`pod_identity_agent.tf` / `vpc_cni.tf` / `main.tf` / `ebs_csi.tf` / `efs_csi.tf` / `locals.tf`):
-  - `aws_eks_addon.pod_identity_agent` — installed FIRST per ADR-0003. No `depends_on`, no IAM role, no PIA block (the agent uses the node role's `eks-auth:AssumeRoleForPodIdentity` per ADR-0002).
-  - `aws_eks_addon.vpc_cni` + `aws_iam_role.vpc_cni` + AmazonEKS_CNI_Policy attachment + addon-managed `pod_identity_association { service_account = "aws-node" }` per ADR-0004. `depends_on = [aws_eks_addon.pod_identity_agent]`.
-  - `aws_eks_addon.kube_proxy` + `aws_eks_addon.coredns` — no IAM, no PIA. Both `depends_on` the agent for graph regularity per DESIGN-0003.
-  - `aws_eks_addon.ebs_csi_driver` + `aws_iam_role.ebs_csi` + AmazonEBSCSIDriverPolicy attachment + addon-managed `pod_identity_association { service_account = "ebs-csi-controller-sa" }`. `depends_on` the agent.
-  - `aws_eks_addon.efs_csi_driver[0]` + role + attachment + PIA — count-gated on `var.efs_csi_enabled`.
-  - Shared `data.aws_iam_policy_document.pod_identity_trust` (Service: `pods.eks.amazonaws.com`, Actions: `sts:AssumeRole`, `sts:TagSession`) in `locals.tf` per IMPL-0003 Q1 — one declaration, three references (VPC CNI / EBS CSI / EFS CSI roles).
-  - Conflict resolution: `OVERWRITE` on create, `PRESERVE` on update for every addon per DESIGN-0003.
-  - **Note**: agent resource named `aws_eks_addon.pod_identity_agent` (not `eks_pod_identity_agent` per the IMPL doc text) — the redundant "eks" prefix violates the custom `terraform_tautological_naming` style rule since the resource type is already `aws_eks_addon`.
-- **Outputs** (consumer contract): `pod_identity_agent_addon_arn`, `pod_identity_agent_addon_id`, `vpc_cni_role_arn`, `ebs_csi_role_arn`, `efs_csi_role_arn` (null when disabled), `addon_versions` map keyed by addon_name.
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/eks/addons/tests/` — plan-only suite. 4 files (`default.tftest.hcl` 14 assertions on addon registration + PIA contract + IAM policy attachments + shared trust policy + conflict resolution + EFS-off-by-default, `efs_csi_enabled.tftest.hcl` 4 assertions, `version_resolution.tftest.hcl` 2 runs — pin-wins-over-data-source uses a sentinel `v9.9.9-DATA-SOURCE-WINS` value, `agent_version_required.tftest.hcl` negative for `pod_identity_agent_version = ""`). Run with `just tf test eks/addons`. ~1.4s, no LocalStack.
-  - `modules/eks/addons/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + KMS + real `aws_eks_cluster` (pinned to K8s 1.35) + S3 bucket with stub EKS state file (cluster_name + cluster_version); `apply_localstack.tftest.hcl::default_apply` applies all five mandatory addons against LocalStack Pro. Addon versions pinned to LocalStack-supported literals (v1.3.10/v1.21.1/v1.35.3/v1.13.2/v1.57.1) since LocalStack's `describe-addon-versions` catalog is narrower than production AWS — documented in `FINDINGS.md` (Finding #2). LocalStack Pro 2026.5.0 fully supports `aws_eks_addon` + addon-managed `pod_identity_association` (Finding #1); DaemonSet readiness + actual PIA credential delivery are out-of-scope libtftest backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### Pod Identity Access module shape
-
-Implementation complete per IMPL-0004 (status: Completed). The module shape is now:
-
-- **Inputs**: required (`remote_state_bucket`, `region`, `cluster_name`, `namespace`, `service_account`); mode toggle `create_role` (default true); Mode B escape hatch `existing_role_arn` (default null); naming override `role_name_override` (default null); four Mode A policy inputs (`managed_policy_arns`, `customer_managed_policy_arns`, `inline_policies`, `permissions_boundary`); two tag maps (`tags` for the role, `association_tags` for the association so callers can label them independently during migrations).
-- **Data sources** (`main.tf`): `data.terraform_remote_state.eks` with `use_path_style = true`. Reads only `cluster_name` (per IMPL-0004 Q2 — kept the remote-state read for fleet uniformity even though it's a one-output read; future-proofs against this module needing more cluster outputs later).
-- **Resources** (`iam.tf` / `main.tf` / `locals.tf`):
-  - `aws_iam_role.this[0]` + `data.aws_iam_policy_document.pod_identity_trust[0]` (universal Pod Identity trust: `pods.eks.amazonaws.com`, `sts:AssumeRole` + `sts:TagSession`) — both count-gated on `var.create_role`.
-  - Three for_each-driven attachments: `aws_iam_role_policy_attachment.managed`, `aws_iam_role_policy_attachment.customer` (split for state-readability — AWS-owned vs caller-owned ARNs visible at a glance), and `aws_iam_role_policy.inline`. All gated on `var.create_role`.
-  - `aws_eks_pod_identity_association.this` — always created (module's reason to exist). `role_arn` resolves inline as `var.create_role ? aws_iam_role.this[0].arn : var.existing_role_arn` (meaningful conditional work — no aliasing local per ADR-0001).
-  - Cross-variable invariant "create_role = false implies existing_role_arn != null" enforced via `lifecycle.precondition` on the association — terraform >= 1.1 (fleet pin) cannot cross-reference variables in a `variable.validation` block (1.9+ required); precondition catches the same misconfiguration at plan time.
-  - Deterministic role name in `locals.tf`: `<cluster_name>-<namespace>-<service_account>` joined with `-`. When the joined default exceeds IAM's 64-char limit, truncate to 57 chars + `-` + 6-hex-char sha256 prefix (total 64); the hash disambiguates names sharing the same 57-char prefix. `var.role_name_override` short-circuits the computed name.
-- **Outputs** (consumer contract): `role_arn` (Mode A: created role's ARN; Mode B: `var.existing_role_arn` echoed), `association_id` (domain-specific attribute, not the generic `id`, per IMPL-0004 Q5 — verified against `hashicorp/aws ~> 6.2` schema), `namespace`, `service_account` (passthroughs for multi-instance for_each compositions).
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/eks/pod-identity-access/tests/` — plan-only suite. 4 files: `mode_a.tftest.hcl` (3 managed + 1 customer + 2 inline → 1 role + 4 attachments + 2 inline + 1 association, trust policy shape, default role-name composition), `mode_b.tftest.hcl` (create_role = false with intentionally non-empty policy vars to prove gating fully suppresses Mode A), `validation.tftest.hcl` (Mode B precondition negative — expect_failures targets `aws_eks_pod_identity_association.this` because the invariant is on a `lifecycle.precondition`, not `variable.validation`), `naming.tftest.hcl` (long-input truncation to exactly 64 + prefix + 6-hex-char sha256 suffix; override short-circuit). Run with `just tf test eks/pod-identity-access`. ~1.3s, no LocalStack.
-  - `modules/eks/pod-identity-access/tests-localstack/` — apply-LocalStack suite. Fixture builds VPC + real `aws_eks_cluster` + pre-existing Pod-Identity-trusting IAM role (for the Mode B run, whose `existing_role_arn` is `run.setup.preexisting_role_arn`) + S3 bucket with stub EKS state file; both `apply_mode_a` and `apply_mode_b` run against LocalStack Pro 2026.5.0. Per `FINDINGS.md` (Finding #1, answering IMPL-0004 Q3): LocalStack Pro fully supports `aws_eks_pod_identity_association` end-to-end; actual Pod Identity Agent credential delivery to pods + the association eventual-consistency window + ServiceAccount linkage are out-of-scope libtftest backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### ECR Pull-Through Cache module shape (`modules/ecr/pull-through-cache`)
-
-Implementation complete per IMPL-0005 (status: Completed). Originally implemented at `modules/eks/ecr-pull-through-cache` and relocated to `modules/ecr/` when DESIGN-0006 surfaced a second ECR module (`modules/ecr/org-registry`). The module shape is now:
-
-- **Inputs**: required (`region`, `name_prefix`, `upstream_registries` — list of any subset of `["ecr-public","quay","docker-hub","ghcr","kubernetes","mcr"]`, two validation blocks reject empty + unknown); optional (`enable_node_pull_through_policy` default `true` — ADR-0015 gate (a); `repo_creation_template_prefix` default `"ROOT"` — schema-driven divergence from DESIGN-0005's speculative `"*"` per IMPL-0005 Q3 because the v6 provider rejects `"*"`; `untagged_image_retention_days` default 7; `tags`). `var.scan_on_push` was dropped — not exposed by the v6 template schema per Q3 (ECR scan-on-push is per-account, out-of-scope).
-- **Data sources** (`main.tf`): only `data.aws_caller_identity.current` (ADR-0001 identity carve-out — used to scope the IAM policy's Resource ARN to this account's ECR repositories). The module reads NO remote state — it's fleet-shared and cluster-agnostic (one instantiation per account+region serves every cluster in that region).
-- **Resources** (`main.tf` / `credentials.tf` / `template.tf` / `iam.tf` / `locals.tf`):
-  - `locals.upstream_catalog` — static map of the six supported upstreams → `(prefix, upstream_url, auth_required)`. `local.selected` filters by `var.upstream_registries`; `local.authenticated` filters further to the auth-required subset (docker-hub + ghcr).
-  - `aws_ecr_pull_through_cache_rule.this` — for_each over `local.selected`. `credential_arn = each.value.auth_required ? aws_secretsmanager_secret.upstream[each.key].arn : null` (open upstreams stay null; authenticated wire to their secret).
-  - `aws_secretsmanager_secret.upstream` + `aws_secretsmanager_secret_version.upstream` — for_each over `local.authenticated`. Secret name follows ECR's required prefix: `ecr-pullthroughcache/${var.name_prefix}-${each.key}`. Initial version body is the placeholder `{"username":"REPLACE_ME","accessToken":"REPLACE_ME"}`; `lifecycle.ignore_changes = [secret_string]` on the version ensures operator-rotated credentials persist.
-  - `aws_ecr_repository_creation_template.pull_through` — singleton. `prefix = "ROOT"` (the v6 match-all special value), `applied_for = ["PULL_THROUGH_CACHE"]`, `image_tag_mutability = "MUTABLE"`, AES256 encryption, `lifecycle_policy = jsonencode({rules = [{rulePriority = 1, selection = {tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = var.untagged_image_retention_days}, action = {type = "expire"}}]})`. `repository_policy` intentionally omitted (ECR auto-attaches a service-principal policy to pull-through-created repos).
-  - `aws_iam_policy.node_pull_through[0]` + `data.aws_iam_policy_document.node_pull_through[0]` — both count-gated on `var.enable_node_pull_through_policy`. Actions: `["ecr:CreateRepository", "ecr:BatchImportUpstreamImage"]`. Resource: `["arn:aws:ecr:${var.region}:${local.account_id}:repository/*"]` (public-AWS-only per IMPL-0005 Q4 — partition awareness deferred until a GovCloud consumer materializes). ADR-0015 gate (a): emission is opt-out at module instantiation. Gate (b) is at the consumer: the managed-node-group module's `var.extra_node_policies` is where the ARN gets attached to a node role.
-- **Outputs** (consumer contract): `cache_rule_ids` (map upstream → rule id — renamed from `_arns` per IMPL-0005 Q3; v6 exposes id not arn), `cache_url_prefixes` (map upstream → `<acct>.dkr.ecr.<region>.amazonaws.com/<prefix>`), `credential_secret_arns` (map upstream → secret ARN; empty for all-open instantiations), `node_pull_through_policy_arn` (null when gate (a) closed), `repository_creation_template_id` (renamed per Q3).
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/ecr/pull-through-cache/tests/` — plan-only suite. 7 files (`all_open.tftest.hcl`, `mixed.tftest.hcl`, `all_authenticated.tftest.hcl`, `validation.tftest.hcl`, `iam_gate.tftest.hcl`, `lifecycle_json.tftest.hcl`, `iam_scope.tftest.hcl`). Run with `just tf test ecr/pull-through-cache`. ~6s for 9 runs, no LocalStack.
-  - `modules/ecr/pull-through-cache/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md`: LocalStack Pro 2026.5.0 returns 501/NotImplemented for `ecr:CreatePullThroughCacheRule` and `ecr:CreateRepositoryCreationTemplate` — both ARE the module's reason to exist. Per IMPL-0005 Phase 9, the full apply run is preserved as commented HCL for re-enable when LocalStack lands those APIs; the active run is a `plan_smoke` against LocalStack (proves provider endpoint resolution + plan-time validation). FINDINGS.md filed both 501s as sneakystack backlog. The `crictl pull` through the cache URL + auto-vivification of pulled-through repos + operator credential rotation are libtftest/sneakystack backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### Org-Wide ECR OCI Artifact Registry module shape (`modules/ecr/org-registry`)
-
-Implementation complete per IMPL-0006 (status: Completed). The module shape is now:
-
-- **Inputs**: required (`name_prefix`, `organizations_org_id` — 12-char `o-...` string, validated against `^o-[a-z0-9]{10,32}$` — per IMPL-0006 Q2 (a), supplied as an input rather than read via `data.aws_organizations_organization`); optional `kms_key_arn` (default `null` — BYO bypasses the module-managed key); prefix overrides `helm_charts_prefix` / `tf_modules_prefix` (defaults `"helm-charts"` / `"tf-modules"`; validated against the v6 schema rule and explicitly reject the catch-all `"ROOT"`); retention `pre_release_retention_days` (default 90) / `untagged_retention_days` (default 7); SSM publication opt-in `publish_to_ssm` (default `false`), `ssm_parameter_path_arn` / `ssm_parameter_path_json` (defaults `/platform/ecr-oci-publisher-policy-{arn,json}`), and `ssm_cross_account_org_id` (default `null` — non-null switches the SSM parameters to Advanced tier and emits the cross-account resource-policy JSON); `tags` (`map(string)`).
-- **Data sources** (`main.tf`): only `data.aws_caller_identity.current` (ADR-0001 identity-class carve-out). The module reads **no remote state** — it's fleet-shared and account-scoped, instantiated once per artifact-hosting account+region.
-- **Resources** (`kms.tf` / `iam.tf` / `templates.tf` / `publisher.tf` / `ssm.tf` / `locals.tf`):
-  - `aws_kms_key.ecr_oci[0]` + `aws_kms_alias.ecr_oci[0]` (count-gated on `var.kms_key_arn == null`). Key has `enable_key_rotation = true`, 30-day deletion window, and `lifecycle { prevent_destroy = true }` per Q8 — operators unblock destruction via a deliberate PR removing the lifecycle block (README documents the two-step procedure: empty managed-prefix repos → remove lifecycle → destroy).
-  - `aws_iam_role.ecr_template` named `<name_prefix>-ecr-template`, assumed by `ecr.amazonaws.com`, with an inline `aws_iam_role_policy.ecr_template` carrying `ManageRepoConfig` (CreateRepository / PutLifecyclePolicy / SetRepositoryPolicy / TagResource on both managed-prefix ARNs) + `UseKmsKey` (Encrypt / Decrypt / ReEncrypt* / GenerateDataKey* / DescribeKey on `local.kms_key_arn`).
-  - `aws_ecr_repository_creation_template.helm_charts` + `aws_ecr_repository_creation_template.tf_modules` — identical shape except `prefix` / `description` / `resource_tags.artifact_type` (`helm-chart` vs `terraform-module`). Both share `data.aws_iam_policy_document.org_pull` (`aws:PrincipalOrgID` condition on `var.organizations_org_id`, granting BatchGetImage / GetDownloadUrlForLayer / BatchCheckLayerAvailability / DescribeImages / DescribeRepositories), use `IMMUTABLE_WITH_EXCLUSION` mutability with `latest` wildcard excluded, encrypt via `local.kms_key_arn`, and embed a two-rule lifecycle policy (pre-release tag patterns expire after `pre_release_retention_days`; untagged expire after `untagged_retention_days`).
-  - `aws_iam_policy.oci_publisher` named `<name_prefix>-oci-publisher` — reusable customer-managed policy with three statements (EcrAuth: GetAuthorizationToken on `*`; EcrCreateAndPush: 7 ECR actions scoped to both managed-prefix ARNs; UseKmsForEncryption: Encrypt / GenerateDataKey* / DescribeKey on `local.kms_key_arn`).
-  - `aws_ssm_parameter.publisher_policy_arn[0]` + `aws_ssm_parameter.publisher_policy_json[0]` (count-gated on `var.publish_to_ssm`). Tier flips to `Advanced` when `var.ssm_cross_account_org_id != null` (prerequisite for resource-based policies).
-  - `data.aws_iam_policy_document.ssm_org_read[0]` (count-gated on `publish_to_ssm AND ssm_cross_account_org_id != null`) — emitted as the `ssm_org_read_policy_json` output for operators to attach manually via `aws ssm put-resource-policy`. **Schema gap (IMPL-0005 Q3 pattern):** `hashicorp/aws ~> 6.2` (v6.45.0) has no `aws_ssm_resource_policy` resource and `aws_ssm_parameter` has no inline access-policy attribute. README documents the CLI recipe; promoted to a proper Terraform resource if/when the provider adds support.
-  - `local.kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.ecr_oci[0].arn, null))` — the only var-aware local doing compositional work (referenced at use site by templates, ECR-template role, publisher policy, KMS-permissions statement). `var.organizations_org_id` is **not** aliased into a local (ADR-0001 / CLAUDE.md: reference at the use site) — referenced directly at its single use in `data.aws_iam_policy_document.org_pull`.
-- **Outputs** (consumer contract, 8 total): `helm_charts_template_id` + `tf_modules_template_id` (v6 schema exposes `id`, not `arn`, per IMPL-0005 Q3), `kms_key_arn` (BYO or module-managed transparently via `local.kms_key_arn`), `publisher_policy_arn`, `ecr_template_role_arn`, `publisher_policy_ssm_arn_parameter_name` (null when `publish_to_ssm = false`), `publisher_policy_ssm_json_parameter_name` (null when `publish_to_ssm = false`), `ssm_org_read_policy_json` (null unless cross-account distribution configured).
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/ecr/org-registry/tests/` — plan-only suite. 8 files / 15 runs (`default.tftest.hcl`, `byo_kms.tftest.hcl`, `lifecycle_json.tftest.hcl`, `repository_policy_json.tftest.hcl`, `publisher_policy_scope.tftest.hcl`, `prefix_override.tftest.hcl`, `ssm.tftest.hcl` covering off / same-account / cross-account, `validation.tftest.hcl` 5 expect_failures runs covering retention=0, prefix=ROOT, malformed org_id, malformed ssm_parameter_path, malformed ssm_cross_account_org_id). Run with `just tf test ecr/org-registry`. ~1.5s, no LocalStack. **Test-design note:** tests asserting publisher policy content supply a BYO `kms_key_arn` so `local.kms_key_arn` is plan-known (module-managed key's ARN is apply-time-only); cross-account SSM assertion uses structural HCL (`one(...statement[0].condition).variable / .values`) rather than the rendered `.json` (the data source's resources[] list contains apply-time-only parameter ARNs).
-  - `modules/ecr/org-registry/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md` (Finding #1, inherited from IMPL-0005 Phase 9): LocalStack Pro 2026.5.0 returns 501/NotImplemented for `ecr:CreateRepositoryCreationTemplate` — both creation templates ARE the module's reason to exist. The active run is a `plan_smoke` against LocalStack endpoints (KMS/IAM/SSM/ECR/STS); the full apply is preserved as commented HCL for re-enable when LocalStack lands the API. Finding #2 documents that the suite is **tier-agnostic by construction** (uses `var.organizations_org_id` to side-step the Pro-only Organizations API; creation-template API 501 is the same on Pro and Community), with the fleet-wide Pro-detection harness filed as INV-0002. `helm push` through the create-on-push path, auto-vivification of `helm-charts/*` / `tf-modules/*` repos, `aws:PrincipalOrgID` enforcement on cross-account pulls, and cross-account SSM read via resource-based policy are libtftest / sneakystack backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### Aurora Serverless v2 module shape (`modules/rds/serverless`)
-
-Implementation complete per IMPL-0007 (status: Completed). First of four RDS modules planned in DESIGN-0007 (rollout order: `serverless` → `instance` → `cluster` → `read-replica`). The module shape is now:
-
-- **Inputs**: required (`region`, `remote_state_bucket`, `vpc_name`, `identifier_prefix`, `engine` ∈ {`aurora-postgresql`, `aurora-mysql`}, `min_acu`, `max_acu` — both required per IMPL-0007 Q2 with suggested ranges in the variable description: dev 0.5/4, production starter 0.5/16); optional `engine_version` (null → AWS picks default + Phase 2 falls back to the per-engine `default_major_map` for parameter-family lookup per Q3); `kms_key_arn` (default null — module-managed key); `allowed_consumer_sg_ids` (default `[]`, SG-source-list contract per DESIGN-0007 Q5); `iam_database_authentication_enabled` (default false, opt-in per Q5); `manage_master_user_password` (default true per Q2 — AWS provisions + rotates the password in Secrets Manager); `master_username` (default `"admin"` per IMPL-0007 Q4 — single default for both engines, not per-engine); `database_name` (default null per IMPL-0007 Q11); backup/window defaults per Q7 (`backup_retention_period = 7`, `preferred_backup_window = "02:00-03:00"`, `preferred_maintenance_window = "sun:04:00-sun:05:00"`); `deletion_protection = true`, `publicly_accessible = false`, `apply_immediately = false` per Q8, `auto_minor_version_upgrade = true` per Q4; `final_snapshot_identifier` (default null, required at destroy time when `skip_final_snapshot = false` per IMPL-0007 Q9 enforced via cluster lifecycle precondition); `performance_insights_enabled = false`, `enhanced_monitoring_interval = 0`, `enhanced_monitoring_role_arn = null` per IMPL-0007 Q6 (both off; module does NOT provision the monitoring IAM role); `tags`.
-- **Data sources** (`main.tf`): only `data.terraform_remote_state.vpc` (S3 backend with `use_path_style = true`). Reads `vpc_id` + `private_subnet_ids` per IMPL-0007 Q1 — reuses the existing EKS-cluster remote-state contract rather than introducing a `database_subnet_ids` output. **No `data.aws_caller_identity.current`** — the module emits zero account-scoped ARNs (different from the ECR modules which scope policies to the account).
-- **Resources** (`kms.tf` / `network.tf` / `parameter_groups.tf` / `cluster.tf` / `instance.tf`):
-  - `aws_kms_key.this[0]` + `aws_kms_alias.this[0]` (count-gated on `var.kms_key_arn == null`). Key has `enable_key_rotation = true`, 30-day deletion window, and `lifecycle { prevent_destroy = true }` per IMPL-0007 Phase 3 — README documents the two-step destroy procedure (empty cluster → remove lifecycle → destroy).
-  - `aws_db_subnet_group.this` over `private_subnet_ids` from VPC remote state.
-  - `aws_security_group.this` + `aws_vpc_security_group_ingress_rule.consumer` (for_each over `toset(var.allowed_consumer_sg_ids)`, port = `local.engine_default_port` = 5432 / 3306) + `aws_vpc_security_group_egress_rule.all` (all-outbound for AWS API endpoints). Granular SG rule resources (not inline ingress/egress on the SG itself), matching the EKS-cluster pattern.
-  - `aws_rds_cluster_parameter_group.this` + `aws_db_parameter_group.this` — both resolve `family = local.resolved_parameter_family` (a coalesce of `var.parameter_family` and the static `parameter_family_map` keyed by `<engine>:<major>` for postgres or `<engine>:<major.minor>` for mysql). `create_before_destroy` so renames are downtime-free.
-  - `aws_rds_cluster.this` — `engine_mode = "provisioned"` + `serverlessv2_scaling_configuration { min_capacity / max_capacity }` (NOT `engine_mode = "serverless"` which is the deprecated v1 path). `storage_encrypted = true`, `kms_key_id = local.kms_key_arn`, `master_user_secret_kms_key_id = local.kms_key_arn` (per Q12 — same key for both encryptions). Three lifecycle preconditions enforce cross-variable invariants (terraform 1.1 `variable.validation` can't reference other vars): `min_acu <= max_acu`, `resolved_parameter_family != null`, and `skip_final_snapshot || final_snapshot_identifier != null` (Q9). Attributes alphabetically ordered per the custom `resource_parameter_order` tflint rule with `cluster_identifier` first as the natural-key attribute.
-  - `aws_rds_cluster_instance.this` — `instance_class = "db.serverless"` (the literal Serverless v2 signal). `engine` + `engine_version` flow from the cluster resource (single source of truth — instance can't drift from cluster). PI/EM attributes wire to Q6 vars; `performance_insights_kms_key_id = var.performance_insights_enabled ? local.kms_key_arn : null` (provider requires null when PI is off). Lifecycle precondition: `enhanced_monitoring_interval == 0 || enhanced_monitoring_role_arn != null` (Q6).
-- **Outputs** (consumer contract, 14 total): `cluster_identifier`, `cluster_resource_id` (immutable internal ID for IAM auth policies), `cluster_endpoint`, `reader_endpoint`, `port`, `engine`, `engine_version_actual` (the version AWS actually applied — important when `var.engine_version = null`), `db_subnet_group_name`, `security_group_id`, `kms_key_arn` (transparent BYO/managed via `local.kms_key_arn`), `master_user_secret_arn` (null when `manage_master_user_password = false`), `db_cluster_parameter_group_name`, `db_parameter_group_name`, `cluster_instance_identifier`.
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/rds/serverless/tests/` — plan-only suite. 6 files / 21 runs (`default.tftest.hcl` 3 runs incl. both engines + module-managed KMS resource count; `byo_kms.tftest.hcl`; `parameter_family_resolution.tftest.hcl` 3 runs covering postgres 15 + mysql 8.0 + parameter_family override; `sg_ingress.tftest.hcl` 3 runs covering two consumer SGs + empty list + mysql port; `validation.tftest.hcl` 9 expect_failures runs covering engine rejection, engine_version regex, ACU bounds, ACU ordering, retention, identifier shape, snapshot precondition, EM precondition; `iam_db_auth.tftest.hcl`). Run with `just tf test rds/serverless`. ~1.5s, no LocalStack. **Test-design note:** every validation run includes `override_data` for `data.terraform_remote_state.vpc` to avoid terraform fetching real S3 credentials before the validation fires. BYO KMS used in any test that asserts on `local.kms_key_arn`-dependent attributes (module-managed key ARN is apply-time-only — same IMPL-0006 lesson).
-  - `modules/rds/serverless/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md`: tier-agnostic by construction per IMPL-0007 Q7 (LocalStack Community default + Pro 2026.5.0 verified identically). 3 runs: `setup` (apply VPC + S3 stub state fixture), `apply_default` (full module apply with engine = `aurora-postgresql`), `plan_mysql` (plan-only against LocalStack endpoints with engine = `aurora-mysql` per Q5). Risk surface (documented as Finding #1, pending first actual run): Aurora Serverless v2 (`engine_mode = "provisioned"` + `serverlessv2_scaling_configuration` + `instance_class = "db.serverless"`). If LocalStack 501s, follow the IMPL-0005 Phase 9 fall-back. `pg_isready` / `mysqladmin ping` through writer endpoint, IAM auth token generation, ACU auto-scale events, and final_snapshot capture on destroy are libtftest / sneakystack backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-### EFS filesystem module shape (`modules/efs/filesystem`)
-
-Implementation complete per IMPL-0008 (status: Completed). Single sub-module under a new `modules/efs/` parent — the `filesystem/` sub-directory leaves room for future siblings (e.g. `modules/efs/replica/` if cross-region replication ever lands). Pairs with the EFS CSI driver already installed by `modules/eks/addons` when `var.efs_csi_enabled = true` — this module covers the AWS-API surface, the CSI driver covers the K8s-API surface, per ADR-0011 / ADR-0003. The module shape is now:
-
-- **Inputs**: required (`region`, `remote_state_bucket`, `vpc_name`, `cluster_name`, `identifier_prefix`); optional `kms_key_arn` (default null — module-managed key per IMPL-0008 Q6); `performance_mode` (default `"generalPurpose"` per DESIGN-0008 Q2 — cannot be changed after filesystem creation); `throughput_mode` (default `"elastic"` per DESIGN-0008 Q3); `provisioned_throughput_in_mibps` (default null; cross-var invariant with `throughput_mode = "provisioned"` enforced via `lifecycle.precondition` since terraform 1.1 `variable.validation` can't reference other vars); `lifecycle_policy` (object with `optional()` defaults `transition_to_ia = "AFTER_30_DAYS"` + `transition_to_archive = "AFTER_90_DAYS"` + `transition_to_primary_storage_class = null` per IMPL-0008 Q2 — set the whole variable to null to disable all transitions; partial overrides flow through the optional() defaults); `additional_allowed_consumer_sg_ids` (default `[]` — EKS node SG already wired); `backup_policy_enabled` (default false per DESIGN-0008 Q7 — operators opt in deliberately); `access_points` (default `{}`, typed `map(object({ posix_user = object({uid, gid, secondary_gids = optional([])}), root_directory = object({path, creation_info = optional(...)}) }))` per IMPL-0008 Q3; validates POSIX UID/GID bounds [0, 65535] per IMPL-0008 Q4 — root permitted); `tags`. Validation on `identifier_prefix` enforces both the lowercase shape AND the EFS 64-char `creation_token` ceiling.
-- **Data sources** (`main.tf`): TWO `data.terraform_remote_state` reads per DESIGN-0008 Q1 — `vpc` (reads `vpc_id` + `private_subnet_ids` per IMPL-0008 Q1, reusing the EKS-cluster contract) AND `eks` (reads `node_security_group_id` from the existing cluster module's output). Both with `use_path_style = true` on the S3 backend. **No `data.aws_caller_identity.current`** — the module emits zero account-scoped ARNs.
-- **Resources** (`kms.tf` / `network.tf` / `filesystem.tf` / `mount_targets.tf` / `access_points.tf` / `backup.tf` / `locals.tf`):
-  - `aws_kms_key.this[0]` + `aws_kms_alias.this[0]` (count-gated on `var.kms_key_arn == null`). `enable_key_rotation = true`, 30-day deletion window, `lifecycle { prevent_destroy = true }` per IMPL-0008 Q6 — README documents the two-step destroy procedure. Alias name: `alias/${var.identifier_prefix}-efs`.
-  - `aws_security_group.this` lives in `data.terraform_remote_state.vpc.outputs.vpc_id`. Three granular SG rule resources: `aws_vpc_security_group_ingress_rule.from_nodes` (NFS 2049 from `data.terraform_remote_state.eks.outputs.node_security_group_id`), `aws_vpc_security_group_ingress_rule.from_extra` (for_each over `toset(var.additional_allowed_consumer_sg_ids)`), and `aws_vpc_security_group_egress_rule.all` (all-outbound for SG-spec symmetry). Single SG per IMPL-0008 Q7 — additional consumer access is layered as ingress rules on this SG, not additional SGs on the mount target.
-  - `aws_efs_file_system.this` — `creation_token = var.identifier_prefix` per DESIGN-0008 Q10 (deterministic, no random suffix; README documents `TokenAlreadyExists` collision window on destroy + immediate re-apply per IMPL-0008 Q10). `encrypted = true`, `kms_key_id = local.kms_key_arn`, performance / throughput / provisioned-throughput vars wired straight through. Three `dynamic "lifecycle_policy"` blocks emit one block per non-null transition attribute on `var.lifecycle_policy` per IMPL-0008 Q2. `lifecycle.precondition` enforces the throughput_mode/provisioned_throughput_in_mibps cross-var invariant.
-  - `aws_efs_mount_target.this` — `for_each = toset(data.terraform_remote_state.vpc.outputs.private_subnet_ids)` per DESIGN-0008 Q9 (all subnets, max AZ availability — CSI driver picks the mount target in the same AZ as the pod). `security_groups = [aws_security_group.this.id]` literal per IMPL-0008 Q7. **Note**: `aws_efs_mount_target` does not accept `tags` in `hashicorp/aws ~> 6.2`; README §Operational gotchas documents the workaround (tag the underlying ENIs directly via AWS CLI).
-  - `aws_efs_access_point.this` — for_each over `var.access_points`. `posix_user` block always rendered (`secondary_gids` defaults to `[]` via `optional()`); `dynamic "creation_info"` block only emits when caller supplies non-null `creation_info`. `tags = merge(var.tags, { Name = each.key })`.
-  - `aws_efs_backup_policy.this[0]` — count-gated on `var.backup_policy_enabled` (default false per DESIGN-0008 Q7). `backup_policy { status = "ENABLED" }`. README §Operational gotchas documents the AWS Backup default-vault prerequisite.
-  - `local.kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))` — same coalesce-with-try pattern as rds-serverless / org-registry / cluster.
-- **Outputs** (consumer contract, 9 total): `filesystem_id` (PV manifest `volumeHandle` — `<filesystem_id>::<access_point_id>` shape), `filesystem_arn` (IAM `elasticfilesystem:Client*` policies), `dns_name` (non-CSI NFS clients), `mount_target_ids` (map keyed by subnet ID), `mount_target_dns_names` (map keyed by subnet ID), `security_group_id`, `kms_key_arn` (transparent BYO/managed via `local.kms_key_arn`), `access_point_ids` (map keyed by `var.access_points` key), `access_point_arns` (same shape).
-- **Tests** — defaults to `terraform test` per ADR-0013:
-  - `modules/efs/filesystem/tests/` — plan-only suite. 9 files / 23 runs (`default.tftest.hcl`, `byo_kms.tftest.hcl`, `managed_kms.tftest.hcl`, `access_points.tftest.hcl`, `lifecycle_policy.tftest.hcl` 4 runs covering default + null + partial override + all-three, `sg_ingress.tftest.hcl` 2 runs, `mount_target_count.tftest.hcl` 2 runs, `backup_policy.tftest.hcl` 2 runs, `validation.tftest.hcl` 9 expect_failures runs). Run with `just tf test efs/filesystem`. ~5s, no LocalStack. **Test-design notes:** every test supplies `override_data` for BOTH remote-state data sources to avoid real S3 reads before variable validation fires (IMPL-0007 Phase 9 lesson). BYO KMS used in any test that asserts on `local.kms_key_arn`-dependent attributes (IMPL-0006 lesson — module-managed key ARN is apply-time-only). The access-point test omits the negative-case `length(...creation_info) == 0` assertion when the dynamic block isn't emitted — the EFS provider schema marks `creation_info` as Computed so the attribute is unknown at plan when absent; coverage held via the positive case (grafana access point with the block).
-  - `modules/efs/filesystem/tests-localstack/` — gap-discovery suite. Per `FINDINGS.md` (Finding #1, confirmed 2026-05-29 against LocalStack Community 3.8.1): `efs:CreateFileSystem` returns 501 — EFS is Pro-only in the verified Community release. Per IMPL-0005 Phase 9 fall-back: the `apply_*` runs are preserved as commented HCL; the active suite is `setup` + `plan_smoke` (proves provider endpoint resolution + remote-state reads through S3 stub state + schema validation at plan time). Finding #2 documents AWS Backup integration as deferred behind Finding #1. Actual NFS mount through the CSI driver, access-point UID enforcement on file ops, encryption-in-transit handshake, and cross-AZ mount-target selection are libtftest / sneakystack backlog (RFC-0001 §Phase 3).
-
-Required provider: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-
-## CI caveat
-
-`.github/workflows/ci.yml`, `.golangci.yml`, the `goreleaser` build step, the Docker bake build, and the `make test-coverage` reference are all **copied from the libtftest Go project** and don't match the current contents of this repo (no Go code, no Makefile, no Dockerfile, no goreleaser config). Expect those jobs to fail until either (a) libtftest-based Go tests are added under a `test/` directory and a Makefile/goreleaser config are introduced, or (b) the workflow is rewritten to match a Terraform-only repo. Don't treat the inherited Go linter/CI config as authoritative for what this repo currently is.
-
-The `.github/labeler.yml` auto-applies PR labels by changed-files glob and by branch-name prefix (`feature/`, `fix/`, `chore/`, `docs/`, `security/`). **Drift note:** the labeler's head-branch globs use `^feature` but the git-workflow skill prescribes `feat/`, so `feat/...` branches don't pick up a branch-derived label today — the labels seen on PRs #17 and #18 came from path globs (`documentation` via `docs/**`) plus the operator-set semver label. INV-0003 is fixing this.
-
-## CI/CD direction (in flight — INV-0003)
-
-The cleanup of the inherited libtftest-shaped CI is being researched in [INV-0003](docs/investigation/0003-cicd-options-for-a-terraform-modules-monorepo.md). Stable directional decisions out of the investigation so far (not yet shipped — track via PLAN + sibling RFC that INV-0003 will emit):
-
-- **Short-term track**: matrix workflow with `dorny/paths-filter@v3` change detection + per-module `just tf <action>` recipes; early-fail gates for fmt / lint / docs-drift; Trivy `--scan-type=config` per-module with SARIF → Code Scanning + inline `# trivy:ignore:AWS-XXXX` exemptions; LocalStack label-gated (`run-localstack`) + nightly schedule; git-cliff for repo-level `CHANGELOG.md` (keep) + retire Dependabot in favor of Renovate (12-of-12 surfaces vs 4-of-12); `release.yml::bump-version` via `jefflinse/pr-semver-bump` stays. Keep `go-licenses` + `govulncheck` for the libtftest test code at `modules/eks/cluster/test/`.
-- **Long-term track**: a custom Go CLI absorbs per-module tagging (`<svc>/<name>/vX.Y.Z` per techpivot's algorithm), per-module CHANGELOGs, reverse-dependency lookup via HCL parsing (mitigates cross-module output-contract drift), `override_data` stub generation from each producer's `outputs.tf`, terraform-docs USAGE.md regen, and docz README index integration. Sibling RFC.
-- **Three-tool separation** (not one mega-tool): [`forge`](https://github.com/donaldgifford/forge) owns scaffolding + blueprint drift + sync; [`docz`](https://github.com/donaldgifford/docz) owns RFC/ADR/IMPL/PLAN/INV doc lifecycle; the planned Go CLI owns versioning + changelog + reverse-deps + stubs. Hypothesis claim "Go CLI may absorb forge" was refuted in INV-0003 Observation 7 — scopes are cleanly separable.
-- **Explicitly ruled out**: Gruntwork Boilerplate (forge wins), techpivot-as-is (PowerShell+Node, but algorithm is the Go-CLI's prior art), Checkov (Python overhead; Trivy's ~250 AWS rules suffice at 8 modules), Release Please / semantic-release (fights the working label-driven tagger), `pre-commit` framework wrapper from `terraform-aws-modules/*` (justfile recipes are equivalent without the Python dependency).
-- **Cross-module drift** (the Q1 concern): smaller blast radius than feared. Only `eks/cluster` has 4 in-repo consumers (`addons`, `managed-node-group`, `pod-identity-access`, `efs/filesystem`). All consumers already use `override_data` stubs. Short-term mitigation: `tests/outputs.tftest.hcl` per producer module pinning the output set with documented "consumed by..." error messages. Long-term: the Go CLI's HCL-parsed reverse-deps closes the rename gap entirely.
-
-Until INV-0003's PLAN doc lands and is implemented, treat the existing CI surface as documented in the §CI caveat above.
+Don't hand-edit the README index tables; they're regenerated. MkDocs (TechDocs)
+integration is configured in `.docz.yaml` under `wiki:` for downstream
+publishing.

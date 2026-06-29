@@ -1,0 +1,73 @@
+---
+# Per-tool golangci-lint config for bedrock-keyctl (IMPL-0009 Q6).
+# Mirrors the repo-root Uber-style linter set, minus goheader (this tool
+# carries no license-header convention) and with cmd/* allowed to print
+# to stdout (it is a CLI).
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - errchkjson
+    - errname
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - unconvert
+    - prealloc
+    - gocritic
+    - nolintlint
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    - goconst
+    - misspell
+    - nakedret
+    - unparam
+    - revive
+    - contextcheck
+    - noctx
+    - bodyclose
+    - nilerr
+    - nilnil
+    - gosec
+    - godot
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    gocognit:
+      min-complexity: 30
+    funlen:
+      lines: 100
+      statements: 50
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - whyNoLint
+        - unnamedResult
+
+  exclusions:
+    rules:
+      # Tests may use fmt.Sprintf-style helpers and longer table-driven
+      # funcs; relax funlen + gosec there.
+      - path: _test\.go
+        linters:
+          - funlen
+          - gosec
+          - gocognit
+      # Test-double implementations: interface methods are self-
+      # explanatory and documented by the mock type; the value-receiver
+      # helpers (Seed) are test ergonomics, not hot paths.
+      - path: mock_.*\.go
+        linters:
+          - revive
+          - gocritic

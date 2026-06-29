@@ -39,6 +39,15 @@ MD013: false
 #   headings: false
 #   tables: false
 
+# Multiple headings with the same content
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/md024.md
+# The docz IMPL/DESIGN templates legitimately repeat subsection headings
+# (e.g. "Tasks" / "Success Criteria") under each distinct phase parent.
+# siblings_only restricts the rule to duplicates that share the same parent,
+# which is the real defect this rule should catch.
+MD024:
+  siblings_only: true
+
 # Spaces after list markers
 # Disabled this because of confluence formatting
 # https://github.com/DavidAnson/markdownlint/blob/main/doc/md030.md
