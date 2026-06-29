@@ -253,14 +253,14 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `iam.tf`: `aws_iam_role.proxy` with a trust policy for
+- [x] `iam.tf`: `aws_iam_role.proxy` with a trust policy for
       `rds.amazonaws.com`.
-- [ ] An inline/managed policy granting `secretsmanager:GetSecretValue` on
+- [x] An inline/managed policy granting `secretsmanager:GetSecretValue` on
       `local.master_user_secret_arn` and `kms:Decrypt` on
       `local.secret_kms_key_arn` (conditioned `kms:ViaService = secretsmanager.*`;
       when the CMK arn is absent, scope to the account's default
       `aws/secretsmanager` key) — all read from remote state.
-- [ ] Tag the role from `var.tags`.
+- [x] Tag the role from `var.tags`.
 
 #### Success Criteria
 
