@@ -330,11 +330,11 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `aws_db_proxy_endpoint.read_only` with
+- [x] `aws_db_proxy_endpoint.read_only` with
       `count = var.create_read_only_endpoint && var.target_type != "rds-instance" ? 1 : 0`,
       `target_role = "READ_ONLY"`, `vpc_subnet_ids = local.db_subnet_ids`,
       `vpc_security_group_ids` = proxy SG.
-- [ ] Precondition V3 to fail loudly (not silently no-op) when
+- [x] Precondition V3 to fail loudly (not silently no-op) when
       `create_read_only_endpoint = true` is set on an `rds-instance` target.
 
 #### Success Criteria

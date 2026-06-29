@@ -47,6 +47,14 @@ resource "aws_db_proxy" "this" {
       condition     = local.master_user_secret_arn != null || var.require_iam_auth
       error_message = "The proxy has no authentication path: the target's master_user_secret_arn is null (manage_master_user_password = false) and require_iam_auth = false. Provide a managed master secret or enable IAM auth."
     }
+
+    # V3 — read-only endpoint is Aurora-only. Lives here (not on the
+    # count-gated endpoint) so it fails loudly instead of silently
+    # no-opping when set on an rds-instance target.
+    precondition {
+      condition     = !var.create_read_only_endpoint || var.target_type != "rds-instance"
+      error_message = "create_read_only_endpoint = true is invalid for target_type = rds-instance: RDS Proxy attaches to the writer only and has no reader routing for single instances. Read-only endpoints require an Aurora target (aurora-cluster / serverless)."
+    }
   }
 }
 
@@ -77,4 +85,26 @@ resource "aws_db_proxy_target" "this" {
 
   db_instance_identifier = local.db_instance_identifier
   db_cluster_identifier  = local.db_cluster_identifier
+}
+
+#--------------------------------------------------------------
+# Optional Aurora read-only proxy endpoint (DESIGN-0010 Q5-a)
+#
+# Gated on create_read_only_endpoint AND an Aurora target. The
+# default proxy endpoint routes to the writer; this additional
+# endpoint routes reads to Aurora readers (target_role = READ_ONLY).
+# The V3 precondition on aws_db_proxy.this rejects the flag on an
+# rds-instance target loudly; the count here is the belt to that
+# suspenders so the plan is a clean no-op for non-Aurora targets.
+#--------------------------------------------------------------
+
+resource "aws_db_proxy_endpoint" "read_only" {
+  count = var.create_read_only_endpoint && var.target_type != "rds-instance" ? 1 : 0
+
+  db_proxy_name          = aws_db_proxy.this.name
+  db_proxy_endpoint_name = "${var.name}-read-only"
+  vpc_subnet_ids         = local.db_subnet_ids
+  vpc_security_group_ids = [aws_security_group.proxy.id]
+  target_role            = "READ_ONLY"
+  tags                   = var.tags
 }
