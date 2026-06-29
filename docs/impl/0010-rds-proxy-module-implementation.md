@@ -372,18 +372,18 @@ outputs directly without an S3 backend.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl`: default shapes per `target_type` × engine
+- [x] `tests/default.tftest.hcl`: default shapes per `target_type` × engine
       (rds-instance/postgres, aurora-cluster/aurora-postgresql,
       serverless/aurora-postgresql) — `override_data` supplies the remote-state
       outputs; assert `engine_family` derivation, identifier selection
       (`db_instance_identifier` vs `db_cluster_identifier`), resource counts.
-- [ ] `tests/validation.tftest.hcl`: negatives V1–V7 — bad `target_type`,
+- [x] `tests/validation.tftest.hcl`: negatives V1–V7 — bad `target_type`,
       `require_iam_auth` against an IAM-disabled target (V4), `max_idle >
       max_connections` (V6), `create_read_only_endpoint` on `rds-instance`
       (V3), unsupported engine (V2).
-- [ ] `tests/read_only_endpoint.tftest.hcl`: endpoint present iff Aurora + flag.
-- [ ] `tests/connection_pool.tftest.hcl`: pool config plumbs through.
-- [ ] `tests/iam_auth.tftest.hcl`: `iam_auth` REQUIRED/DISABLED mapping.
+- [x] `tests/read_only_endpoint.tftest.hcl`: endpoint present iff Aurora + flag.
+- [x] `tests/connection_pool.tftest.hcl`: pool config plumbs through.
+- [x] `tests/iam_auth.tftest.hcl`: `iam_auth` REQUIRED/DISABLED mapping.
 
 #### Success Criteria
 

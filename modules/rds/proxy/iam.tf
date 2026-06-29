@@ -27,23 +27,35 @@ data "aws_iam_policy_document" "proxy_trust" {
 }
 
 data "aws_iam_policy_document" "proxy_secret_access" {
-  statement {
-    sid       = "GetMasterSecret"
-    effect    = "Allow"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [local.master_user_secret_arn]
+  # Both statements are gated on a managed master secret existing. When
+  # it is null (the IAM-only auth path, a DESIGN-0010 Non-Goal), the
+  # policy renders empty and the V5 precondition on aws_db_proxy rejects
+  # the config — this keeps a null secret ARN out of the resources list.
+  dynamic "statement" {
+    for_each = local.master_user_secret_arn != null ? [1] : []
+
+    content {
+      sid       = "GetMasterSecret"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = [local.master_user_secret_arn]
+    }
   }
 
-  statement {
-    sid       = "DecryptMasterSecretCMK"
-    effect    = "Allow"
-    actions   = ["kms:Decrypt"]
-    resources = local.secret_kms_key_arn != null ? [local.secret_kms_key_arn] : ["*"]
+  dynamic "statement" {
+    for_each = local.master_user_secret_arn != null ? [1] : []
 
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["secretsmanager.${var.region}.amazonaws.com"]
+    content {
+      sid       = "DecryptMasterSecretCMK"
+      effect    = "Allow"
+      actions   = ["kms:Decrypt"]
+      resources = local.secret_kms_key_arn != null ? [local.secret_kms_key_arn] : ["*"]
+
+      condition {
+        test     = "StringEquals"
+        variable = "kms:ViaService"
+        values   = ["secretsmanager.${var.region}.amazonaws.com"]
+      }
     }
   }
 }
