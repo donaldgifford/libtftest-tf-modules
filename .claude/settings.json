@@ -55,6 +55,10 @@
       "Bash(just docs *)",
       "Bash(tflint *)",
       "Bash(terraform-docs *)",
+      "Bash(markdownlint-cli2 *)",
+      "Bash(prettier *)",
+      "Bash(yamllint *)",
+      "Bash(yamlfmt *)",
       "Bash(terraform *)"
     ]
   }
