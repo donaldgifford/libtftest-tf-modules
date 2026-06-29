@@ -185,21 +185,21 @@ the proxy has a single upstream (DESIGN-0010 Q11-a / Q5).
 
 #### Tasks
 
-- [ ] Add `db_subnet_ids` (the private subnet IDs backing the subnet group) and
+- [x] Add `db_subnet_ids` (the private subnet IDs backing the subnet group) and
       `vpc_id` outputs to `modules/rds/serverless/outputs.tf`, sourced from the
       values already read in `network.tf` (the proxy needs raw subnet IDs for
       `vpc_subnet_ids` and the VPC id for SG placement).
-- [ ] Add a `master_user_secret_kms_key_arn` output (the CMK encrypting the
+- [x] Add a `master_user_secret_kms_key_arn` output (the CMK encrypting the
       managed master secret) so the proxy role can scope `kms:Decrypt` — or
       document that the default `aws/secretsmanager` key is used and the proxy
       policy handles it via a `kms:ViaService` condition. (The existing
       `kms_key_arn` output is the *storage* key, not necessarily the secret's.)
-- [ ] Add an `iam_database_authentication_enabled` output so the proxy's V4
+- [x] Add an `iam_database_authentication_enabled` output so the proxy's V4
       precondition can read the target's IAM-auth state from remote state.
-- [ ] Regenerate `modules/rds/serverless/USAGE.md` (`just tf docs rds/serverless`).
-- [ ] Add assertions for the new outputs to the serverless plan-only suite
+- [x] Regenerate `modules/rds/serverless/USAGE.md` (`just tf docs rds/serverless`).
+- [x] Add assertions for the new outputs to the serverless plan-only suite
       (extend `tests/default.tftest.hcl`).
-- [ ] Record in this doc's References (and flag for DESIGN-0007) that
+- [x] Record in this doc's References (and flag for DESIGN-0007) that
       `instance` and `cluster` must emit the same outputs when they are built.
 
 #### Success Criteria
@@ -523,7 +523,12 @@ only `engine_family` / port differ.
   the module gaining the `db_subnet_ids` / `vpc_id` / secret-CMK / IAM-auth
   outputs the proxy reads from remote state (Q3 — remote-state composition).
 - DESIGN-0007's `instance` / `cluster` modules — future targets, not blocking
-  (Q11-a: validate as they ship).
+  (Q11-a: validate as they ship). **Output contract (Phase 2):** when built,
+  each MUST emit the same proxy-composition outputs `serverless` now does —
+  `db_subnet_ids`, `vpc_id`, `master_user_secret_arn`,
+  `master_user_secret_kms_key_arn`, `security_group_id`, `engine`,
+  `iam_database_authentication_enabled`, and the instance/cluster identifier —
+  so a single `proxy` module fronts any `target_type`. Flagged for DESIGN-0007.
 - `hashicorp/aws ~> 6.2` (fleet pin) — `aws_db_proxy` and friends are available.
 - **LocalStack Pro** — required only for the Phase 10 apply suite.
 

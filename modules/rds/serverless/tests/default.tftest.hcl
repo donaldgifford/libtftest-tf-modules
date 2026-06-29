@@ -123,6 +123,31 @@ run "default_postgres" {
     condition     = length(aws_kms_alias.this) == 0
     error_message = "BYO KMS must plan zero module-managed aws_kms_alias resources"
   }
+
+  # RDS Proxy composition outputs (DESIGN-0010 Q11-a / IMPL-0010 Phase 2).
+  # master_user_secret_kms_key_arn reads the computed master_user_secret
+  # block (known only after apply), so it is not plan-asserted here — its
+  # source argument is covered by the master_user_secret_kms_key_id assert
+  # above.
+  assert {
+    condition     = output.vpc_id == "vpc-0123456789abcdef0"
+    error_message = "vpc_id output must surface the VPC from remote state for RDS Proxy SG placement"
+  }
+
+  assert {
+    condition     = length(output.db_subnet_ids) == 3
+    error_message = "db_subnet_ids output must surface all three private subnets for RDS Proxy vpc_subnet_ids"
+  }
+
+  assert {
+    condition     = contains(output.db_subnet_ids, "subnet-aaa")
+    error_message = "db_subnet_ids output must contain the subnet IDs read from VPC remote state"
+  }
+
+  assert {
+    condition     = output.iam_database_authentication_enabled == false
+    error_message = "iam_database_authentication_enabled output must default to false (proxy V4 precondition reads this)"
+  }
 }
 
 run "default_mysql" {
