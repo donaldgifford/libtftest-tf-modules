@@ -138,10 +138,10 @@ static, single-variable validations.
 
 #### Tasks
 
-- [ ] Create `modules/rds/proxy/` with `versions.tf` (`hashicorp/aws ~> 6.2`,
+- [x] Create `modules/rds/proxy/` with `versions.tf` (`hashicorp/aws ~> 6.2`,
       Terraform `>= 1.1`), `.terraform-docs.yml`, `.tflint.hcl`, and a
       `README.md` stub — copied verbatim from a sibling module.
-- [ ] Author `variables.tf` with the pointer + knob input surface (Q3 —
+- [x] Author `variables.tf` with the pointer + knob input surface (Q3 —
       composition by remote state, so the DB-derived values are *not* inputs).
       **Required**: `region`, `name` (proxy name, Q4-a), `target_type`,
       `target_identifier`, `remote_state_bucket` (the S3 bucket holding the
@@ -154,16 +154,21 @@ static, single-variable validations.
       `init_query` (`null`), `debug_logging` (`false`), `tags` (`{}`). Each
       variable carries `description` + `type` + `default` (optional only) +
       `nullable = false` where required.
-- [ ] Add the single-variable validations: V1 (`target_type ∈ {rds-instance,
+- [x] Add the single-variable validations: V1 (`target_type ∈ {rds-instance,
       aurora-cluster, serverless}`), V6 (`max_connections_percent ∈ [1,100]`,
       `max_idle_connections_percent ∈ [0,100]`), V7
       (`connection_borrow_timeout >= 0`), each with a clear `error_message`.
-- [ ] Add a `main.tf` header comment block (module entrypoint).
+- [x] Add a `main.tf` header comment block (module entrypoint).
 
 #### Success Criteria
 
 - `just tf validate rds/proxy` and `just tf fmt rds/proxy` pass.
-- `just tf lint rds/proxy` is clean (no `terraform_unused_declarations` etc.).
+- `just tf lint rds/proxy` reports no *real* defects. NB:
+  `terraform_unused_declarations` fires for every variable and
+  `terraform_unused_required_providers` for `aws` while the module is
+  variables-only — these are intrinsic to a variables-first phase and clear
+  once Phase 6 wires the `aws_db_proxy` resource set. Full lint-clean is
+  re-verified at Phase 6 (and again at the Phase 12 final gate).
 - Every variable has `description` + `type`; required variables are
   `nullable = false`.
 - `just tf docs rds/proxy` renders the input table into `USAGE.md`.

@@ -21,6 +21,12 @@ Tracked in git. As of this writing:
   DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `cluster` (Aurora
   provisioned, single-writer default), `read-replica` (additional
   `aws_rds_cluster_instance`s composed via cluster module's remote state).
+  `proxy` (IMPL-0010, in progress — Amazon RDS Proxy in front of any data-tier
+  target per DESIGN-0010 / RFC-0002). Composes via the target's remote state
+  (ADR-0001, `var.target_type` ∈ {rds-instance, aurora-cluster, serverless}),
+  reuses the AWS-managed master secret, V1–V7 plan-time validations, TLS-on
+  default, optional Aurora READ_ONLY endpoint, flag-gated LocalStack-Pro apply
+  tests (off by default). Postgres first; MySQL is a fast-follow phase.
 - **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
