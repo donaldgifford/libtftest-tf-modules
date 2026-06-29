@@ -274,14 +274,14 @@ CMK all come from the single `data.terraform_remote_state.target`.
 
 #### Tasks
 
-- [ ] `security_group.tf`: `aws_security_group.proxy` in `local.vpc_id` (from
+- [x] `security_group.tf`: `aws_security_group.proxy` in `local.vpc_id` (from
       remote state).
-- [ ] Ingress rules from each `var.allowed_consumer_sg_ids` on the engine
+- [x] Ingress rules from each `var.allowed_consumer_sg_ids` on the engine
       listener port (`local.port`) — clients → proxy.
-- [ ] Egress rule to `local.db_security_group_id` on `local.port` — proxy → DB
+- [x] Egress rule to `local.db_security_group_id` on `local.port` — proxy → DB
       (Q3: the proxy SG egress targets the RDS cluster/instance SG + port; the
       SG id comes from the target's remote state).
-- [ ] Use `aws_vpc_security_group_ingress_rule` / `_egress_rule` with
+- [x] Use `aws_vpc_security_group_ingress_rule` / `_egress_rule` with
       `referenced_security_group_id` (provider 6.x idiom), matching the
       `serverless` module's SG style.
 
