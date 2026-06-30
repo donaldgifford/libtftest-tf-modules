@@ -9,6 +9,12 @@ instance/cluster identifier — keyed on `var.target_type` +
 `var.target_identifier`. A single module serves `rds-instance`,
 `aurora-cluster`, and `serverless` targets via `var.target_type`.
 
+Both engine families are supported: PostgreSQL (`postgres`,
+`aurora-postgresql`, port 5432) and MySQL (`mysql`, `aurora-mysql`, port
+3306). The `engine_family` and listener port derive from the target's
+`engine` read from remote state, so the proxy can never drift from its
+target. SQL Server and MariaDB are out of scope (DESIGN-0010 Non-Goals).
+
 Implements
 [IMPL-0010](../../../docs/impl/0010-rds-proxy-module-implementation.md)
 / [DESIGN-0010](../../../docs/design/0010-rds-proxy-module-for-the-rds-and-aurora-data-tier.md).

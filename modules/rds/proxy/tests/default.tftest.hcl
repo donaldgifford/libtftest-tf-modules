@@ -135,3 +135,81 @@ run "serverless_postgres" {
     error_message = "require_tls must default to true"
   }
 }
+
+run "rds_instance_mysql" {
+  command = plan
+
+  variables {
+    target_type       = "rds-instance"
+    target_identifier = "platform-mysql"
+  }
+
+  override_data {
+    target = data.terraform_remote_state.target
+    values = {
+      outputs = {
+        master_user_secret_arn              = "arn:aws:secretsmanager:us-east-1:000000000000:secret:rds-abc"
+        master_user_secret_kms_key_arn      = "arn:aws:kms:us-east-1:000000000000:key/byo-1234"
+        security_group_id                   = "sg-0123456789abcdef0"
+        db_subnet_ids                       = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        vpc_id                              = "vpc-0123456789abcdef0"
+        engine                              = "mysql"
+        iam_database_authentication_enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition     = aws_db_proxy.this.engine_family == "MYSQL"
+    error_message = "engine 'mysql' must derive engine_family MYSQL"
+  }
+
+  assert {
+    condition     = aws_vpc_security_group_egress_rule.to_db.from_port == 3306
+    error_message = "mysql default listener port must be 3306 on the proxy→DB egress rule"
+  }
+
+  assert {
+    condition     = aws_db_proxy_target.this.db_instance_identifier == "platform-mysql"
+    error_message = "rds-instance MySQL target must set db_instance_identifier"
+  }
+}
+
+run "aurora_cluster_mysql" {
+  command = plan
+
+  variables {
+    target_type       = "aurora-cluster"
+    target_identifier = "platform-aurora-mysql"
+  }
+
+  override_data {
+    target = data.terraform_remote_state.target
+    values = {
+      outputs = {
+        master_user_secret_arn              = "arn:aws:secretsmanager:us-east-1:000000000000:secret:rds-abc"
+        master_user_secret_kms_key_arn      = "arn:aws:kms:us-east-1:000000000000:key/byo-1234"
+        security_group_id                   = "sg-0123456789abcdef0"
+        db_subnet_ids                       = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        vpc_id                              = "vpc-0123456789abcdef0"
+        engine                              = "aurora-mysql"
+        iam_database_authentication_enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition     = aws_db_proxy.this.engine_family == "MYSQL"
+    error_message = "engine 'aurora-mysql' must derive engine_family MYSQL"
+  }
+
+  assert {
+    condition     = aws_vpc_security_group_egress_rule.to_db.from_port == 3306
+    error_message = "aurora-mysql default listener port must be 3306"
+  }
+
+  assert {
+    condition     = aws_db_proxy_target.this.db_cluster_identifier == "platform-aurora-mysql"
+    error_message = "aurora-mysql target must set db_cluster_identifier"
+  }
+}

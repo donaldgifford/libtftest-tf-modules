@@ -445,13 +445,13 @@ only `engine_family` / port differ.
 
 #### Tasks
 
-- [ ] Add `mysql` / `aurora-mysql → MYSQL` (port `3306`) rows to the
+- [x] Add `mysql` / `aurora-mysql → MYSQL` (port `3306`) rows to the
       engine-family map in `locals.tf`.
-- [ ] Extend the V2 precondition / engine validation to accept the MySQL
+- [x] Extend the V2 precondition / engine validation to accept the MySQL
       family.
-- [ ] Add plan-only cases: rds-instance/mysql and aurora-cluster/aurora-mysql
+- [x] Add plan-only cases: rds-instance/mysql and aurora-cluster/aurora-mysql
       (assert `engine_family = MYSQL`, port `3306`).
-- [ ] README multi-engine note.
+- [x] README multi-engine note.
 
 #### Success Criteria
 

@@ -33,7 +33,7 @@ resource "aws_db_proxy" "this" {
     # V2 — proxy-supported engine only (engine read from remote state).
     precondition {
       condition     = local.engine_family != null
-      error_message = "Unsupported target engine '${local.engine}'. RDS Proxy supports postgres/aurora-postgresql (POSTGRESQL) and mysql/aurora-mysql (MYSQL); MySQL ships in IMPL-0010 Phase 11."
+      error_message = "Unsupported target engine '${local.engine}'. This module supports postgres/aurora-postgresql (POSTGRESQL) and mysql/aurora-mysql (MYSQL). SQL Server and MariaDB are out of scope (DESIGN-0010 Non-Goals)."
     }
 
     # V4 — IAM client auth needs IAM auth enabled on the target engine.

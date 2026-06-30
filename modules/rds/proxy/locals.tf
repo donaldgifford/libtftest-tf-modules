@@ -41,11 +41,15 @@ locals {
   engine_family_map = {
     "postgres"          = "POSTGRESQL"
     "aurora-postgresql" = "POSTGRESQL"
+    "mysql"             = "MYSQL"
+    "aurora-mysql"      = "MYSQL"
   }
 
   engine_default_port_map = {
     "postgres"          = 5432
     "aurora-postgresql" = 5432
+    "mysql"             = 3306
+    "aurora-mysql"      = 3306
   }
 
   engine_family = lookup(local.engine_family_map, local.engine, null)
