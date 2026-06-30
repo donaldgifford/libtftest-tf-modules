@@ -400,32 +400,41 @@ the apply suite is **flag-gated: off by default, on during build/test** (Q7).
 
 #### Tasks
 
-- [ ] `tests-localstack/plan_smoke.tftest.hcl`: always-on, Community-safe
+- [x] `tests-localstack/plan_smoke.tftest.hcl`: always-on, Community-safe
       plan-only smoke (remote state stubbed via `override_data`, no proxy
-      apply).
-- [ ] `tests-localstack/apply_pro.tftest.hcl`: the **Pro apply** suite. A `run`
-      block applies a minimal `serverless` (or `db_instance`) target via its
-      module, then a second `run` applies `rds/proxy`, bridging the first run's
-      outputs into the proxy's `data.terraform_remote_state.target` via
-      `override_data` (`run.db.master_user_secret_arn`, etc.) — native
-      `terraform test` run-chaining, no live S3 backend needed. Asserts proxy +
-      target group + target (+ Aurora endpoint) created.
-- [ ] Add the enable-flag so the Pro apply runs only when explicitly enabled
-      (e.g. `LOCALSTACK_AUTH_TOKEN` present, or a dedicated
-      `just tf test-localstack-pro rds/proxy` recipe). Default
-      `just tf test-localstack rds/proxy` runs only `plan_smoke`; CI/dev build
-      sets the flag to exercise the Pro apply.
-- [ ] `tests-localstack/FINDINGS.md`: document the Pro requirement (native RDS
-      provider v4.4+, `CreateDBProxyEndpoint` v4.5+), the enable-flag, and the
-      Community fallback (`plan_smoke` only).
-- [ ] Probe both tiers during implementation; record outcomes in FINDINGS.md.
+      apply). Offline-safe — a plan with overridden data makes no API calls.
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl`: the **Pro apply** suite (in
+      its own directory so the default recipe never scans it). A `setup` `run`
+      applies the minimal Aurora target fixture (`fixtures/db`) **and writes a
+      stub state file to S3** at the proxy's key; `proxy_apply` +
+      `proxy_read_only_endpoint` then apply `rds/proxy`, which reads that state
+      for real via `data.terraform_remote_state.target`. **Correction:** the
+      original sketch (bridge run outputs via `override_data`) does **not**
+      parse — terraform test rejects `run.*` inside `override_*` values, so the
+      S3 stub-state bridge (the serverless apply pattern) is used instead.
+- [x] Add the enable-flag: a dedicated `_tf-test-localstack-pro` justfile recipe
+      (`just tf test-localstack-pro rds/proxy`) for the `tests-localstack-pro/`
+      dir. The default `just tf test-localstack rds/proxy` scans only
+      `tests-localstack/` → runs only `plan_smoke`. Directory separation is the
+      gate (terraform test has no per-run conditional skip).
+- [x] `tests-localstack/FINDINGS.md`: document the Pro requirement (native RDS
+      provider v4.4+, `CreateDBProxyEndpoint` v4.5+), the two-tier layout +
+      recipe gate, the override_data limitation, and the Community fallback.
+- [x] Probe both tiers; record outcomes in FINDINGS.md. **plan_smoke verified
+      (offline).** apply_pro is `terraform validate`/parse/plan-valid but the
+      live Pro apply is **not executed in this build environment** (no Pro
+      container / `LOCALSTACK_AUTH_TOKEN` / Docker) — flagged in FINDINGS for a
+      Pro run.
 
 #### Success Criteria
 
 - With the flag enabled on Pro: the apply suite provisions and asserts the full
-  proxy resource set against a LocalStack target.
+  proxy resource set against a LocalStack target. **Pending — not executed in
+  this build environment (no LocalStack Pro). The suite is authored and
+  parse/plan-valid; live execution is flagged in FINDINGS.md.**
 - With the flag off (default): only `plan_smoke` runs; Community stays green.
-- FINDINGS.md documents the Pro requirement and the enable-flag.
+  **Verified** (`just tf test-localstack rds/proxy` → 1 passed, offline).
+- FINDINGS.md documents the Pro requirement and the enable-flag. **Done.**
 
 ---
 
@@ -496,7 +505,9 @@ only `engine_family` / port differ.
 | `modules/rds/proxy/README.md` | Create | operator doc |
 | `modules/rds/proxy/USAGE.md` | Create | terraform-docs generated |
 | `modules/rds/proxy/tests/*.tftest.hcl` | Create | plan-only suite (validations) |
-| `modules/rds/proxy/tests-localstack/*` | Create | `plan_smoke` (always-on) + flag-gated Pro apply + FINDINGS.md |
+| `modules/rds/proxy/tests-localstack/*` | Create | `plan_smoke` (always-on, plan-only) + FINDINGS.md |
+| `modules/rds/proxy/tests-localstack-pro/*` | Create | Pro apply suite (`apply_pro` + `fixtures/db`), off by default |
+| `justfile` | Modify | add `_tf-test-localstack-pro` recipe (Q7 gate) |
 | `modules/rds/serverless/outputs.tf` | Modify | add `db_subnet_ids` + `vpc_id` (+ secret CMK arn + IAM-auth flag) (Q11-a) |
 | `modules/rds/serverless/USAGE.md` | Modify | regen |
 | `modules/rds/serverless/tests/default.tftest.hcl` | Modify | assert new outputs |
