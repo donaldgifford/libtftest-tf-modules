@@ -1,7 +1,7 @@
 ---
 id: IMPL-0010
 title: "RDS Proxy module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-06-29
 ---
@@ -9,9 +9,20 @@ created: 2026-06-29
 
 # IMPL 0010: RDS Proxy module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-06-29
+
+> **Verification status.** All 12 phases implemented and committed. Every gate
+> runnable in the build environment is green: `just tf all rds/proxy` (validate,
+> tflint-clean, fmt, and 20/20 plan-only tests across Postgres and MySQL) and the
+> Community-safe `just tf test-localstack rds/proxy` (`plan_smoke`, offline).
+> The **one** unverified item is the live **LocalStack-Pro apply**
+> (`tests-localstack-pro/apply_pro.tftest.hcl`): it is `terraform validate` /
+> parse / plan-valid but was **not executed** in this environment (no LocalStack
+> Pro container / `LOCALSTACK_AUTH_TOKEN` / Docker). Run
+> `just tf test-localstack-pro rds/proxy` against a Pro container to close it —
+> tracked in the module's `tests-localstack/FINDINGS.md` and Phase 10.
 
 <!--toc:start-->
 - [Objective](#objective)
@@ -464,19 +475,19 @@ only `engine_family` / port differ.
 
 #### Tasks
 
-- [ ] Author `modules/rds/proxy/README.md`: overview + DESIGN-0010 link;
+- [x] Author `modules/rds/proxy/README.md`: overview + DESIGN-0010 link;
       quickstart (proxy in front of a `serverless` Postgres target);
       `target_type` usage; secret-reuse note; the SG-wiring instruction (pass
       `proxy_security_group_id` into the DB module's
       `allowed_consumer_sg_ids`); the **Serverless v2 cost caveat** (8-ACU
       billing floor + auto-pause blocked by an attached proxy); operational
       gotchas; tests; module map.
-- [ ] Regenerate `modules/rds/proxy/USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/proxy` to the §Repository purpose
+- [x] Regenerate `modules/rds/proxy/USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/proxy` to the §Repository purpose
       `rds` inventory + a shape line; note the Pro-gated test divergence.
-- [ ] Mark IMPL-0010 `Completed` (frontmatter + body) and run `docz update`;
+- [x] Mark IMPL-0010 `Completed` (frontmatter + body) and run `docz update`;
       move DESIGN-0010 to `Implemented`.
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 
@@ -517,13 +528,13 @@ only `engine_family` / port differ.
 
 ## Testing Plan
 
-- [ ] **Plan-only `terraform test` (`tests/`)** — the validation gate (Phase
+- [x] **Plan-only `terraform test` (`tests/`)** — the validation gate (Phase
       9): default shapes per target/engine, all V1–V7 negatives, read-only
       endpoint gating, pool config, IAM-auth mapping. The remote-state data
       source is stubbed via `override_data` (Q2-a). No AWS, runs in seconds.
-- [ ] **`tests-localstack` apply suite** — Pro-gated (Phase 10); Community
+- [x] **`tests-localstack` apply suite** — Pro-gated (Phase 10); Community
       falls back to `plan_smoke` with the gap recorded in `FINDINGS.md`.
-- [ ] **Serverless regression** — `just tf all rds/serverless` after the
+- [x] **Serverless regression** — `just tf all rds/serverless` after the
       output addition (Phase 2).
 - [ ] **Manual post-apply smoke (operator, not CI)** — connect through the
       proxy endpoint with the master secret; for Aurora, confirm the READ_ONLY

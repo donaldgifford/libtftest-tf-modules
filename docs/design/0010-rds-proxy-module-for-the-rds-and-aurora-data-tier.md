@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0010
 title: "RDS Proxy module for the RDS and Aurora data tier"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-06-29
 ---
@@ -9,7 +9,7 @@ created: 2026-06-29
 
 # DESIGN 0010: RDS Proxy module for the RDS and Aurora data tier
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-06-29
 
