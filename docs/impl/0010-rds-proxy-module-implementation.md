@@ -14,15 +14,15 @@ created: 2026-06-29
 **Date:** 2026-06-29
 
 > **Verification status.** All 12 phases implemented and committed. Every gate
-> runnable in the build environment is green: `just tf all rds/proxy` (validate,
-> tflint-clean, fmt, and 20/20 plan-only tests across Postgres and MySQL) and the
-> Community-safe `just tf test-localstack rds/proxy` (`plan_smoke`, offline).
-> The **one** unverified item is the live **LocalStack-Pro apply**
-> (`tests-localstack-pro/apply_pro.tftest.hcl`): it is `terraform validate` /
-> parse / plan-valid but was **not executed** in this environment (no LocalStack
-> Pro container / `LOCALSTACK_AUTH_TOKEN` / Docker). Run
-> `just tf test-localstack-pro rds/proxy` against a Pro container to close it —
-> tracked in the module's `tests-localstack/FINDINGS.md` and Phase 10.
+> is green: `just tf all rds/proxy` (validate, tflint-clean, fmt, and 20/20
+> plan-only tests across Postgres and MySQL); the Community-safe
+> `just tf test-localstack rds/proxy` (`plan_smoke`, offline); and — as of the
+> live run — the **LocalStack-Pro apply** `just tf test-localstack-pro rds/proxy`
+> (`tests-localstack-pro/apply_pro.tftest.hcl`) → **3 passed, 0 failed** against
+> LocalStack Pro 2026.6.0. **Caveat:** the Pro RDS apply requires
+> `/var/lib/localstack` to be a Docker **named volume**, not a macOS host bind
+> mount (the `lstk` default) — else the embedded Postgres `initdb` fails on data
+> dir ownership. See the module's `tests-localstack/FINDINGS.md`.
 
 <!--toc:start-->
 - [Objective](#objective)
@@ -432,17 +432,20 @@ the apply suite is **flag-gated: off by default, on during build/test** (Q7).
       provider v4.4+, `CreateDBProxyEndpoint` v4.5+), the two-tier layout +
       recipe gate, the override_data limitation, and the Community fallback.
 - [x] Probe both tiers; record outcomes in FINDINGS.md. **plan_smoke verified
-      (offline).** apply_pro is `terraform validate`/parse/plan-valid but the
-      live Pro apply is **not executed in this build environment** (no Pro
-      container / `LOCALSTACK_AUTH_TOKEN` / Docker) — flagged in FINDINGS for a
-      Pro run.
+      (offline); apply_pro verified live** against LocalStack Pro 2026.6.0
+      (3 passed) — the macOS-bind-mount vs Docker-named-volume finding is
+      recorded in FINDINGS.
 
 #### Success Criteria
 
 - With the flag enabled on Pro: the apply suite provisions and asserts the full
-  proxy resource set against a LocalStack target. **Pending — not executed in
-  this build environment (no LocalStack Pro). The suite is authored and
-  parse/plan-valid; live execution is flagged in FINDINGS.md.**
+  proxy resource set against a LocalStack target. **Verified** —
+  `just tf test-localstack-pro rds/proxy` → **3 passed, 0 failed** against
+  LocalStack Pro 2026.6.0 (`setup` applies the Aurora fixture + S3 stub state;
+  `proxy_apply` and `proxy_read_only_endpoint` provision and assert the proxy,
+  its target group/target, and the READ_ONLY endpoint). Requires
+  `/var/lib/localstack` on a Docker named volume, not a macOS bind mount
+  (FINDINGS.md).
 - With the flag off (default): only `plan_smoke` runs; Community stays green.
   **Verified** (`just tf test-localstack rds/proxy` → 1 passed, offline).
 - FINDINGS.md documents the Pro requirement and the enable-flag. **Done.**

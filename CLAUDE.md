@@ -35,9 +35,13 @@ Tracked in git. As of this writing:
   (Q7):** RDS Proxy is LocalStack-Pro-only, so coverage splits — the plan-only
   `tests/` suite is the gate; `tests-localstack/` holds a Community-safe
   `plan_smoke`; the Pro apply lives in `tests-localstack-pro/` (off by default,
-  run via `just tf test-localstack-pro rds/proxy`). The live Pro apply is
-  authored + parse/plan-valid but unrun where no Pro container exists (see the
-  module's `tests-localstack/FINDINGS.md`).
+  run via `just tf test-localstack-pro rds/proxy`). The live Pro apply was run
+  and passes (3/3 against LocalStack Pro 2026.6.0). **macOS gotcha:** the Pro
+  RDS apply needs `/var/lib/localstack` on a Docker **named volume**, not a host
+  bind mount (the `lstk` default) — Docker Desktop's file-sharing ignores
+  `chown`, so LocalStack's embedded Postgres `initdb` fails on data-dir
+  ownership. Run LocalStack Pro directly with a named volume for these tests
+  (see the module's `tests-localstack/FINDINGS.md`).
 - **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
