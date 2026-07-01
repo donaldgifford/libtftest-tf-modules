@@ -42,4 +42,5 @@ docz create design "Your Design Title"
 | DESIGN-0008 | EFS module layout for EFS CSI on EKS | Draft | 2026-05-27 | Donald Gifford | [0008-efs-module-layout-for-efs-csi-on-eks.md](0008-efs-module-layout-for-efs-csi-on-eks.md) |
 | DESIGN-0009 | Claude Code on Bedrock module, tool, and enablement contracts | Draft | 2026-05-31 | Donald Gifford | [0009-claude-code-on-bedrock-module-tool-and-enablement-contracts.md](0009-claude-code-on-bedrock-module-tool-and-enablement-contracts.md) |
 | DESIGN-0010 | RDS Proxy module for the RDS and Aurora data tier | Implemented | 2026-06-29 | Donald Gifford | [0010-rds-proxy-module-for-the-rds-and-aurora-data-tier.md](0010-rds-proxy-module-for-the-rds-and-aurora-data-tier.md) |
+| DESIGN-0011 | Per-module version tagging scheme | Draft | 2026-07-01 | Donald Gifford | [0011-per-module-version-tagging-scheme.md](0011-per-module-version-tagging-scheme.md) |
 <!-- END DOCZ AUTO-GENERATED -->
