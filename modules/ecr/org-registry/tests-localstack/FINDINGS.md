@@ -9,8 +9,13 @@ backlog item.
 
 ## Environment captured at last run
 
-- LocalStack Pro 2026.5.0 on `:4566`
-- Date: 2026-05-20
+- LocalStack Pro **2026.6.0** on `:4566` (re-probed 2026-07-01;
+  first captured on Pro 2026.5.0, 2026-05-20)
+- **Re-probe result:** `CreateRepositoryCreationTemplate` **still 501**
+  on 2026.6.0 (`InternalFailure: The create_repository_creation_template
+  action has not been implemented`). Finding #1 persists; the apply run
+  stays commented and the active suite remains `plan_smoke`. The plan-only
+  `plan_smoke` passed on 2026.6.0.
 
 ## Findings
 

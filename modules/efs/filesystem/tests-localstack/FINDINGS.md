@@ -11,18 +11,20 @@ warrant a sneakystack ticket per RFC-0001.
 
 ## Test runs
 
-The `apply_localstack.tftest.hcl` suite has two active runs:
+The `apply_localstack.tftest.hcl` suite has three active runs (as of the
+Pro 2026.6.0 sweep, 2026-07-01):
 
 | Run | Command | Coverage |
 |-----|---------|----------|
 | `setup` | apply | VPC + 3 private subnets + standalone node-SG stub + S3 bucket holding TWO stub state files (VPC + EKS) |
 | `plan_smoke` | plan | EFS filesystem + 3 mount targets + 1 module-managed KMS key + NFS ingress all wire against LocalStack at plan time |
+| `apply_default` | apply | **Real EFS create** — filesystem + 3 mount targets + 1 access point (posix_user.uid=472 enforced) + module KMS key, applied and asserted against LocalStack Pro |
 
 Run with `just tf test-localstack efs/filesystem`. The recipe wires
 `AWS_ENDPOINT_URL=http://localhost:4566` + fake credentials.
 
-Two `apply_*` runs are preserved as commented HCL in the
-`apply_localstack.tftest.hcl` file (see "When to re-run" below).
+One `apply_*` run remains commented HCL: `apply_backup_enabled`
+(`PutBackupPolicy` still 501s on Pro 2026.6.0 — Finding #2).
 
 ## Tier coverage
 
@@ -31,21 +33,23 @@ intent — same `apply_localstack.tftest.hcl` should pass identically
 on Community + Pro once LocalStack's EFS coverage lands on
 Community.
 
-- **Verified tier**: LocalStack Community 3.8.1 (probe run on
-  2026-05-29).
-- **Pro 2026.5.0**: not exercised in this implementation pass —
-  Pro auth token unavailable in the build environment. Re-running
-  this suite against Pro at production rollout time is the
-  validation step (per IMPL-0008 Phase 10 success criteria —
-  "either passes `apply_default` end-to-end OR falls back to
-  `plan_smoke` with a documented FINDINGS.md gap"; this suite
-  takes the fall-back path).
+- **Verified tier**: LocalStack **Pro 2026.6.0** (2026-07-01) —
+  `apply_default` runs end-to-end (**3 passed**), so this suite now takes
+  the *pass* path of IMPL-0008 Phase 10's success criteria, not the
+  fall-back. EFS is a Pro-only service (absent from Community — Finding #1).
+- **Community 3.8.1** (historical, 2026-05-29): EFS API absent, so the
+  suite ran `plan_smoke` only. Superseded by the Pro run above.
 
-## Finding #1 — EFS API absent from LocalStack Community 3.8.1
+## Finding #1 — EFS API is Pro-only (absent from Community); served on Pro
 
-**Status:** Confirmed gap. `efs` is **not** in LocalStack
-Community's service list per its `/_localstack/health` endpoint;
-EFS is a LocalStack Pro feature in this release.
+**Status:** ✅ Resolved on Pro. As of 2026-07-01 the EFS apply path is
+**verified on LocalStack Pro 2026.6.0**: `apply_default` creates the
+filesystem, all 3 mount targets, and the access point (with
+`posix_user.uid = 472` honored), with no 501. The gap below is
+**Community-only**.
+
+`efs` is **not** in LocalStack Community's service list per its
+`/_localstack/health` endpoint; EFS is a LocalStack **Pro** feature.
 
 **Behavior:** `terraform apply` against LocalStack Community 3.8.1
 fails with:
@@ -88,15 +92,23 @@ resource validates against the schema with the data we feed it.
 Community. Track against LocalStack issue tracker; re-run this
 suite when it lands.
 
-## Finding #2 — AWS Backup integration is Pro-gated (deferred)
+## Finding #2 — `aws_efs_backup_policy` (`PutBackupPolicy`) 501 on Pro 2026.6.0
 
-**Status:** Not exercised — blocked behind Finding #1.
+**Status:** 🔴 Confirmed gap on Pro. With EFS now applying (Finding #1
+resolved), the `apply_backup_enabled` run was probed on 2026-07-01 and
+fails:
 
-**Reason:** `aws_efs_backup_policy.this` requires `aws_efs_file_system`
-to exist, and Finding #1 blocks that. Once EFS coverage lands on
-LocalStack, the next-likely 501 is AWS Backup integration: a
-`PutBackupPolicy` call without a real AWS Backup default vault to
-attach to. Track separately.
+```text
+Error: putting EFS Backup Policy (fs-…): operation error EFS: PutBackupPolicy,
+https response error StatusCode: 501,
+api error InternalFailure: The put_backup_policy action has not been implemented
+  with aws_efs_backup_policy.this[0],
+  on backup.tf line 12, in resource "aws_efs_backup_policy" "this":
+```
+
+So `apply_default` (core EFS) is active, but `apply_backup_enabled`
+remains commented per the RFC-0001 fall-back. Re-enable when LocalStack
+implements `PutBackupPolicy`. Track as a sneakystack backlog item.
 
 ## What's still in the libtftest backlog (RFC-0001 §Phase 3)
 

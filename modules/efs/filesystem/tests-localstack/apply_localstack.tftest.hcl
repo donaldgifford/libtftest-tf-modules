@@ -116,57 +116,63 @@ run "plan_smoke" {
   }
 }
 
-# Apply runs preserved for the day LocalStack lands the EFS API.
-# Uncomment to re-validate after re-running FINDINGS.md
-# §When to re-run.
-#
-# run "apply_default" {
-#   command = apply
-#
-#   variables {
-#     access_points = {
-#       grafana = {
-#         posix_user = {
-#           uid = 472
-#           gid = 472
-#         }
-#         root_directory = {
-#           path = "/grafana"
-#           creation_info = {
-#             owner_uid   = 472
-#             owner_gid   = 472
-#             permissions = "0755"
-#           }
-#         }
-#       }
-#     }
-#   }
-#
-#   assert {
-#     condition     = length(aws_kms_key.this) == 1
-#     error_message = "Module-managed KMS must produce 1 key against LocalStack"
-#   }
-#
-#   assert {
-#     condition     = length(aws_efs_file_system.this.id) > 0
-#     error_message = "LocalStack EFS must populate filesystem id"
-#   }
-#
-#   assert {
-#     condition     = length(aws_efs_mount_target.this) == 3
-#     error_message = "LocalStack EFS must create exactly three mount targets"
-#   }
-#
-#   assert {
-#     condition     = length(aws_efs_access_point.this) == 1
-#     error_message = "LocalStack EFS must create exactly one access point"
-#   }
-#
-#   assert {
-#     condition     = aws_efs_access_point.this["grafana"].posix_user[0].uid == 472
-#     error_message = "LocalStack EFS must honor access-point posix_user.uid"
-#   }
-# }
+# Apply run — active as of the Pro 2026.6.0 sweep (2026-07-01): EFS is
+# served by LocalStack Pro, so this applies the real filesystem + mount
+# targets + access point. See FINDINGS.md §Finding #1.
+
+run "apply_default" {
+  command = apply
+
+  variables {
+    access_points = {
+      grafana = {
+        posix_user = {
+          uid = 472
+          gid = 472
+        }
+        root_directory = {
+          path = "/grafana"
+          creation_info = {
+            owner_uid   = 472
+            owner_gid   = 472
+            permissions = "0755"
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_kms_key.this) == 1
+    error_message = "Module-managed KMS must produce 1 key against LocalStack"
+  }
+
+  assert {
+    condition     = length(aws_efs_file_system.this.id) > 0
+    error_message = "LocalStack EFS must populate filesystem id"
+  }
+
+  assert {
+    condition     = length(aws_efs_mount_target.this) == 3
+    error_message = "LocalStack EFS must create exactly three mount targets"
+  }
+
+  assert {
+    condition     = length(aws_efs_access_point.this) == 1
+    error_message = "LocalStack EFS must create exactly one access point"
+  }
+
+  assert {
+    condition     = aws_efs_access_point.this["grafana"].posix_user[0].uid == 472
+    error_message = "LocalStack EFS must honor access-point posix_user.uid"
+  }
+}
+
+# apply_backup_enabled — STILL BLOCKED on Pro 2026.6.0 (probed 2026-07-01):
+# aws_efs_backup_policy hits `PutBackupPolicy => 501 InternalFailure: The
+# put_backup_policy action has not been implemented`. Kept commented per the
+# RFC-0001 fall-back; re-enable when LocalStack implements PutBackupPolicy.
+# See FINDINGS.md §Finding #2.
 #
 # run "apply_backup_enabled" {
 #   command = apply
