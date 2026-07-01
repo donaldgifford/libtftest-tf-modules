@@ -39,6 +39,13 @@ _docs-fmt:
     @just _log "markdownlint --format → docs/**/*.md"
     markdownlint-cli2 --config .markdownlint.yaml --format 'docs/**/*.md'
 
+# Regenerate the module inventory table in README.md (version + test
+# coverage, auto-derived). Pass `--check` to fail on drift (CI use).
+[group('docs')]
+readme *args:
+    @just _log "gen-readme {{args}}"
+    ./scripts/gen-readme.sh {{args}}
+
 # ───── Terraform (per-module) ───────────────────────────────
 # Operates on modules/<module>/ — pass the path relative to modules/,
 # e.g.  just tf test eks/cluster
