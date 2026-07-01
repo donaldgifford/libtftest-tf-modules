@@ -45,9 +45,9 @@ Community **and with no LocalStack at all**.
 
 ## `apply_pro` (opt-in, Pro)
 
-`fixtures/db` applies a minimal Aurora Serverless v2 target (VPC + subnets
-+ SG + cluster with an AWS-managed master secret) **and writes a stub
-remote-state file to S3** at the proxy's key
+`fixtures/db` applies a minimal Aurora Serverless v2 target (a VPC, two
+subnets, an SG, and a cluster with an AWS-managed master secret) **and
+writes a stub remote-state file to S3** at the proxy's key
 (`<region>/rds/serverless/<identifier>/terraform.tfstate`) with the seven
 proxy-composition outputs. The proxy then applies and reads that state for
 real via `data.terraform_remote_state.target`. Three runs: `setup`,
@@ -65,23 +65,57 @@ shaped as a tfstate `outputs` map, and the proxy reads it through the real
 S3 backend (the recipe wires `AWS_ENDPOINT_URL`/key/secret/region). The
 IMPL prose was corrected to match.
 
+### Finding — RDS apply needs a Docker named volume, NOT a macOS bind mount
+
+`apply_pro` was blocked on the first live attempt by a LocalStack-side
+error, **not** a module/test defect:
+
+```text
+FATAL: data directory ".../rds/postgres/.../<cluster>/data" has wrong ownership
+HINT:  The server must be started by the user that owns the data directory.
+initdb: removing contents of data directory ...
+```
+
+LocalStack Pro boots a **real embedded PostgreSQL** for each Aurora
+cluster and drops to a non-root user to run it (Postgres refuses to run as
+root). When `/var/lib/localstack` is a **macOS host bind mount** (the
+default for `lstk`, which mounts `~/Library/Caches/lstk/volume/...`),
+Docker Desktop's file-sharing layer ignores in-container `chown`, so the
+RDS data dir stays `root`-owned and `initdb`'s ownership check fails — the
+cluster never reaches `available` and the proxy runs are skipped.
+
+**Fix:** back `/var/lib/localstack` with a **Docker named volume** (lives
+in Docker's Linux VM, where `chown` sticks) instead of a host bind mount.
+`lstk` only supports host-dir bind mounts, so RDS-backed apply tests must
+run against LocalStack launched directly, e.g.:
+
+```bash
+docker volume create ls-data
+docker run -d --name localstack-pro -p 4566:4566 \
+  -e LOCALSTACK_AUTH_TOKEN="$LOCALSTACK_AUTH_TOKEN" \
+  -v ls-data:/var/lib/localstack \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  localstack/localstack-pro:latest
+```
+
+(A Linux host bind mount is unaffected — this is macOS/Docker-Desktop
+specific.) The endpoints in `apply_pro.tftest.hcl` themselves are correct;
+`localhost:4566` and `localhost.localstack.cloud:4566` both resolve to
+127.0.0.1, so no endpoint change was required.
+
 ### Tier coverage / execution status
 
-- **Authoring + static checks (this build environment):** fixture
-  `terraform validate` ✓; whole-module `terraform fmt` ✓; `apply_pro`
-  parses and plans — the only failure is `dial tcp :4566: connect:
-  connection refused`, i.e. no container, **not** an HCL/validation error.
-- **Live Pro apply: NOT YET EXECUTED.** This build environment has no
-  LocalStack Pro container, no `LOCALSTACK_AUTH_TOKEN`, and no Docker, so
-  `proxy_apply` / `proxy_read_only_endpoint` could not be run here. **To
-  do:** run `just tf test-localstack-pro rds/proxy` against a LocalStack
-  Pro 2026.x container and record the outcome below (including any
-  501/NotImplemented gaps to file per RFC-0001). Until then the apply
-  path is verified only structurally.
+- **Authoring + static checks:** fixture `terraform validate` ✓;
+  whole-module `terraform fmt` ✓; `apply_pro` parses and plans.
+- **Live Pro apply: EXECUTED AND PASSING.** Run against LocalStack Pro
+  2026.6.0 (`edition: pro`, license activated) backed by a Docker **named
+  volume** per the finding above — `just tf test-localstack-pro rds/proxy`
+  → **3 passed, 0 failed**. No 501/NotImplemented gaps surfaced; the
+  native RDS provider served `CreateDBProxy*` and `CreateDBProxyEndpoint`.
 
 | Run | Command | Status |
 |-----|---------|--------|
 | `plan_smoke` (default suite) | plan | ✅ passed (offline) |
-| `setup` | apply | ⏳ pending Pro container |
-| `proxy_apply` | apply | ⏳ pending Pro container |
-| `proxy_read_only_endpoint` | apply | ⏳ pending Pro container |
+| `setup` | apply | ✅ passed (Pro, named volume) |
+| `proxy_apply` | apply | ✅ passed (Pro, named volume) |
+| `proxy_read_only_endpoint` | apply | ✅ passed (Pro, named volume) |

@@ -100,7 +100,7 @@ _tf-test-localstack-pro module:
     @just _log "terraform test (PRO apply against LocalStack) → modules/{{module}}"
     cd modules/{{module}} && \
         terraform init -backend=false -input=false -test-directory=tests-localstack-pro >/dev/null && \
-        AWS_ENDPOINT_URL=http://localhost:4566 \
+        AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566 \
         AWS_ACCESS_KEY_ID=test \
         AWS_SECRET_ACCESS_KEY=test \
         AWS_REGION=us-east-1 \
