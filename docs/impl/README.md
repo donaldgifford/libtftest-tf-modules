@@ -28,7 +28,7 @@ docz create impl "Your Implementation Title"
 - **Cancelled**: Plan was abandoned
 
 <!-- BEGIN DOCZ AUTO-GENERATED -->
-## All IMPLs
+## All Implementation Plans
 
 | ID | Title | Status | Date | Author | Link |
 |----|-------|--------|------|--------|------|
@@ -41,4 +41,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0007 | Aurora Serverless v2 Module Implementation | Completed | 2026-05-27 | Donald Gifford | [0007-aurora-serverless-v2-module-implementation.md](0007-aurora-serverless-v2-module-implementation.md) |
 | IMPL-0008 | EFS filesystem module implementation | Completed | 2026-05-28 | Donald Gifford | [0008-efs-filesystem-module-implementation.md](0008-efs-filesystem-module-implementation.md) |
 | IMPL-0009 | Claude Code on Bedrock module + Go tool implementation | Completed | 2026-06-01 | Donald Gifford | [0009-claude-code-on-bedrock-module-go-tool-implementation.md](0009-claude-code-on-bedrock-module-go-tool-implementation.md) |
+| IMPL-0010 | RDS Proxy module implementation | Completed | 2026-06-29 | Donald Gifford | [0010-rds-proxy-module-implementation.md](0010-rds-proxy-module-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->

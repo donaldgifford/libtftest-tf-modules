@@ -77,11 +77,15 @@ No modules.
 | db\_cluster\_parameter\_group\_name | Name of the cluster parameter group created for this cluster. The future read-replica module consumes this through remote state so replicas share the cluster's parameter family. |
 | db\_parameter\_group\_name | Name of the instance parameter group attached to the Serverless v2 instance. |
 | db\_subnet\_group\_name | Name of the DB subnet group created for this cluster. Read by sibling RDS modules that share the same subnet topology (the future read-replica module consumes this through remote state). |
+| db\_subnet\_ids | Raw private subnet IDs backing the DB subnet group. The RDS Proxy module reads these for aws\_db\_proxy.vpc\_subnet\_ids (the proxy must live in the same subnets as its target). DESIGN-0007's db\_subnet\_group\_name output names the group; this output exposes the IDs the proxy needs directly. |
 | engine | Cluster engine (aurora-postgresql or aurora-mysql) — passthrough so downstream modules don't need to refer back to their own var.engine. |
 | engine\_version\_actual | The engine version AWS actually applied. Important when var.engine\_version was null — this output exposes the AWS-default version chosen at apply time. |
+| iam\_database\_authentication\_enabled | Whether IAM database authentication is enabled on the cluster. The RDS Proxy module reads this so its V4 precondition can reject require\_iam\_auth = true against a target that lacks IAM auth. |
 | kms\_key\_arn | KMS key ARN encrypting cluster storage at rest + the master user secret. BYO ARN (when var.kms\_key\_arn was non-null) or module-managed key's ARN — resolved transparently via local.kms\_key\_arn. |
 | master\_user\_secret\_arn | ARN of the AWS-managed Secrets Manager secret holding the master user password. Null when var.manage\_master\_user\_password = false (operators wire their own secret in that opt-out path). |
+| master\_user\_secret\_kms\_key\_arn | KMS key ID encrypting the AWS-managed master user secret (master\_user\_secret\_kms\_key\_id, = local.kms\_key\_arn here). The RDS Proxy module scopes its IAM role's kms:Decrypt to exactly this key. Null when var.manage\_master\_user\_password = false. Distinct from kms\_key\_arn (storage key) by contract, even though this module uses one key for both. |
 | port | TCP port the cluster accepts connections on (5432 for aurora-postgresql, 3306 for aurora-mysql). |
 | reader\_endpoint | Reader endpoint hostname for the cluster. Aurora distributes read traffic across cluster instances; with a single instance, this resolves to the same endpoint as cluster\_endpoint. |
 | security\_group\_id | Security group ID of the cluster's DB-tier SG. Consumers reference this when they add their own peering ingress rules outside the module's allowed\_consumer\_sg\_ids contract. |
+| vpc\_id | VPC ID hosting the cluster's DB-tier security group. The RDS Proxy module reads this to place the proxy's own security group in the same VPC. |
 <!-- END_TF_DOCS -->

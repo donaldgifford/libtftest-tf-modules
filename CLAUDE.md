@@ -21,6 +21,23 @@ Tracked in git. As of this writing:
   DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `cluster` (Aurora
   provisioned, single-writer default), `read-replica` (additional
   `aws_rds_cluster_instance`s composed via cluster module's remote state).
+  `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
+  target per DESIGN-0010 / RFC-0002). Composes via the target's remote state
+  (ADR-0001, `var.target_type` ∈ {rds-instance, aurora-cluster, serverless}),
+  reuses the AWS-managed master secret (IAM role least-privilege
+  GetSecretValue + kms:Decrypt), V1–V7 plan-time validations (V1/V6/V7 variable
+  validations, V2–V6 preconditions), TLS-on default, optional Aurora READ_ONLY
+  endpoint. Postgres + MySQL both supported (engine_family/port derived from the
+  target's `engine` in remote state, so no proxy/target drift). Phase 2 added
+  four proxy-composition outputs to `serverless` (`db_subnet_ids`, `vpc_id`,
+  `master_user_secret_kms_key_arn`, `iam_database_authentication_enabled`); the
+  unbuilt `instance`/`cluster` modules must emit the same set. **Test divergence
+  (Q7):** RDS Proxy is LocalStack-Pro-only, so coverage splits — the plan-only
+  `tests/` suite is the gate; `tests-localstack/` holds a Community-safe
+  `plan_smoke`; the Pro apply lives in `tests-localstack-pro/` (off by default,
+  run via `just tf test-localstack-pro rds/proxy`). The live Pro apply is
+  authored + parse/plan-valid but unrun where no Pro container exists (see the
+  module's `tests-localstack/FINDINGS.md`).
 - **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
@@ -123,6 +140,11 @@ golangci-lint, docz, just, etc. binaries all come from mise.
   - `test-localstack` — opt-in `terraform test -test-directory=tests-localstack`
     with `AWS_ENDPOINT_URL`/key/secret/region env vars pre-wired. Requires a
     LocalStack Pro container on `:4566`. ~75s.
+  - `test-localstack-pro` — opt-in `terraform test
+    -test-directory=tests-localstack-pro` for Pro-only surfaces (e.g. RDS Proxy,
+    IMPL-0010 Q7) whose apply must NOT run under the default `test-localstack`.
+    Same env wiring; requires a LocalStack **Pro** container + token. Only
+    `modules/rds/proxy` has a `tests-localstack-pro/` directory today.
   - `all` — runs validate + lint + fmt + test in order.
 
 Direct invocation still works (and is what the recipes call under the hood):

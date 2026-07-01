@@ -89,6 +89,23 @@ _tf-test-localstack module:
         AWS_REGION=us-east-1 \
         terraform test -test-directory=tests-localstack
 
+# Opt-in LocalStack PRO apply suite (tests-localstack-pro/). OFF BY
+# DEFAULT — for Pro-only surfaces (e.g. RDS Proxy, IMPL-0010 Q7) whose
+# apply must NOT run under the default test-localstack recipe. Requires a
+# running LocalStack Pro container on :4566 (a LOCALSTACK_AUTH_TOKEN in
+# the environment). Only modules with a tests-localstack-pro/ directory
+# support this action.
+[private]
+_tf-test-localstack-pro module:
+    @just _log "terraform test (PRO apply against LocalStack) → modules/{{module}}"
+    cd modules/{{module}} && \
+        terraform init -backend=false -input=false -test-directory=tests-localstack-pro >/dev/null && \
+        AWS_ENDPOINT_URL=http://localhost:4566 \
+        AWS_ACCESS_KEY_ID=test \
+        AWS_SECRET_ACCESS_KEY=test \
+        AWS_REGION=us-east-1 \
+        terraform test -test-directory=tests-localstack-pro
+
 # Run validate + lint + fmt + test (plan-only) in order. Stops on first failure.
 [private]
 _tf-all module:
