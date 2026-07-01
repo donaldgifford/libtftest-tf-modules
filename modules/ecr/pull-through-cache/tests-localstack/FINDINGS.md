@@ -9,8 +9,13 @@ backlog item.
 
 ## Environment captured at last run
 
-- LocalStack Pro 2026.5.0 on `:4566`
-- Date: 2026-05-15
+- LocalStack Pro **2026.6.0** on `:4566` (re-probed 2026-07-01;
+  first captured on Pro 2026.5.0, 2026-05-15)
+- **Re-probe result:** both `CreatePullThroughCacheRule` and
+  `CreateRepositoryCreationTemplate` **still 501** on 2026.6.0
+  (`InternalFailure: ... action has not been implemented`). Finding #1
+  persists; `apply_mixed` stays commented and the active suite remains
+  `plan_smoke`, which passed on 2026.6.0.
 
 ## Findings
 

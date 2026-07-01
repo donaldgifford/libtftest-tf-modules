@@ -9,14 +9,13 @@ backlog item.
 
 ## Environment captured at last run
 
-- LocalStack Pro 2026.5.0.dev121 on `:4566`
-- Date: 2026-05-15
+- LocalStack Pro **2026.6.0** on `:4566` — re-verified 2026-07-01
+  (`setup` + `default_apply`, **2 passed**), coverage unchanged
+- First captured on Pro 2026.5.0.dev121 (2026-05-15)
 
 ## Findings
 
-### Finding #1 — `aws_eks_addon` registration succeeds for every
-addon in this module, including the addon-managed
-`pod_identity_association` block
+### Finding #1 — `aws_eks_addon` registration succeeds for every addon in this module, including the addon-managed `pod_identity_association` block
 
 The apply suite (`apply_localstack.tftest.hcl::default_apply`) succeeds
 end-to-end against LocalStack Pro for every resource this module
@@ -41,8 +40,7 @@ creates:
 No 501 / NotImplemented errors hit at this resolution. The module's
 AWS-side surface is fully covered by LocalStack Pro plan + apply.
 
-### Finding #2 — `describe-addon-versions` catalog is populated but
-the supported version set is narrower than production AWS
+### Finding #2 — `describe-addon-versions` catalog is populated but the supported version set is narrower than production AWS
 
 LocalStack Pro publishes a curated subset of addon versions through
 `describe-addon-versions`. As of LocalStack Pro 2026.5.0 for K8s 1.35:

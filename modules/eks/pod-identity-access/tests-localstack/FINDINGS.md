@@ -9,13 +9,14 @@ backlog item.
 
 ## Environment captured at last run
 
-- LocalStack Pro 2026.5.0.dev121 on `:4566`
-- Date: 2026-05-17
+- LocalStack Pro **2026.6.0** on `:4566` — re-verified 2026-07-01
+  (`setup` + `apply_mode_a` + `apply_mode_b`, **3 passed**), coverage
+  unchanged
+- First captured on Pro 2026.5.0.dev121 (2026-05-17)
 
 ## Findings
 
-### Finding #1 — IMPL-0004 Q3 resolved: `aws_eks_pod_identity_association`
-is fully supported by LocalStack Pro at this resolution
+### Finding #1 — IMPL-0004 Q3 resolved: `aws_eks_pod_identity_association` is fully supported by LocalStack Pro at this resolution
 
 The apply suite (`apply_localstack.tftest.hcl::apply_mode_a` +
 `::apply_mode_b`) succeeds end-to-end against LocalStack Pro for

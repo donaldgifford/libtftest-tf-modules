@@ -32,17 +32,33 @@ Community vs Pro edition. The same `apply_localstack.tftest.hcl`
 should pass identically on either tier.
 
 - **Default tier**: LocalStack Community.
-- **Verified tier**: LocalStack Pro 2026.5.0 (per the Q7
-  implementation-time verification step).
+- **Verified tier**: LocalStack **Pro 2026.6.0** — first live run on
+  2026-07-01, **3 passed, 0 failed** (`setup` + `apply_default` +
+  `plan_mysql`). Supersedes the earlier implementation-time claim against
+  2026.5.0, which was never actually executed.
+
+> **macOS caveat.** Because `apply_default` boots a real embedded Postgres
+> for the Aurora cluster, `/var/lib/localstack` must be a Docker **named
+> volume**, not a macOS host bind mount (the `lstk` default) — else
+> `initdb` fails on data-dir ownership. Same finding as
+> `modules/rds/proxy/tests-localstack/FINDINGS.md`.
 
 If a differential gap surfaces (one tier 501s, the other doesn't),
 document it here as a finding and file the sneakystack backlog item.
 
 ## Finding #1 — Aurora Serverless v2 surface coverage on LocalStack
 
-**Status:** TBD pending first actual run.
+**Status:** ✅ Verified on Pro 2026.6.0 (2026-07-01). `apply_default`
+provisions the full Serverless v2 stack — module-managed KMS, subnet group,
+SG, DB + cluster parameter groups, the `aws_rds_cluster` (`engine_mode =
+"provisioned"` + `serverlessv2_scaling_configuration`), and the
+`db.serverless` `aws_rds_cluster_instance` — with **no 501/NotImplemented**.
+The high-risk Serverless v2 scaling config + `db.serverless` instance class
+are served by LocalStack Pro's native RDS provider. No sneakystack ticket
+needed.
 
-**Risk surface:** Aurora Serverless v2 specifically (`engine_mode =
+**Risk surface (retained for context):** Aurora Serverless v2 specifically
+(`engine_mode =
 "provisioned"` + `serverlessv2_scaling_configuration` +
 `instance_class = "db.serverless"`) is the highest-risk piece of
 this module's AWS API surface for LocalStack coverage. Baseline RDS
@@ -67,12 +83,16 @@ fall-back pattern documented in
 
 ## Finding #2 — Secrets Manager integration for `manage_master_user_password = true`
 
-**Status:** TBD pending first actual run.
+**Status:** ✅ Verified on Pro 2026.6.0 (2026-07-01). `apply_default` runs
+with the default `manage_master_user_password = true` and the managed-secret
+path succeeds — the cluster's `master_user_secret` is populated (the RDS
+Proxy Pro suite consumes exactly this secret ARN cross-module, so the path
+is doubly exercised).
 
 The module defaults to `manage_master_user_password = true` per
 DESIGN-0007 Q2. AWS provisions a Secrets Manager secret holding the
 master user password, encrypted with the same KMS key that encrypts
-cluster storage (per IMPL-0007 Q12). LocalStack Pro 2026.5.0
+cluster storage (per IMPL-0007 Q12). LocalStack Pro 2026.6.0
 supports Secrets Manager broadly; LocalStack Community has partial
 support.
 

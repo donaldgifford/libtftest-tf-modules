@@ -9,13 +9,13 @@ backlog item.
 
 ## Environment captured at last run
 
-- LocalStack Pro 2026.5.0.dev121 on `:4566`
-- Date: 2026-05-15
+- LocalStack Pro **2026.6.0** on `:4566` — re-verified 2026-07-01
+  (`setup` + `default_apply`, **2 passed**), coverage unchanged
+- First captured on Pro 2026.5.0.dev121 (2026-05-15)
 
 ## Findings
 
-### Finding #1 — No coverage gaps in the AWS API surface this module
-touches (as of LocalStack Pro 2026.5.0)
+### Finding #1 — No coverage gaps in the AWS API surface this module touches (as of LocalStack Pro 2026.5.0)
 
 The apply suite (`apply_localstack.tftest.hcl::default_apply`) succeeds
 end-to-end against LocalStack Pro for every resource this module

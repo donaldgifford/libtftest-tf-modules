@@ -83,11 +83,13 @@ run "plan_smoke" {
   }
 }
 
-# Full apply preserved for the day LocalStack lands Bedrock + Budgets +
-# Cost Explorer (or a Pro license is present at run time). Uncomment to
-# re-validate after re-running the FINDINGS.md probe. Use
-# cost_allocation_tag_activation = "local" + a real org once
-# Organizations is also available.
+# Full apply — STILL BLOCKED on Pro 2026.6.0 (probed 2026-07-01):
+# aws_bedrock_inference_profile hits `CreateInferenceProfile => 501
+# InternalFailure: ... operation on the bedrock service is not currently
+# supported by LocalStack`. The AIP is the module's reason to exist, so the
+# suite stays plan-only per the RFC-0001 fall-back; re-enable when LocalStack
+# implements CreateInferenceProfile. See FINDINGS.md §Probe results.
+# (Downstream IAM / SNS / Budgets are covered separately by plan_smoke.)
 #
 # run "apply_default" {
 #   command = apply

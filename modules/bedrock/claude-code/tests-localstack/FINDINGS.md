@@ -24,14 +24,28 @@ One `apply_default` run is preserved as commented HCL in
 
 ## Tier coverage
 
-- **Verified tier**: LocalStack Community **3.8.1** (probe run on
-  2026-06-02, `edition: community`).
-- **Pro 2026.x**: not exercised. The current `localstack/localstack:latest`
-  (`2026.3.1.dev190`) refuses to boot without a `LOCALSTACK_AUTH_TOKEN`,
-  and no Pro license was available in the build environment. Community
-  3.8.1 (the version `modules/efs/filesystem` was verified against) was
-  pinned for the probe. Re-running this suite against Pro at production
-  rollout is the validation step.
+- **Verified tier**: LocalStack **Pro 2026.6.0** (re-probed 2026-07-01) —
+  suite passes plan-only (**2 passed**). The `apply_default` run was
+  activated and probed live: it **still 501s** on
+  `bedrock:CreateInferenceProfile` (see the Pro table below), so it was
+  reverted to commented and the suite stays on `plan_smoke`. Bedrock's AIP
+  is the module's reason to exist, so a partial apply is not meaningful.
+- **Community 3.8.1** (historical, 2026-06-02): probe table below.
+
+### Pro 2026.6.0 re-probe (2026-07-01)
+
+| Service / API | Community 3.8.1 | **Pro 2026.6.0** | Module resource |
+|---|---|---|---|
+| `bedrock:CreateInferenceProfile` | 500 (0 ops) | 🔴 **501 not supported** (confirmed via apply) | `aws_bedrock_inference_profile.this` |
+| `budgets:DescribeBudgets` | 501 | 🔴 **501** | `aws_budgets_budget.this` |
+| `ce:ListCostAllocationTags` | 501 | 🔴 **501** | `aws_ce_cost_allocation_tag.this` |
+| `organizations:DescribeOrganization` | 501 | 🟢 **available** (returns `AWSOrganizationsNotInUseException` — needs a seeded org) | `data.aws_organizations_organization.current` |
+| `iam` / `sts` / `s3` | available | 🟢 available | IAM user/policy, caller identity, fixture bucket |
+
+Net: the AIP/Budgets/CE control planes are **still unimplemented on Pro**,
+so the apply path remains blocked and plan-only is correct. Organizations
+graduated Community→Pro, so the `local`-mode guardrail could be exercised
+on Pro once an org is seeded (future work).
 
 ## Probe results (2026-06-02, Community 3.8.1)
 
