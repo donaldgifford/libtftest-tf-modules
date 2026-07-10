@@ -325,7 +325,7 @@ Exactly one `aws_rds_cluster_instance.writer` with a **real** `instance_class`
 
 #### Tasks
 
-- [ ] `instance.tf`: `aws_rds_cluster_instance.writer`:
+- [x] `instance.tf`: `aws_rds_cluster_instance.writer`:
   - `cluster_identifier = aws_rds_cluster.this.id`,
     `identifier = "${var.identifier_prefix}-1"` (Q7 — `-1` suffix leaves room
     for `read-replica`'s `-replica-<key>` naming).
