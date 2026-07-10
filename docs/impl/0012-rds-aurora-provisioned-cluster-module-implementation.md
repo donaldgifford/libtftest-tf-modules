@@ -358,20 +358,20 @@ consumers.
 
 #### Tasks
 
-- [ ] `outputs.tf` (each with a `description`): `cluster_identifier`,
+- [x] `outputs.tf` (each with a `description`): `cluster_identifier`,
       `cluster_resource_id`, `cluster_endpoint`, `reader_endpoint`, `port`,
       `engine`, `engine_version_actual`, `db_subnet_group_name`,
       `security_group_id`, `kms_key_arn`, `master_user_secret_arn`,
       `db_cluster_parameter_group_name`, `db_parameter_group_name`,
       `cluster_instance_identifier`.
-- [ ] The proxy-composition set (same null-safe expressions as `serverless`):
+- [x] The proxy-composition set (same null-safe expressions as `serverless`):
       `db_subnet_ids`, `vpc_id`, `master_user_secret_kms_key_arn`,
       `iam_database_authentication_enabled`.
-- [ ] Cross-check the `read-replica` consumer set (`cluster_identifier`,
+- [x] Cross-check the `read-replica` consumer set (`cluster_identifier`,
       `cluster_resource_id`, `engine`, `engine_version_actual`,
       `db_subnet_group_name`, `db_parameter_group_name`) is all present — these
       are IMPL-0013's hard dependency.
-- [ ] Regenerate `USAGE.md`.
+- [x] Regenerate `USAGE.md`.
 
 #### Success Criteria
 
