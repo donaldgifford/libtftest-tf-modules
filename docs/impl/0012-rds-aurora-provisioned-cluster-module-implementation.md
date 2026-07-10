@@ -388,23 +388,23 @@ BYO KMS in the shared `variables{}`.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl` — one run per engine (`aurora-postgresql` +
+- [x] `tests/default.tftest.hcl` — one run per engine (`aurora-postgresql` +
       `aurora-mysql`): engine, `engine_mode = "provisioned"`, **no** serverless
       scaling block (`length(serverlessv2_scaling_configuration) == 0`),
       `instance_class` is the real class, `storage_encrypted`,
       `deletion_protection`, `manage_master_user_password`, parameter-family
       resolution, and the four proxy-composition outputs.
-- [ ] `tests/kms.tftest.hcl` — managed-KMS count + BYO-KMS.
-- [ ] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
+- [x] `tests/kms.tftest.hcl` — managed-KMS count + BYO-KMS.
+- [x] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
       family; explicit override wins.
-- [ ] `tests/sg_ingress.tftest.hcl` — 2 / 0 / mysql-port ingress shapes.
-- [ ] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
+- [x] `tests/sg_ingress.tftest.hcl` — 2 / 0 / mysql-port ingress shapes.
+- [x] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
       (`postgres`), bad `engine_version`, bad `backup_retention_period`,
       snapshot-required precondition, bad `identifier_prefix`,
       monitoring-role-required precondition, **Backtrack-on-postgres**
       precondition (`backtrack_window > 0` + `aurora-postgresql`), bad
       `storage_type`.
-- [ ] All files open with the fake `provider "aws"` block.
+- [x] All files open with the fake `provider "aws"` block.
 
 #### Success Criteria
 
