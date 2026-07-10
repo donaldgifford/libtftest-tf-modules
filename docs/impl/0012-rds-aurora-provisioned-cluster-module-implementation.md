@@ -287,7 +287,7 @@ surface (`storage_type`, `backtrack_window`, `enabled_cloudwatch_logs_exports`).
 
 #### Tasks
 
-- [ ] `cluster.tf`: `aws_rds_cluster.this` (alphabetical attribute order):
+- [x] `cluster.tf`: `aws_rds_cluster.this` (alphabetical attribute order):
   - `cluster_identifier = var.identifier_prefix`, `database_name`, `engine`,
     `engine_mode = "provisioned"`, `engine_version` (null OK).
   - `db_cluster_parameter_group_name`, `db_subnet_group_name`,
@@ -302,7 +302,7 @@ surface (`storage_type`, `backtrack_window`, `enabled_cloudwatch_logs_exports`).
   - `storage_type` (Q3-design), `enabled_cloudwatch_logs_exports` (Q6-design),
     `backtrack_window` (Q4-design).
   - **No** `serverlessv2_scaling_configuration`, **no** `min_acu` / `max_acu`.
-- [ ] `lifecycle.precondition`s on `aws_rds_cluster.this`:
+- [x] `lifecycle.precondition`s on `aws_rds_cluster.this`:
       `local.resolved_parameter_family != null`; `var.skip_final_snapshot ||
       var.final_snapshot_identifier != null`; **the Backtrack guard (Q3):**
       `var.backtrack_window == 0 || var.engine == "aurora-mysql"`.
