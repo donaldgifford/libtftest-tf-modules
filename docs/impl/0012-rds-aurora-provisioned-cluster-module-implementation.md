@@ -144,11 +144,11 @@ Aurora provisioned surface. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/rds/cluster/` by copying `modules/rds/serverless/`
+- [x] Create `modules/rds/cluster/` by copying `modules/rds/serverless/`
       wholesale (Q1), then editing: remove `min_acu` / `max_acu`; copy
       `.terraform-docs.yml` / `.tflint.hcl` as-is.
-- [ ] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] `variables.tf` per DESIGN-0013 §Input surface. **Required**: `region`,
+- [x] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] `variables.tf` per DESIGN-0013 §Input surface. **Required**: `region`,
       `remote_state_bucket`, `vpc_name`, `identifier_prefix`, `engine`,
       `instance_class` (Q2-design — no default). **Optional**: `engine_version`
       (null), `storage_type` (null → Aurora Standard, Q3-design),
@@ -165,16 +165,16 @@ Aurora provisioned surface. No resources yet.
       (false), `performance_insights_enabled` (false),
       `enhanced_monitoring_interval` (0), `enhanced_monitoring_role_arn` (null),
       `promotion_tier` (0 — the writer is tier 0), `tags` (`{}`).
-- [ ] Each variable: `description` + `type` + `default` (optional only) +
+- [x] Each variable: `description` + `type` + `default` (optional only) +
       `nullable` AFTER `validation` (custom tflint rule).
-- [ ] Single-variable validations: `engine` (`^aurora-(postgresql|mysql)$`);
+- [x] Single-variable validations: `engine` (`^aurora-(postgresql|mysql)$`);
       `engine_version` if non-null (`^(\d+\.\d+|\d+)$`); `identifier_prefix`
       (`^[a-z][a-z0-9-]{0,61}[a-z0-9]$`); `allowed_consumer_sg_ids` (each
       `^sg-[a-f0-9]+$`); `backup_retention_period` in `[1,35]`;
       `enhanced_monitoring_interval` in `{0,1,5,10,15,30,60}`; `promotion_tier`
       in `[0,15]`; `storage_type` null or in `["aurora","aurora-iopt1"]` (Q4);
       `backtrack_window >= 0`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
 
 #### Success Criteria
 
