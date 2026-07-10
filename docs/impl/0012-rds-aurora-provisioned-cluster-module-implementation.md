@@ -262,12 +262,12 @@ Aurora needs both an `aws_rds_cluster_parameter_group` and an
 
 #### Tasks
 
-- [ ] `parameter_groups.tf`: `aws_rds_cluster_parameter_group.this`
+- [x] `parameter_groups.tf`: `aws_rds_cluster_parameter_group.this`
       (`name_prefix = "${var.identifier_prefix}-cluster-"`,
       `create_before_destroy`) + `aws_db_parameter_group.this`
       (`name_prefix = "${var.identifier_prefix}-instance-"`,
       `create_before_destroy`), both `family = local.resolved_parameter_family`.
-- [ ] No custom `parameter` blocks in v1 (operators repoint
+- [x] No custom `parameter` blocks in v1 (operators repoint
       `var.parameter_family`).
 
 #### Success Criteria
