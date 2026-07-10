@@ -24,6 +24,13 @@ Run with `just tf test-localstack rds/serverless`. The recipe wires
 `AWS_ENDPOINT_URL=http://localhost:4566` + fake credentials per the
 sibling LocalStack-test pattern.
 
+> **Engine-version pin (2026-07).** The module's default Aurora PostgreSQL
+> major was bumped `16 → 18` (Aurora PG 18 GA'd 2026-06-11, per DESIGN-0012
+> Q8). The `apply_default` run explicitly pins `engine_version = "16"` because
+> major 18 is newer than this LocalStack image's engine catalog — the Pro
+> apply stays verified against a known-good version. Bump the pin once a
+> LocalStack image serving Aurora PG 18 lands.
+
 ## Tier coverage
 
 Per IMPL-0007 / DESIGN-0007 Q7 resolution: this suite is

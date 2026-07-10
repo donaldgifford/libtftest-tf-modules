@@ -105,13 +105,13 @@ run "default_postgres" {
   }
 
   assert {
-    condition     = aws_rds_cluster_parameter_group.this.family == "aurora-postgresql16"
-    error_message = "Cluster parameter group family must resolve to aurora-postgresql16 (default major = 16)"
+    condition     = aws_rds_cluster_parameter_group.this.family == "aurora-postgresql18"
+    error_message = "Cluster parameter group family must resolve to aurora-postgresql18 (default major = 18)"
   }
 
   assert {
-    condition     = aws_db_parameter_group.this.family == "aurora-postgresql16"
-    error_message = "Instance parameter group family must resolve to aurora-postgresql16"
+    condition     = aws_db_parameter_group.this.family == "aurora-postgresql18"
+    error_message = "Instance parameter group family must resolve to aurora-postgresql18"
   }
 
   assert {
