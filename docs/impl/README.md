@@ -42,4 +42,7 @@ docz create impl "Your Implementation Title"
 | IMPL-0008 | EFS filesystem module implementation | Completed | 2026-05-28 | Donald Gifford | [0008-efs-filesystem-module-implementation.md](0008-efs-filesystem-module-implementation.md) |
 | IMPL-0009 | Claude Code on Bedrock module + Go tool implementation | Completed | 2026-06-01 | Donald Gifford | [0009-claude-code-on-bedrock-module-go-tool-implementation.md](0009-claude-code-on-bedrock-module-go-tool-implementation.md) |
 | IMPL-0010 | RDS Proxy module implementation | Completed | 2026-06-29 | Donald Gifford | [0010-rds-proxy-module-implementation.md](0010-rds-proxy-module-implementation.md) |
+| IMPL-0011 | RDS instance module implementation | Draft | 2026-07-09 | Donald Gifford | [0011-rds-instance-module-implementation.md](0011-rds-instance-module-implementation.md) |
+| IMPL-0012 | RDS Aurora provisioned cluster module implementation | Draft | 2026-07-09 | Donald Gifford | [0012-rds-aurora-provisioned-cluster-module-implementation.md](0012-rds-aurora-provisioned-cluster-module-implementation.md) |
+| IMPL-0013 | RDS Aurora read-replica module implementation | Draft | 2026-07-09 | Donald Gifford | [0013-rds-aurora-read-replica-module-implementation.md](0013-rds-aurora-read-replica-module-implementation.md) |
 <!-- END DOCZ AUTO-GENERATED -->
