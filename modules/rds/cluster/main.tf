@@ -14,6 +14,24 @@
 # serverlessv2_scaling_configuration block + min/max ACU inputs and
 # taking a concrete var.instance_class instead of the db.serverless
 # sentinel.
-#
-# The VPC remote-state data source lands in Phase 2.
 #--------------------------------------------------------------
+
+#--------------------------------------------------------------
+# Data sources — VPC remote state
+#
+# VPC remote state delivers vpc_id + private_subnet_ids per
+# IMPL-0007 Q1 (reuses the existing EKS-cluster remote-state
+# contract). data.aws_caller_identity.current is deliberately
+# omitted — nothing in this module emits account-scoped ARNs.
+#--------------------------------------------------------------
+
+data "terraform_remote_state" "vpc" {
+  backend = "s3"
+
+  config = {
+    bucket         = var.remote_state_bucket
+    key            = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
+    region         = var.region
+    use_path_style = true
+  }
+}

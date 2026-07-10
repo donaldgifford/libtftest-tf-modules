@@ -192,11 +192,11 @@ mechanism to `serverless`.
 
 #### Tasks
 
-- [ ] `main.tf`: `data.terraform_remote_state.vpc` (`backend = "s3"`,
+- [x] `main.tf`: `data.terraform_remote_state.vpc` (`backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`; consumes `vpc_id`
       + `private_subnet_ids`).
-- [ ] `locals.tf`:
+- [x] `locals.tf`:
   - `kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))`.
   - `parameter_family_map` for the Aurora engines, seeded to match the shipped
     `serverless` module post-PR-#32 (Q2): `aurora-postgresql:18/17/16` +
@@ -223,10 +223,10 @@ Verbatim from `serverless`, alias renamed to `-rds-cluster`.
 
 #### Tasks
 
-- [ ] `kms.tf`: `aws_kms_key.this` (`count = var.kms_key_arn == null ? 1 : 0`,
+- [x] `kms.tf`: `aws_kms_key.this` (`count = var.kms_key_arn == null ? 1 : 0`,
       rotation, 30-day window, `prevent_destroy`, description names the cluster)
       + `aws_kms_alias.this` (same gate, `name = local.kms_alias_name`).
-- [ ] Verify `local.kms_key_arn` resolves in both modes.
+- [x] Verify `local.kms_key_arn` resolves in both modes.
 
 #### Success Criteria
 
