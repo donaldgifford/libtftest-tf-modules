@@ -16,13 +16,15 @@ locals {
   # DESIGN-0007 Q3 / IMPL-0007 Q3 resolution). Engine-family drift is
   # rare; Renovate bumps this map as new engine majors GA.
   #
-  # Postgres families are keyed by major (16, 15, 14); MySQL families
-  # are keyed by major.minor (8.0, 5.7). The lookup key is built
+  # Postgres families are keyed by major (18, 17, 16, 15, 14); MySQL
+  # families are keyed by major.minor (8.0). The lookup key is built
   # engine-aware below.
   #
   # TODO: revisit data.aws_rds_engine_version when family drift becomes
   # painful enough to justify a data-source lookup per plan.
   parameter_family_map = {
+    "aurora-postgresql:18" = "aurora-postgresql18"
+    "aurora-postgresql:17" = "aurora-postgresql17"
     "aurora-postgresql:16" = "aurora-postgresql16"
     "aurora-postgresql:15" = "aurora-postgresql15"
     "aurora-postgresql:14" = "aurora-postgresql14"
@@ -34,7 +36,7 @@ locals {
   # expects: bare major for postgres, major.minor for MySQL. Renovate
   # bumps as new engine versions GA — annual cadence per engine.
   default_major_map = {
-    "aurora-postgresql" = "16"
+    "aurora-postgresql" = "18"
     "aurora-mysql"      = "8.0"
   }
 

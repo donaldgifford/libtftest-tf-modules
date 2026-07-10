@@ -85,6 +85,15 @@ run "setup" {
 run "apply_default" {
   command = apply
 
+  # Pin the apply to Aurora PostgreSQL 16 — the version verified against
+  # LocalStack Pro 2026.6.0 (see FINDINGS.md). The module default was
+  # bumped to major 18 (Aurora PG 18 GA'd 2026-06-11), but that is newer
+  # than this LocalStack image's engine catalog. Bump this pin once a
+  # LocalStack image serving Aurora PG 18 is available.
+  variables {
+    engine_version = "16"
+  }
+
   assert {
     condition     = length(aws_kms_key.this) == 1
     error_message = "Module-managed KMS must produce 1 key against LocalStack"
