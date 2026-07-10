@@ -47,4 +47,5 @@ docz create adr "Your ADR Title"
 | ADR-0014 | Use libtftest for apply-time runtime validation without AWS | Proposed | 2026-05-15 | Donald Gifford | [0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md](0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md) |
 | ADR-0015 | Permit opt-in third managed policy on node role for ECR pull-through cache | Proposed | 2026-05-15 | Donald Gifford | [0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md](0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md) |
 | ADR-0016 | Use ECR Repository Creation Templates for OCI Artifact Repos | Proposed | 2026-05-18 | Donald Gifford | [0016-use-ecr-repository-creation-templates-for-oci-artifact-repos.md](0016-use-ecr-repository-creation-templates-for-oci-artifact-repos.md) |
+| ADR-0017 | RDS Blue Green deployments are opt-in and default off | Accepted | 2026-07-09 | Donald Gifford | [0017-rds-blue-green-deployments-are-opt-in-and-default-off.md](0017-rds-blue-green-deployments-are-opt-in-and-default-off.md) |
 <!-- END DOCZ AUTO-GENERATED -->
