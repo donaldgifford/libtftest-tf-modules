@@ -241,7 +241,7 @@ Verbatim from `serverless`; name suffix `-rds-cluster`.
 
 #### Tasks
 
-- [ ] `network.tf`: `aws_db_subnet_group.this` (over `private_subnet_ids`);
+- [x] `network.tf`: `aws_db_subnet_group.this` (over `private_subnet_ids`);
       `aws_security_group.this` (in `vpc_id`); one
       `aws_vpc_security_group_ingress_rule.consumer` per
       `var.allowed_consumer_sg_ids` on `local.engine_default_port`; one
