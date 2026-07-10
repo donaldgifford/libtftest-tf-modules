@@ -18,10 +18,28 @@ Tracked in git. As of this writing:
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). Three siblings still to ship per
-  DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `cluster` (Aurora
-  provisioned, single-writer default), `read-replica` (additional
-  `aws_rds_cluster_instance`s composed via cluster module's remote state).
-  `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
+  DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `read-replica`
+  (additional `aws_rds_cluster_instance`s composed via cluster module's remote
+  state). `cluster` (IMPL-0012, implemented — Aurora **provisioned**
+  single-writer cluster for Postgres + MySQL per DESIGN-0013). It is the
+  `serverless` module with two edits: no `serverlessv2_scaling_configuration`
+  block (and no `min_acu`/`max_acu`) and a concrete `var.instance_class` in
+  place of the `db.serverless` sentinel. Adds `storage_type`
+  (Standard/`aurora-iopt1`), `backtrack_window` (Aurora-MySQL-only, guarded by a
+  cluster precondition), `enabled_cloudwatch_logs_exports`, and `promotion_tier`
+  (writer defaults 0). Emits the 4 proxy-composition outputs, so it is a valid
+  `aurora-cluster` proxy target, and is the **source-of-truth remote state** for
+  the `read-replica` module (IMPL-0013) at
+  `<region>/rds/cluster/<identifier_prefix>/terraform.tfstate` (consumer set:
+  cluster_identifier, cluster_resource_id, engine, engine_version_actual,
+  db_subnet_group_name, db_parameter_group_name). **Test divergence (Q5-b, same
+  as `proxy`):** a provisioned cluster instance boots a real embedded PostgreSQL
+  (Pro-only), so the plan-only `tests/` suite (19 runs) is the gate,
+  `tests-localstack/` holds a Community `plan_smoke` (verified offline), and the
+  Pro apply lives in `tests-localstack-pro/` (off by default, run via `just tf
+  test-localstack-pro rds/cluster`; same macOS named-volume + `engine_version=16`
+  caveats as `serverless`/`proxy` — live Pro apply authored, pending a Pro
+  container). `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
   target per DESIGN-0010 / RFC-0002). Composes via the target's remote state
   (ADR-0001, `var.target_type` ∈ {rds-instance, aurora-cluster, serverless}),
   reuses the AWS-managed master secret (IAM role least-privilege
@@ -30,8 +48,9 @@ Tracked in git. As of this writing:
   endpoint. Postgres + MySQL both supported (engine_family/port derived from the
   target's `engine` in remote state, so no proxy/target drift). Phase 2 added
   four proxy-composition outputs to `serverless` (`db_subnet_ids`, `vpc_id`,
-  `master_user_secret_kms_key_arn`, `iam_database_authentication_enabled`); the
-  unbuilt `instance`/`cluster` modules must emit the same set. **Test divergence
+  `master_user_secret_kms_key_arn`, `iam_database_authentication_enabled`);
+  `cluster` now emits the same set, and the unbuilt `instance` module must too.
+  **Test divergence
   (Q7):** RDS Proxy is LocalStack-Pro-only, so coverage splits — the plan-only
   `tests/` suite is the gate; `tests-localstack/` holds a Community-safe
   `plan_smoke`; the Pro apply lives in `tests-localstack-pro/` (off by default,

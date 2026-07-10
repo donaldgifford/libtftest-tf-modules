@@ -1,7 +1,7 @@
 ---
 id: IMPL-0012
 title: "RDS Aurora provisioned cluster module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # IMPL 0012: RDS Aurora provisioned cluster module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
@@ -455,18 +455,18 @@ justfile recipe already exists (IMPL-0010) — no justfile change needed.
 
 #### Tasks
 
-- [ ] Author `modules/rds/cluster/README.md`: prerequisites, minimal Postgres /
+- [x] Author `modules/rds/cluster/README.md`: prerequisites, minimal Postgres /
       MySQL / BYO-KMS / I/O-Optimized (`storage_type`) examples, post-apply
       smoke recipe, operational gotchas (`deletion_protection`, KMS
       `prevent_destroy`, engine-major upgrade), **a "scaling out" pointer to
       `read-replica` (IMPL-0013)** with the composition state key.
-- [ ] Regenerate `USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/cluster` to the §Repository purpose
+- [x] Regenerate `USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/cluster` to the §Repository purpose
       `rds` inventory + a shape line (source-of-truth for read-replica; valid
       `aurora-cluster` proxy target); regenerate the README module table.
-- [ ] Mark IMPL-0012 `Completed`, run `docz update`, move DESIGN-0013 to
+- [x] Mark IMPL-0012 `Completed`, run `docz update`, move DESIGN-0013 to
       `Implemented`.
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 

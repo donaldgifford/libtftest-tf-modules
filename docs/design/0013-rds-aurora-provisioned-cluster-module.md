@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0013
 title: "RDS Aurora provisioned cluster module"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # DESIGN 0013: RDS Aurora provisioned cluster module
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
