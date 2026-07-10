@@ -426,16 +426,16 @@ justfile recipe already exists (IMPL-0010) — no justfile change needed.
 
 #### Tasks
 
-- [ ] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
+- [x] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
       plan-only smoke (VPC stubbed via `override_data`; no cluster apply).
-- [ ] `tests-localstack-pro/fixtures/setup/main.tf` — VPC + 3 private subnets +
+- [x] `tests-localstack-pro/fixtures/setup/main.tf` — VPC + 3 private subnets +
       S3 bucket with a stub VPC state file (sibling fixture shape).
-- [ ] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"`;
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"`;
       `run "apply_default"` (`aurora-postgresql`) provisioning the full
       provisioned cluster + writer (pin `engine_version` if PG 18 is newer than
       the LocalStack image); `run "plan_mysql"` (`aurora-mysql`) plan-only.
-- [ ] Confirm the `_tf-test-localstack-pro` recipe scans `rds/cluster`.
-- [ ] `tests-localstack/FINDINGS.md` — coverage matrix, the Pro requirement +
+- [x] Confirm the `_tf-test-localstack-pro` recipe scans `rds/cluster`.
+- [x] `tests-localstack/FINDINGS.md` — coverage matrix, the Pro requirement +
       the two-tier layout + recipe gate, the macOS named-volume caveat
       (embedded Postgres). Cross-reference the `serverless` + `proxy` FINDINGS.
 
