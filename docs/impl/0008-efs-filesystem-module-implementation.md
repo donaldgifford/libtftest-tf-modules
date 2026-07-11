@@ -699,7 +699,7 @@ string, creation_info = optional(object({ owner_uid = number,
 owner_gid = number, permissions = string })) }) }))`. Phase 6
 access-point resource emits `secondary_gids` always (defaults to
 `[]`) and a dynamic `creation_info` block when non-null. Matches
-the `modules/rds/read-replica` typed-object-map precedent.
+the `rds/read-replica` typed-object-map precedent.
 
 ### Q4 — Validate access-point POSIX UID/GID bounds — RESOLVED (a)
 

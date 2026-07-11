@@ -1,7 +1,7 @@
 ---
 id: IMPL-0013
 title: "RDS Aurora read-replica module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # IMPL 0013: RDS Aurora read-replica module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
@@ -133,26 +133,26 @@ pointer surface + the `replicas` map. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/rds/read-replica/`; copy `.terraform-docs.yml` /
+- [x] Create `modules/rds/read-replica/`; copy `.terraform-docs.yml` /
       `.tflint.hcl` verbatim from `modules/rds/proxy/`.
-- [ ] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] `variables.tf` per DESIGN-0014 §Input surface. **Required**: `region`,
+- [x] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] `variables.tf` per DESIGN-0014 §Input surface. **Required**: `region`,
       `remote_state_bucket`, `cluster_identifier`, `identifier_prefix`,
       `replicas` (map(object) — empty map = zero readers). **Optional**:
       `apply_immediately` (false), `tags` (`{}`). The DB-derived values
       (engine, subnet group, parameter group, SG, KMS) are **not inputs** —
       read from remote state.
-- [ ] Author the **hybrid `replicas` object** (Q4): required `instance_class`;
+- [x] Author the **hybrid `replicas` object** (Q4): required `instance_class`;
       optional `availability_zone`, `promotion_tier` (default 15),
       `performance_insights_enabled` (default false), `monitoring_interval`
       (default 0), `monitoring_role_arn`, `auto_minor_version_upgrade`
       (default true), `publicly_accessible` (default false). `nullable = false`.
-- [ ] Single-variable validations: `identifier_prefix` +
+- [x] Single-variable validations: `identifier_prefix` +
       `cluster_identifier` (RDS-identifier regex
       `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`); each `replicas` **key** identifier-safe
       (Q7); each `promotion_tier` in `[0,15]`; each `monitoring_interval` in
       `{0,1,5,10,15,30,60}`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
 
 #### Success Criteria
 
@@ -170,12 +170,12 @@ state, aliased into `locals.tf` at the use site.
 
 #### Tasks
 
-- [ ] `main.tf`: `data "terraform_remote_state" "rds_cluster"` — `backend =
+- [x] `main.tf`: `data "terraform_remote_state" "rds_cluster"` — `backend =
       "s3"`, `bucket = var.remote_state_bucket`, `key =
       "${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"`,
       `region = var.region`, `use_path_style = true`. The `rds/cluster/`
       segment is hardcoded (Q1-design — cluster-only for v1).
-- [ ] `locals.tf`: alias the consumed cluster outputs at the use site —
+- [x] `locals.tf`: alias the consumed cluster outputs at the use site —
       `cluster_identifier`, `engine`, `engine_version_actual`,
       `db_subnet_group_name`, `db_parameter_group_name` (Q5) from
       `data.terraform_remote_state.rds_cluster.outputs.*`. (SG + KMS are
@@ -196,7 +196,7 @@ per-reader optional settings and the stale-state precondition (Q7-design).
 
 #### Tasks
 
-- [ ] `replicas.tf`: `aws_rds_cluster_instance.replica` with `for_each =
+- [x] `replicas.tf`: `aws_rds_cluster_instance.replica` with `for_each =
       var.replicas`:
   - `cluster_identifier = local.cluster_identifier`,
     `identifier = "${var.identifier_prefix}-replica-${each.key}"`.
@@ -213,7 +213,7 @@ per-reader optional settings and the stale-state precondition (Q7-design).
   - Optional per-reader settings (all defaulted):
     `performance_insights_enabled`, `monitoring_interval` +
     `monitoring_role_arn`, `auto_minor_version_upgrade`.
-- [ ] `lifecycle.precondition`s on `aws_rds_cluster_instance.replica`:
+- [x] `lifecycle.precondition`s on `aws_rds_cluster_instance.replica`:
   - **Stale/wrong cluster state (Q7-design):** `local.cluster_identifier !=
     null`, with a message naming the expected state key.
   - **Per-reader enhanced monitoring (Q4-design):** for any reader with
@@ -237,12 +237,12 @@ remains the load-balanced entry point).
 
 #### Tasks
 
-- [ ] `outputs.tf` (each with a `description`):
+- [x] `outputs.tf` (each with a `description`):
   - `replica_identifiers` = `{ for k, r in aws_rds_cluster_instance.replica :
     k => r.identifier }`.
   - `replica_endpoints` = `{ for k, r in aws_rds_cluster_instance.replica :
     k => r.endpoint }`.
-- [ ] Regenerate `USAGE.md`.
+- [x] Regenerate `USAGE.md`.
 
 #### Success Criteria
 
@@ -258,22 +258,22 @@ stubbed via `override_data` (Q2) — no S3 backend, runs in seconds.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl` — `override_data` supplies the cluster outputs
+- [x] `tests/default.tftest.hcl` — `override_data` supplies the cluster outputs
       (`cluster_identifier`, `engine`, `engine_version_actual`, subnet-group,
       parameter-group). Runs:
   - single-reader map (1 instance, name `…-replica-<key>`, engine inherited);
   - three-reader map (3 instances, distinct keys, per-reader `instance_class` /
     AZ / `promotion_tier` plumb through);
   - empty map `{}` → zero instances.
-- [ ] `tests/key_stability.tftest.hcl` — removing a middle key doesn't renumber
+- [x] `tests/key_stability.tftest.hcl` — removing a middle key doesn't renumber
       others (assert identifiers by key).
-- [ ] `tests/validation.tftest.hcl` with `expect_failures`: bad
+- [x] `tests/validation.tftest.hcl` with `expect_failures`: bad
       `identifier_prefix`, bad `cluster_identifier`, out-of-range
       `promotion_tier`, a reader with `monitoring_interval > 0` +
       `monitoring_role_arn = null` (the Q4 precondition), and the **Q7
       stale-state precondition** via `override_data` supplying a null
       `cluster_identifier`.
-- [ ] All files open with the fake `provider "aws"` block.
+- [x] All files open with the fake `provider "aws"` block.
 
 #### Success Criteria
 
@@ -296,21 +296,21 @@ surface, so the apply lives in `tests-localstack-pro/` (off by default, run via
 
 #### Tasks
 
-- [ ] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
+- [x] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
       plan-only smoke (cluster state stubbed via `override_data`; no apply).
-- [ ] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"` **instantiates
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"` **instantiates
       the `modules/rds/cluster` module** (`fixtures/cluster`, Q4-b) **and writes
       a stub cluster state file to S3** at the read-replica's key; `run
       "apply_replicas"` attaches readers and asserts count / identifiers /
       per-reader endpoints.
-- [ ] The `_tf-test-localstack-pro` justfile recipe already exists (added in
+- [x] The `_tf-test-localstack-pro` justfile recipe already exists (added in
       IMPL-0010) — no justfile change needed; confirm it scans
       `rds/read-replica`.
-- [ ] `tests-localstack-pro/fixtures/cluster/` — a
+- [x] `tests-localstack-pro/fixtures/cluster/` — a
       `module "cluster" { source = "…/cluster" … }` instantiation (the real
       `modules/rds/cluster` module via a relative `source`) that the readers
       attach to (Q4-b).
-- [ ] `tests-localstack/FINDINGS.md` — the Pro requirement (Aurora + cross-state
+- [x] `tests-localstack/FINDINGS.md` — the Pro requirement (Aurora + cross-state
       bridge), the two-tier layout + recipe gate, the `override_data` limitation
       that forces the S3-object bridge, the macOS named-volume caveat.
 
@@ -329,22 +329,22 @@ surface, so the apply lives in `tests-localstack-pro/` (off by default, run via
 
 #### Tasks
 
-- [ ] Author `modules/rds/read-replica/README.md`: overview + DESIGN-0014 link;
+- [x] Author `modules/rds/read-replica/README.md`: overview + DESIGN-0014 link;
       the composition prerequisite (a `cluster` provisioned by IMPL-0012 with
       state at `${region}/rds/cluster/${id}/terraform.tfstate`); a
       single-reader + a three-reader `replicas` example; the note that a
       cluster destroy/recreate changes `cluster_resource_id` and forces reader
       replacement (Q7-design c); operational gotchas; tests + the Pro-tier note.
-- [ ] Regenerate `USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/read-replica` to the §Repository
+- [x] Regenerate `USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/read-replica` to the §Repository
       purpose `rds` inventory + a shape line (pure cluster remote-state
       consumer; Pro-gated apply divergence like `proxy`); regenerate the README
       module table.
-- [ ] Mark IMPL-0013 `Completed`, run `docz update`, move DESIGN-0014 to
+- [x] Mark IMPL-0013 `Completed`, run `docz update`, move DESIGN-0014 to
       `Implemented`.
-- [ ] Add the "scaling out" back-pointer from the `cluster` module's README
+- [x] Add the "scaling out" back-pointer from the `cluster` module's README
       (if not already added at IMPL-0012 closeout).
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 
