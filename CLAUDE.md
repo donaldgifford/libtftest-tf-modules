@@ -38,8 +38,9 @@ Tracked in git. As of this writing:
   `tests-localstack/` holds a Community `plan_smoke` (verified offline), and the
   Pro apply lives in `tests-localstack-pro/` (off by default, run via `just tf
   test-localstack-pro rds/cluster`; same macOS named-volume + `engine_version=16`
-  caveats as `serverless`/`proxy` — live Pro apply authored, pending a Pro
-  container). `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
+  caveats as `serverless`/`proxy` — live Pro apply **run and passing, 3/3
+  against LocalStack Pro 2026.6.2** via a direct `docker run` named volume, since
+  `lstk` only does host bind mounts). `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
   target per DESIGN-0010 / RFC-0002). Composes via the target's remote state
   (ADR-0001, `var.target_type` ∈ {rds-instance, aurora-cluster, serverless}),
   reuses the AWS-managed master secret (IAM role least-privilege

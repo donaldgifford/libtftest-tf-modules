@@ -107,23 +107,34 @@ docker run -d --name localstack-pro -p 4566:4566 \
 (A Linux host bind mount is unaffected — this is macOS/Docker-Desktop
 specific.) See the `serverless` and `proxy` FINDINGS for the same finding.
 
+**Confirmed for this module.** `lstk` (v0.7.1) brings up Pro fine and
+activates the license, but mounts `/var/lib/localstack` from
+`~/Library/Caches/lstk/volume/localstack-aws` — a host **bind mount**,
+with no named-volume option (`lstk volume` only manages a host dir). So
+the live apply here was run against LocalStack Pro launched **directly**
+via `docker run` with `-v ls-cluster-data:/var/lib/localstack` (a Docker
+named volume) and the same `LOCALSTACK_AUTH_TOKEN` `lstk` uses — the
+provisioned cluster's `initdb` then succeeded and all three runs passed.
+
 ### Tier coverage / execution status
 
 - **Authoring + static checks:** `fixtures/setup` `terraform validate` ✓;
   whole-module `terraform fmt` ✓; `apply_pro` parses + inits under
   `-test-directory=tests-localstack-pro` ✓.
 - **`plan_smoke`: EXECUTED AND PASSING** (offline, 1/1) — see above.
-- **Live Pro apply: NOT YET EXECUTED in this build environment** — no
-  LocalStack Pro container / `LOCALSTACK_AUTH_TOKEN` was available here.
-  The suite is authored to the verified `serverless` + `proxy` apply
-  shape (same S3-stub bridge, same named-volume requirement, same
-  `engine_version = 16` pin). Run `just tf test-localstack-pro rds/cluster`
-  against LocalStack Pro (backed by a Docker named volume) to execute it;
-  this table will be updated to PASSED once run live.
+- **Live Pro apply: EXECUTED AND PASSING.** Run against LocalStack Pro
+  **2026.6.2** (`edition: pro`, license activated) backed by a Docker
+  **named volume** per the finding above — `just tf test-localstack-pro
+  rds/cluster` → **3 passed, 0 failed**. No 501/NotImplemented gaps
+  surfaced; the native RDS provider booted the embedded PostgreSQL for the
+  provisioned writer, provisioned the module-managed KMS key + alias, the
+  subnet group, both parameter groups, and the `db.t3.medium` writer
+  (`tftest-rds-1`). `engine_version` pinned to 16 (the module default
+  resolves to PG 18, newer than the image's catalog).
 
 | Run | Command | Status |
 |-----|---------|--------|
 | `plan_smoke` (default suite) | plan | ✅ passed (offline) |
-| `setup` | apply | ⏳ pending live Pro run |
-| `apply_default` | apply | ⏳ pending live Pro run |
-| `plan_mysql` | plan | ⏳ pending live Pro run |
+| `setup` | apply | ✅ passed (Pro 2026.6.2, named volume) |
+| `apply_default` | apply | ✅ passed (Pro 2026.6.2, named volume) |
+| `plan_mysql` | plan | ✅ passed (Pro 2026.6.2, named volume) |
