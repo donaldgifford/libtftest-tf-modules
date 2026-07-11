@@ -237,12 +237,12 @@ remains the load-balanced entry point).
 
 #### Tasks
 
-- [ ] `outputs.tf` (each with a `description`):
+- [x] `outputs.tf` (each with a `description`):
   - `replica_identifiers` = `{ for k, r in aws_rds_cluster_instance.replica :
     k => r.identifier }`.
   - `replica_endpoints` = `{ for k, r in aws_rds_cluster_instance.replica :
     k => r.endpoint }`.
-- [ ] Regenerate `USAGE.md`.
+- [x] Regenerate `USAGE.md`.
 
 #### Success Criteria
 

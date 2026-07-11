@@ -10,7 +10,10 @@
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| aws | 6.54.0 |
+| terraform | n/a |
 
 ## Modules
 
@@ -18,7 +21,10 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [aws_rds_cluster_instance.replica](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_instance) | resource |
+| [terraform_remote_state.rds_cluster](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 
 ## Inputs
 
@@ -34,5 +40,8 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| replica\_endpoints | Map of per-reader endpoint hostnames keyed as var.replicas. Connect here to pin read traffic to a specific reader; use the cluster's reader\_endpoint for load-balanced reads across all readers. |
+| replica\_identifiers | Map of reader instance identifiers keyed as var.replicas (key => <identifier\_prefix>-replica-<key>). Useful for AWS CLI / SDK operations targeting a specific reader (e.g., reboot-db-instance). |
 <!-- END_TF_DOCS -->
