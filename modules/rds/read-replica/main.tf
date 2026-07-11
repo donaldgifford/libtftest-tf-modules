@@ -15,7 +15,17 @@
 # Engine, engine version, subnet group, and parameter group are all
 # inherited from the cluster remote state — drift-proof by construction.
 #
-# The terraform_remote_state data source lands in Phase 2 (main.tf) and
-# the aliased cluster-output locals in Phase 2 (locals.tf); the readers
-# land in Phase 3 (replicas.tf).
+# The readers land in Phase 3 (replicas.tf), driven by the aliased
+# cluster-output locals in locals.tf.
 #--------------------------------------------------------------
+
+data "terraform_remote_state" "rds_cluster" {
+  backend = "s3"
+
+  config = {
+    bucket         = var.remote_state_bucket
+    key            = "${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"
+    region         = var.region
+    use_path_style = true
+  }
+}

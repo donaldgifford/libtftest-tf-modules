@@ -170,12 +170,12 @@ state, aliased into `locals.tf` at the use site.
 
 #### Tasks
 
-- [ ] `main.tf`: `data "terraform_remote_state" "rds_cluster"` — `backend =
+- [x] `main.tf`: `data "terraform_remote_state" "rds_cluster"` — `backend =
       "s3"`, `bucket = var.remote_state_bucket`, `key =
       "${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"`,
       `region = var.region`, `use_path_style = true`. The `rds/cluster/`
       segment is hardcoded (Q1-design — cluster-only for v1).
-- [ ] `locals.tf`: alias the consumed cluster outputs at the use site —
+- [x] `locals.tf`: alias the consumed cluster outputs at the use site —
       `cluster_identifier`, `engine`, `engine_version_actual`,
       `db_subnet_group_name`, `db_parameter_group_name` (Q5) from
       `data.terraform_remote_state.rds_cluster.outputs.*`. (SG + KMS are
