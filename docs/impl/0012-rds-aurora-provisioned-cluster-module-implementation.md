@@ -1,7 +1,7 @@
 ---
 id: IMPL-0012
 title: "RDS Aurora provisioned cluster module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # IMPL 0012: RDS Aurora provisioned cluster module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
@@ -144,11 +144,11 @@ Aurora provisioned surface. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/rds/cluster/` by copying `modules/rds/serverless/`
+- [x] Create `modules/rds/cluster/` by copying `modules/rds/serverless/`
       wholesale (Q1), then editing: remove `min_acu` / `max_acu`; copy
       `.terraform-docs.yml` / `.tflint.hcl` as-is.
-- [ ] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] `variables.tf` per DESIGN-0013 §Input surface. **Required**: `region`,
+- [x] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] `variables.tf` per DESIGN-0013 §Input surface. **Required**: `region`,
       `remote_state_bucket`, `vpc_name`, `identifier_prefix`, `engine`,
       `instance_class` (Q2-design — no default). **Optional**: `engine_version`
       (null), `storage_type` (null → Aurora Standard, Q3-design),
@@ -165,16 +165,16 @@ Aurora provisioned surface. No resources yet.
       (false), `performance_insights_enabled` (false),
       `enhanced_monitoring_interval` (0), `enhanced_monitoring_role_arn` (null),
       `promotion_tier` (0 — the writer is tier 0), `tags` (`{}`).
-- [ ] Each variable: `description` + `type` + `default` (optional only) +
+- [x] Each variable: `description` + `type` + `default` (optional only) +
       `nullable` AFTER `validation` (custom tflint rule).
-- [ ] Single-variable validations: `engine` (`^aurora-(postgresql|mysql)$`);
+- [x] Single-variable validations: `engine` (`^aurora-(postgresql|mysql)$`);
       `engine_version` if non-null (`^(\d+\.\d+|\d+)$`); `identifier_prefix`
       (`^[a-z][a-z0-9-]{0,61}[a-z0-9]$`); `allowed_consumer_sg_ids` (each
       `^sg-[a-f0-9]+$`); `backup_retention_period` in `[1,35]`;
       `enhanced_monitoring_interval` in `{0,1,5,10,15,30,60}`; `promotion_tier`
       in `[0,15]`; `storage_type` null or in `["aurora","aurora-iopt1"]` (Q4);
       `backtrack_window >= 0`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
 
 #### Success Criteria
 
@@ -192,11 +192,11 @@ mechanism to `serverless`.
 
 #### Tasks
 
-- [ ] `main.tf`: `data.terraform_remote_state.vpc` (`backend = "s3"`,
+- [x] `main.tf`: `data.terraform_remote_state.vpc` (`backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`; consumes `vpc_id`
       + `private_subnet_ids`).
-- [ ] `locals.tf`:
+- [x] `locals.tf`:
   - `kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))`.
   - `parameter_family_map` for the Aurora engines, seeded to match the shipped
     `serverless` module post-PR-#32 (Q2): `aurora-postgresql:18/17/16` +
@@ -223,10 +223,10 @@ Verbatim from `serverless`, alias renamed to `-rds-cluster`.
 
 #### Tasks
 
-- [ ] `kms.tf`: `aws_kms_key.this` (`count = var.kms_key_arn == null ? 1 : 0`,
+- [x] `kms.tf`: `aws_kms_key.this` (`count = var.kms_key_arn == null ? 1 : 0`,
       rotation, 30-day window, `prevent_destroy`, description names the cluster)
       + `aws_kms_alias.this` (same gate, `name = local.kms_alias_name`).
-- [ ] Verify `local.kms_key_arn` resolves in both modes.
+- [x] Verify `local.kms_key_arn` resolves in both modes.
 
 #### Success Criteria
 
@@ -241,7 +241,7 @@ Verbatim from `serverless`; name suffix `-rds-cluster`.
 
 #### Tasks
 
-- [ ] `network.tf`: `aws_db_subnet_group.this` (over `private_subnet_ids`);
+- [x] `network.tf`: `aws_db_subnet_group.this` (over `private_subnet_ids`);
       `aws_security_group.this` (in `vpc_id`); one
       `aws_vpc_security_group_ingress_rule.consumer` per
       `var.allowed_consumer_sg_ids` on `local.engine_default_port`; one
@@ -262,12 +262,12 @@ Aurora needs both an `aws_rds_cluster_parameter_group` and an
 
 #### Tasks
 
-- [ ] `parameter_groups.tf`: `aws_rds_cluster_parameter_group.this`
+- [x] `parameter_groups.tf`: `aws_rds_cluster_parameter_group.this`
       (`name_prefix = "${var.identifier_prefix}-cluster-"`,
       `create_before_destroy`) + `aws_db_parameter_group.this`
       (`name_prefix = "${var.identifier_prefix}-instance-"`,
       `create_before_destroy`), both `family = local.resolved_parameter_family`.
-- [ ] No custom `parameter` blocks in v1 (operators repoint
+- [x] No custom `parameter` blocks in v1 (operators repoint
       `var.parameter_family`).
 
 #### Success Criteria
@@ -287,7 +287,7 @@ surface (`storage_type`, `backtrack_window`, `enabled_cloudwatch_logs_exports`).
 
 #### Tasks
 
-- [ ] `cluster.tf`: `aws_rds_cluster.this` (alphabetical attribute order):
+- [x] `cluster.tf`: `aws_rds_cluster.this` (alphabetical attribute order):
   - `cluster_identifier = var.identifier_prefix`, `database_name`, `engine`,
     `engine_mode = "provisioned"`, `engine_version` (null OK).
   - `db_cluster_parameter_group_name`, `db_subnet_group_name`,
@@ -302,7 +302,7 @@ surface (`storage_type`, `backtrack_window`, `enabled_cloudwatch_logs_exports`).
   - `storage_type` (Q3-design), `enabled_cloudwatch_logs_exports` (Q6-design),
     `backtrack_window` (Q4-design).
   - **No** `serverlessv2_scaling_configuration`, **no** `min_acu` / `max_acu`.
-- [ ] `lifecycle.precondition`s on `aws_rds_cluster.this`:
+- [x] `lifecycle.precondition`s on `aws_rds_cluster.this`:
       `local.resolved_parameter_family != null`; `var.skip_final_snapshot ||
       var.final_snapshot_identifier != null`; **the Backtrack guard (Q3):**
       `var.backtrack_window == 0 || var.engine == "aurora-mysql"`.
@@ -325,7 +325,7 @@ Exactly one `aws_rds_cluster_instance.writer` with a **real** `instance_class`
 
 #### Tasks
 
-- [ ] `instance.tf`: `aws_rds_cluster_instance.writer`:
+- [x] `instance.tf`: `aws_rds_cluster_instance.writer`:
   - `cluster_identifier = aws_rds_cluster.this.id`,
     `identifier = "${var.identifier_prefix}-1"` (Q7 — `-1` suffix leaves room
     for `read-replica`'s `-replica-<key>` naming).
@@ -358,20 +358,20 @@ consumers.
 
 #### Tasks
 
-- [ ] `outputs.tf` (each with a `description`): `cluster_identifier`,
+- [x] `outputs.tf` (each with a `description`): `cluster_identifier`,
       `cluster_resource_id`, `cluster_endpoint`, `reader_endpoint`, `port`,
       `engine`, `engine_version_actual`, `db_subnet_group_name`,
       `security_group_id`, `kms_key_arn`, `master_user_secret_arn`,
       `db_cluster_parameter_group_name`, `db_parameter_group_name`,
       `cluster_instance_identifier`.
-- [ ] The proxy-composition set (same null-safe expressions as `serverless`):
+- [x] The proxy-composition set (same null-safe expressions as `serverless`):
       `db_subnet_ids`, `vpc_id`, `master_user_secret_kms_key_arn`,
       `iam_database_authentication_enabled`.
-- [ ] Cross-check the `read-replica` consumer set (`cluster_identifier`,
+- [x] Cross-check the `read-replica` consumer set (`cluster_identifier`,
       `cluster_resource_id`, `engine`, `engine_version_actual`,
       `db_subnet_group_name`, `db_parameter_group_name`) is all present — these
       are IMPL-0013's hard dependency.
-- [ ] Regenerate `USAGE.md`.
+- [x] Regenerate `USAGE.md`.
 
 #### Success Criteria
 
@@ -388,23 +388,23 @@ BYO KMS in the shared `variables{}`.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl` — one run per engine (`aurora-postgresql` +
+- [x] `tests/default.tftest.hcl` — one run per engine (`aurora-postgresql` +
       `aurora-mysql`): engine, `engine_mode = "provisioned"`, **no** serverless
       scaling block (`length(serverlessv2_scaling_configuration) == 0`),
       `instance_class` is the real class, `storage_encrypted`,
       `deletion_protection`, `manage_master_user_password`, parameter-family
       resolution, and the four proxy-composition outputs.
-- [ ] `tests/kms.tftest.hcl` — managed-KMS count + BYO-KMS.
-- [ ] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
+- [x] `tests/kms.tftest.hcl` — managed-KMS count + BYO-KMS.
+- [x] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
       family; explicit override wins.
-- [ ] `tests/sg_ingress.tftest.hcl` — 2 / 0 / mysql-port ingress shapes.
-- [ ] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
+- [x] `tests/sg_ingress.tftest.hcl` — 2 / 0 / mysql-port ingress shapes.
+- [x] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
       (`postgres`), bad `engine_version`, bad `backup_retention_period`,
       snapshot-required precondition, bad `identifier_prefix`,
       monitoring-role-required precondition, **Backtrack-on-postgres**
       precondition (`backtrack_window > 0` + `aurora-postgresql`), bad
       `storage_type`.
-- [ ] All files open with the fake `provider "aws"` block.
+- [x] All files open with the fake `provider "aws"` block.
 
 #### Success Criteria
 
@@ -426,16 +426,16 @@ justfile recipe already exists (IMPL-0010) — no justfile change needed.
 
 #### Tasks
 
-- [ ] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
+- [x] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
       plan-only smoke (VPC stubbed via `override_data`; no cluster apply).
-- [ ] `tests-localstack-pro/fixtures/setup/main.tf` — VPC + 3 private subnets +
+- [x] `tests-localstack-pro/fixtures/setup/main.tf` — VPC + 3 private subnets +
       S3 bucket with a stub VPC state file (sibling fixture shape).
-- [ ] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"`;
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"`;
       `run "apply_default"` (`aurora-postgresql`) provisioning the full
       provisioned cluster + writer (pin `engine_version` if PG 18 is newer than
       the LocalStack image); `run "plan_mysql"` (`aurora-mysql`) plan-only.
-- [ ] Confirm the `_tf-test-localstack-pro` recipe scans `rds/cluster`.
-- [ ] `tests-localstack/FINDINGS.md` — coverage matrix, the Pro requirement +
+- [x] Confirm the `_tf-test-localstack-pro` recipe scans `rds/cluster`.
+- [x] `tests-localstack/FINDINGS.md` — coverage matrix, the Pro requirement +
       the two-tier layout + recipe gate, the macOS named-volume caveat
       (embedded Postgres). Cross-reference the `serverless` + `proxy` FINDINGS.
 
@@ -455,18 +455,18 @@ justfile recipe already exists (IMPL-0010) — no justfile change needed.
 
 #### Tasks
 
-- [ ] Author `modules/rds/cluster/README.md`: prerequisites, minimal Postgres /
+- [x] Author `modules/rds/cluster/README.md`: prerequisites, minimal Postgres /
       MySQL / BYO-KMS / I/O-Optimized (`storage_type`) examples, post-apply
       smoke recipe, operational gotchas (`deletion_protection`, KMS
       `prevent_destroy`, engine-major upgrade), **a "scaling out" pointer to
       `read-replica` (IMPL-0013)** with the composition state key.
-- [ ] Regenerate `USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/cluster` to the §Repository purpose
+- [x] Regenerate `USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/cluster` to the §Repository purpose
       `rds` inventory + a shape line (source-of-truth for read-replica; valid
       `aurora-cluster` proxy target); regenerate the README module table.
-- [ ] Mark IMPL-0012 `Completed`, run `docz update`, move DESIGN-0013 to
+- [x] Mark IMPL-0012 `Completed`, run `docz update`, move DESIGN-0013 to
       `Implemented`.
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 
