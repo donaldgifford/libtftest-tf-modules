@@ -296,21 +296,21 @@ surface, so the apply lives in `tests-localstack-pro/` (off by default, run via
 
 #### Tasks
 
-- [ ] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
+- [x] `tests-localstack/plan_smoke.tftest.hcl` — always-on, Community-safe
       plan-only smoke (cluster state stubbed via `override_data`; no apply).
-- [ ] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"` **instantiates
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl`: `run "setup"` **instantiates
       the `modules/rds/cluster` module** (`fixtures/cluster`, Q4-b) **and writes
       a stub cluster state file to S3** at the read-replica's key; `run
       "apply_replicas"` attaches readers and asserts count / identifiers /
       per-reader endpoints.
-- [ ] The `_tf-test-localstack-pro` justfile recipe already exists (added in
+- [x] The `_tf-test-localstack-pro` justfile recipe already exists (added in
       IMPL-0010) — no justfile change needed; confirm it scans
       `rds/read-replica`.
-- [ ] `tests-localstack-pro/fixtures/cluster/` — a
+- [x] `tests-localstack-pro/fixtures/cluster/` — a
       `module "cluster" { source = "…/cluster" … }` instantiation (the real
       `modules/rds/cluster` module via a relative `source`) that the readers
       attach to (Q4-b).
-- [ ] `tests-localstack/FINDINGS.md` — the Pro requirement (Aurora + cross-state
+- [x] `tests-localstack/FINDINGS.md` — the Pro requirement (Aurora + cross-state
       bridge), the two-tier layout + recipe gate, the `override_data` limitation
       that forces the S3-object bridge, the macOS named-volume caveat.
 
