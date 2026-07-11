@@ -196,7 +196,7 @@ per-reader optional settings and the stale-state precondition (Q7-design).
 
 #### Tasks
 
-- [ ] `replicas.tf`: `aws_rds_cluster_instance.replica` with `for_each =
+- [x] `replicas.tf`: `aws_rds_cluster_instance.replica` with `for_each =
       var.replicas`:
   - `cluster_identifier = local.cluster_identifier`,
     `identifier = "${var.identifier_prefix}-replica-${each.key}"`.
@@ -213,7 +213,7 @@ per-reader optional settings and the stale-state precondition (Q7-design).
   - Optional per-reader settings (all defaulted):
     `performance_insights_enabled`, `monitoring_interval` +
     `monitoring_role_arn`, `auto_minor_version_upgrade`.
-- [ ] `lifecycle.precondition`s on `aws_rds_cluster_instance.replica`:
+- [x] `lifecycle.precondition`s on `aws_rds_cluster_instance.replica`:
   - **Stale/wrong cluster state (Q7-design):** `local.cluster_identifier !=
     null`, with a message naming the expected state key.
   - **Per-reader enhanced monitoring (Q4-design):** for any reader with
