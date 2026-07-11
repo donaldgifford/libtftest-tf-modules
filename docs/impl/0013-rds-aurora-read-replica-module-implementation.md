@@ -258,22 +258,22 @@ stubbed via `override_data` (Q2) — no S3 backend, runs in seconds.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl` — `override_data` supplies the cluster outputs
+- [x] `tests/default.tftest.hcl` — `override_data` supplies the cluster outputs
       (`cluster_identifier`, `engine`, `engine_version_actual`, subnet-group,
       parameter-group). Runs:
   - single-reader map (1 instance, name `…-replica-<key>`, engine inherited);
   - three-reader map (3 instances, distinct keys, per-reader `instance_class` /
     AZ / `promotion_tier` plumb through);
   - empty map `{}` → zero instances.
-- [ ] `tests/key_stability.tftest.hcl` — removing a middle key doesn't renumber
+- [x] `tests/key_stability.tftest.hcl` — removing a middle key doesn't renumber
       others (assert identifiers by key).
-- [ ] `tests/validation.tftest.hcl` with `expect_failures`: bad
+- [x] `tests/validation.tftest.hcl` with `expect_failures`: bad
       `identifier_prefix`, bad `cluster_identifier`, out-of-range
       `promotion_tier`, a reader with `monitoring_interval > 0` +
       `monitoring_role_arn = null` (the Q4 precondition), and the **Q7
       stale-state precondition** via `override_data` supplying a null
       `cluster_identifier`.
-- [ ] All files open with the fake `provider "aws"` block.
+- [x] All files open with the fake `provider "aws"` block.
 
 #### Success Criteria
 
