@@ -133,26 +133,26 @@ pointer surface + the `replicas` map. No resources yet.
 
 #### Tasks
 
-- [ ] Create `modules/rds/read-replica/`; copy `.terraform-docs.yml` /
+- [x] Create `modules/rds/read-replica/`; copy `.terraform-docs.yml` /
       `.tflint.hcl` verbatim from `modules/rds/proxy/`.
-- [ ] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] `variables.tf` per DESIGN-0014 §Input surface. **Required**: `region`,
+- [x] `versions.tf`: `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] `variables.tf` per DESIGN-0014 §Input surface. **Required**: `region`,
       `remote_state_bucket`, `cluster_identifier`, `identifier_prefix`,
       `replicas` (map(object) — empty map = zero readers). **Optional**:
       `apply_immediately` (false), `tags` (`{}`). The DB-derived values
       (engine, subnet group, parameter group, SG, KMS) are **not inputs** —
       read from remote state.
-- [ ] Author the **hybrid `replicas` object** (Q4): required `instance_class`;
+- [x] Author the **hybrid `replicas` object** (Q4): required `instance_class`;
       optional `availability_zone`, `promotion_tier` (default 15),
       `performance_insights_enabled` (default false), `monitoring_interval`
       (default 0), `monitoring_role_arn`, `auto_minor_version_upgrade`
       (default true), `publicly_accessible` (default false). `nullable = false`.
-- [ ] Single-variable validations: `identifier_prefix` +
+- [x] Single-variable validations: `identifier_prefix` +
       `cluster_identifier` (RDS-identifier regex
       `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`); each `replicas` **key** identifier-safe
       (Q7); each `promotion_tier` in `[0,15]`; each `monitoring_interval` in
       `{0,1,5,10,15,30,60}`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf`; `README.md` stub.
 
 #### Success Criteria
 
