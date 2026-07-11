@@ -17,10 +17,9 @@ Tracked in git. As of this writing:
   DESIGN-0006 surfaced a second ECR module). `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
-  v2 for Postgres + MySQL per DESIGN-0007). Three siblings still to ship per
-  DESIGN-0007 rollout: `instance` (single `aws_db_instance`), `read-replica`
-  (additional `aws_rds_cluster_instance`s composed via cluster module's remote
-  state). `cluster` (IMPL-0012, implemented — Aurora **provisioned**
+  v2 for Postgres + MySQL per DESIGN-0007). One sibling still to ship per
+  DESIGN-0007 rollout: `instance` (single `aws_db_instance`). `cluster`
+  (IMPL-0012, implemented — Aurora **provisioned**
   single-writer cluster for Postgres + MySQL per DESIGN-0013). It is the
   `serverless` module with two edits: no `serverlessv2_scaling_configuration`
   block (and no `min_acu`/`max_acu`) and a concrete `var.instance_class` in
@@ -40,7 +39,24 @@ Tracked in git. As of this writing:
   test-localstack-pro rds/cluster`; same macOS named-volume + `engine_version=16`
   caveats as `serverless`/`proxy` — live Pro apply **run and passing, 3/3
   against LocalStack Pro 2026.6.2** via a direct `docker run` named volume, since
-  `lstk` only does host bind mounts). `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
+  `lstk` only does host bind mounts). `read-replica` (IMPL-0013, implemented —
+  one or more Aurora reader instances (`aws_rds_cluster_instance`) attached to an
+  existing `cluster` per DESIGN-0014). Structurally a fork of `proxy`: a **pure
+  cluster remote-state consumer** (owns no cluster/subnet-group/SG/KMS) with a
+  tiny pointer surface + a `for_each` over a typed hybrid `replicas` map(object)
+  (required `instance_class`; optional `availability_zone`, `promotion_tier`
+  default 15, PI, monitoring, etc.). engine/version/subnet-group/parameter-group
+  inherited from the cluster's remote state (drift-proof, Q5); 3 preconditions
+  (stale-state, composed-identifier ≤63, per-reader monitoring role). Emits
+  per-reader `replica_identifiers` + `replica_endpoints` maps (the cluster's
+  `reader_endpoint` stays the load-balanced entry). **Test divergence (Q3, same
+  Pro-gated split as `proxy`/`cluster`):** plan-only `tests/` (11 runs) is the
+  gate, `tests-localstack/` a Community `plan_smoke` (offline), and the Pro apply
+  in `tests-localstack-pro/` (off by default, `just tf test-localstack-pro
+  rds/read-replica`) bridges real cluster state through an S3 object — its
+  `fixtures/cluster` instantiates the **actual `cluster` module** (Q4-b) with a
+  `depends_on` on the module to defer its VPC-state read. Live Pro apply **run
+  and passing, 2/2 against LocalStack Pro 2026.6.2** (named volume). `proxy` (IMPL-0010, implemented — Amazon RDS Proxy in front of any data-tier
   target per DESIGN-0010 / RFC-0002). Composes via the target's remote state
   (ADR-0001, `var.target_type` ∈ {rds-instance, aurora-cluster, serverless}),
   reuses the AWS-managed master secret (IAM role least-privilege

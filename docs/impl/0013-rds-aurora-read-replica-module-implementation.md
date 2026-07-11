@@ -1,7 +1,7 @@
 ---
 id: IMPL-0013
 title: "RDS Aurora read-replica module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # IMPL 0013: RDS Aurora read-replica module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
@@ -329,22 +329,22 @@ surface, so the apply lives in `tests-localstack-pro/` (off by default, run via
 
 #### Tasks
 
-- [ ] Author `modules/rds/read-replica/README.md`: overview + DESIGN-0014 link;
+- [x] Author `modules/rds/read-replica/README.md`: overview + DESIGN-0014 link;
       the composition prerequisite (a `cluster` provisioned by IMPL-0012 with
       state at `${region}/rds/cluster/${id}/terraform.tfstate`); a
       single-reader + a three-reader `replicas` example; the note that a
       cluster destroy/recreate changes `cluster_resource_id` and forces reader
       replacement (Q7-design c); operational gotchas; tests + the Pro-tier note.
-- [ ] Regenerate `USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/read-replica` to the §Repository
+- [x] Regenerate `USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/read-replica` to the §Repository
       purpose `rds` inventory + a shape line (pure cluster remote-state
       consumer; Pro-gated apply divergence like `proxy`); regenerate the README
       module table.
-- [ ] Mark IMPL-0013 `Completed`, run `docz update`, move DESIGN-0014 to
+- [x] Mark IMPL-0013 `Completed`, run `docz update`, move DESIGN-0014 to
       `Implemented`.
-- [ ] Add the "scaling out" back-pointer from the `cluster` module's README
+- [x] Add the "scaling out" back-pointer from the `cluster` module's README
       (if not already added at IMPL-0012 closeout).
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 

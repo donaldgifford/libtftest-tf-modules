@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0014
 title: "RDS Aurora read-replica module"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # DESIGN 0014: RDS Aurora read-replica module
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
