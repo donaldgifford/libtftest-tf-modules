@@ -43,7 +43,7 @@ created: 2026-07-09
   - [Phase 8: Plan-only terraform test suite](#phase-8-plan-only-terraform-test-suite)
     - [Tasks](#tasks-7)
     - [Success Criteria](#success-criteria-7)
-  - [Phase 9: tests-localstack apply suite and FINDINGS](#phase-9-tests-localstack-apply-suite-and-findings)
+  - [Phase 9: LocalStack suites — Community plan smoke and Pro apply](#phase-9-localstack-suites--community-plan-smoke-and-pro-apply)
     - [Tasks](#tasks-8)
     - [Success Criteria](#success-criteria-8)
   - [Phase 10: README, USAGE, CLAUDE.md, and docz closeout](#phase-10-readme-usage-claudemd-and-docz-closeout)
@@ -57,7 +57,7 @@ created: 2026-07-09
   - [Q2 — Stubbing VPC remote state and KMS in plan-only tests — RESOLVED (a)](#q2--stubbing-vpc-remote-state-and-kms-in-plan-only-tests--resolved-a)
   - [Q3 — Storage-autoscaling drift handling — RESOLVED (a)](#q3--storage-autoscaling-drift-handling--resolved-a)
   - [Q4 — Exposing storage throughput in v1 — RESOLVED (a)](#q4--exposing-storage-throughput-in-v1--resolved-a)
-  - [Q5 — Apply-suite LocalStack tier — RESOLVED (a)](#q5--apply-suite-localstack-tier--resolved-a)
+  - [Q5 — Apply-suite LocalStack tier — RESOLVED (b)](#q5--apply-suite-localstack-tier--resolved-b)
   - [Q6 — MySQL coverage layout — RESOLVED (a)](#q6--mysql-coverage-layout--resolved-a)
   - [Q7 — Custom parameter blocks in the DB parameter group — RESOLVED (a)](#q7--custom-parameter-blocks-in-the-db-parameter-group--resolved-a)
 - [References](#references)
@@ -79,7 +79,7 @@ DESIGN-0007 rollout — after `serverless`, independent of `cluster` /
 
 **Implements:**
 [DESIGN-0012](../design/0012-rds-instance-module-single-awsdbinstance.md) (all
-eight open questions resolved: Q1a, Q2a, Q3a, Q4a, Q5a, Q6a, Q7a, Q8b), the
+eight open questions resolved: Q1a, Q2a, Q3a, Q4a, Q5b, Q6a, Q7a, Q8b), the
 `instance` slot of
 [DESIGN-0007](../design/0007-rds-module-layout-instance-aurora-cluster-aurora-read-replica.md).
 
@@ -102,8 +102,9 @@ eight open questions resolved: Q1a, Q2a, Q3a, Q4a, Q5a, Q6a, Q7a, Q8b), the
   `master_user_secret_kms_key_arn`, `security_group_id`, `db_subnet_ids`,
   `vpc_id`, `engine`, `iam_database_authentication_enabled`) plus the
   instance-shaped consumer contract.
-- Plan-only `terraform test` suite (the gate) + a `tests-localstack/` apply
-  suite (Community default, tier-agnostic — no `tests-localstack-pro/`).
+- Plan-only `terraform test` suite (the gate) + the sibling three-tier
+  LocalStack split (Q5=b): Community `plan_smoke` in `tests-localstack/`, real
+  apply in `tests-localstack-pro/` (off by default).
 - Module README, generated `USAGE.md`, `CLAUDE.md` inventory update, docz
   closeout.
 
@@ -446,36 +447,51 @@ shared `variables{}` so `local.kms_key_arn` is plan-known.
 
 ---
 
-### Phase 9: tests-localstack apply suite and FINDINGS
+### Phase 9: LocalStack suites — Community plan smoke and Pro apply
 
-Opt-in apply suite per RFC-0001. `aws_db_instance` is broadly supported on
-LocalStack Community, so this is **tier-agnostic — no `tests-localstack-pro/`**
-(Q5). Any 501 follows the IMPL-0005 Phase 9 fall-back.
+Two opt-in LocalStack suites per RFC-0001, matching the `proxy` / `cluster` /
+`read-replica` three-tier split (Q5=b). A plain `aws_db_instance` is *feature*-
+supported on both tiers, but there is **no token-free Community LocalStack**
+(the unified 2026.6.x image exits 55 without an auth token, verified
+2026-07-11), and on the Pro container an instance apply boots a **real embedded
+Postgres** → the macOS named-volume `initdb` caveat. So the default
+`tests-localstack/` suite stays **plan-only** (`plan_smoke`, tier-agnostic —
+plan boots no engine) and the real apply is Pro-gated in `tests-localstack-pro/`
+(off by default).
 
 #### Tasks
 
 - [ ] `tests-localstack/fixtures/setup/main.tf` — VPC + 3 private subnets across
       3 AZs + an S3 bucket holding a stub VPC state file at
       `<region>/vpc/<vpc_name>/terraform.tfstate` (sibling fixture shape).
-- [ ] `tests-localstack/apply_localstack.tftest.hcl`:
+- [ ] `tests-localstack/plan_smoke.tftest.hcl`:
   - `run "setup"` — apply the VPC fixture.
-  - `run "apply_default"` (`engine = "postgres"`) — apply the full
-    single-instance stack. If `CreateDBInstance` 501s, follow the IMPL-0005
-    fall-back (comment the apply, keep a `plan_smoke`, record in FINDINGS).
-    Pin `engine_version` if PG 18 is newer than the LocalStack image's catalog
-    (the serverless pattern).
+  - `run "plan_smoke"` (`engine = "postgres"`) — plan-only over the full
+    single-instance stack against the VPC remote state. No `aws_db_instance`
+    apply (no engine boot → safe on any tier / any token). Community-verified
+    offline like the sibling `plan_smoke` suites.
   - `run "plan_mysql"` (`engine = "mysql"`) — plan-only second-engine coverage.
+- [ ] `tests-localstack-pro/apply_pro.tftest.hcl` (off by default; run via
+      `just tf test-localstack-pro rds/instance`):
+  - `run "setup"` — apply the VPC fixture.
+  - `run "apply_default"` (`engine = "postgres"`) — apply the full single-
+    instance stack. **Pin `engine_version = "16"`** — LocalStack Pro 2026.6.x
+    does not carry PG 18/17 in its catalog (empirically required for
+    `cluster` / `read-replica`; `default_major_map` stays `postgres → 18` as the
+    module default, only the fixture pins 16).
 - [ ] `tests-localstack/FINDINGS.md` — the RDS-instance coverage matrix
-      (Community + any Pro run), the Q3 storage-autoscaling drift finding, the
-      macOS named-volume caveat (embedded Postgres `initdb` needs a Docker
-      named volume, not the `lstk` bind mount).
+      (Community `plan_smoke` + the Pro apply run), the Q3 storage-autoscaling
+      drift finding, and the macOS named-volume caveat (embedded Postgres
+      `initdb` needs a Docker named volume, not the `lstk` bind mount — launch
+      LocalStack Pro directly for the `test-localstack-pro` run).
 
 #### Success Criteria
 
-- `just tf test-localstack rds/instance` passes a full `apply_default` (best
-  case) or a `plan_smoke` fall-back with the gap recorded in `FINDINGS.md`.
-- `FINDINGS.md` documents the observed tier(s) + the Q3 outcome.
-- Wall-clock < 90s.
+- `just tf test-localstack rds/instance` passes the `plan_smoke` + `plan_mysql`
+  runs (no apply, tier-agnostic), wall-clock < 90s.
+- `just tf test-localstack-pro rds/instance` passes a full `apply_default`
+  against LocalStack Pro (named volume), recorded in `FINDINGS.md`.
+- `FINDINGS.md` documents both suites' observed tiers + the Q3 outcome.
 
 ---
 
@@ -492,7 +508,13 @@ LocalStack Community, so this is **tier-agnostic — no `tests-localstack-pro/`*
 - [ ] Regenerate `USAGE.md`.
 - [ ] Update `CLAUDE.md`: add `modules/rds/instance` to the §Repository purpose
       `rds` inventory + a shape line (note it's a valid `rds-instance` proxy
-      target); regenerate the README module table (`just readme` if wired).
+      target). `instance` is the **last** DESIGN-0007 module, so flip the
+      inventory framing from "One sibling still to ship: `instance`" to
+      **DESIGN-0007 rollout complete** — `serverless` + `cluster` +
+      `read-replica` + `proxy` + `instance` all implemented. Note the module's
+      three-tier test split (Q5=b: plan-only `tests/`, Community `plan_smoke` in
+      `tests-localstack/`, Pro apply in `tests-localstack-pro/`) mirrors its
+      siblings. Regenerate the README module table (`just readme` if wired).
 - [ ] Mark IMPL-0011 `Completed` (frontmatter + body), run `docz update`, move
       DESIGN-0012 to `Implemented`.
 - [ ] `just docs lint` clean for the new docs.
@@ -523,7 +545,8 @@ LocalStack Community, so this is **tier-agnostic — no `tests-localstack-pro/`*
 | `modules/rds/instance/README.md` | Create | operator doc |
 | `modules/rds/instance/USAGE.md` | Create | terraform-docs generated |
 | `modules/rds/instance/tests/*.tftest.hcl` | Create | plan-only suite (~6 files) |
-| `modules/rds/instance/tests-localstack/*` | Create | apply suite + fixture + FINDINGS |
+| `modules/rds/instance/tests-localstack/*` | Create | Community `plan_smoke` + VPC fixture + FINDINGS |
+| `modules/rds/instance/tests-localstack-pro/*` | Create | Pro apply suite (off by default, `engine_version=16`, named volume) |
 | `CLAUDE.md` | Modify | add `modules/rds/instance` inventory + shape |
 | `README.md` | Modify | module table regen |
 | `docs/impl/README.md` | Modify | docz regen |
@@ -534,8 +557,10 @@ LocalStack Community, so this is **tier-agnostic — no `tests-localstack-pro/`*
 - **Plan-only `terraform test` (`tests/`)** — the gate (Phase 8): both engines,
   BYO + managed KMS, SG ingress shapes, storage autoscaling, parameter-family
   resolution, all validation negatives. Remote state stubbed via `override_data`.
-- **`tests-localstack/` apply suite** — Community-default, tier-agnostic
-  (Phase 9); IMPL-0005 fall-back to `plan_smoke` if `aws_db_instance` 501s.
+- **`tests-localstack/` `plan_smoke` + `tests-localstack-pro/` apply** (Phase 9,
+  Q5=b) — the sibling three-tier split: plan-only smoke in `tests-localstack/`
+  (tier-agnostic, boots no engine), the real embedded-Postgres apply Pro-gated
+  in `tests-localstack-pro/` (off by default, macOS named volume).
 - **No libtftest Go suite** — per ADR-0013; post-apply runtime invariants
   (`pg_isready` / `mysqladmin ping`, secret rotation, IAM-auth token) are
   RFC-0001 §Phase 3 backlog.
@@ -551,12 +576,16 @@ LocalStack Community, so this is **tier-agnostic — no `tests-localstack-pro/`*
 - `hashicorp/aws ~> 6.2` (fleet pin) — `aws_db_instance` and friends available.
 - **Not blocked by** `cluster` / `read-replica` — `instance` is independent in
   the DESIGN-0007 rollout.
-- **LocalStack** (Community sufficient) for the Phase 9 apply probe.
+- **LocalStack** — the Community `plan_smoke` in `tests-localstack/` needs only
+  a plan (any tier); the `tests-localstack-pro/` apply needs LocalStack **Pro** +
+  a Docker named volume. Note there is no token-free Community image in 2026.6.x
+  (the unified image exits 55 without an auth token).
 
 ## Open Questions
 
 Implementation-level decisions the design left open. All seven were resolved
-2026-07-09 (all **a**). Each heading records the chosen option; the
+2026-07-09 (Q5 was re-resolved to **b** on 2026-07-12 — see its heading); the
+rest are **a**. Each heading records the chosen option; the
 **Resolved** line states the decision, and the alternatives are retained for
 the record.
 
@@ -641,20 +670,50 @@ design lists it; do we wire it in v1?
   consumer needs it. Smaller surface, but a near-certain fast-follow.
 - **other:** ______
 
-### Q5 — Apply-suite LocalStack tier — RESOLVED (a)
+### Q5 — Apply-suite LocalStack tier — RESOLVED (b)
 
-**Resolved: a.** A single `tests-localstack/` suite, Community default (no
-`tests-localstack-pro/`); probe at first run and apply the IMPL-0005 fall-back
-if any API 501s, recording the tier in `FINDINGS.md`.
+**Resolved: b (re-resolved 2026-07-12; was a).** Adopt the three-tier layout of
+the shipped siblings (`proxy` / `cluster` / `read-replica`): plan-only `tests/`
+gate, a **Community-safe `plan_smoke`** in `tests-localstack/`, and the real
+apply in **`tests-localstack-pro/`** (off by default, `just tf
+test-localstack-pro rds/instance`).
+
+**Why the original (a) no longer holds.** The premise of (a) — "`aws_db_instance`
+is baseline RDS, so a Community-default apply is tier-agnostic" — is true at the
+*feature* level but not runnable as written in this fleet's test env:
+
+1. **There is no token-free Community LocalStack anymore.** As of the unified
+   image (verified 2026-07-11 against `localstack/localstack:stable` = 2026.6.2
+   and `:latest`), the container **exits 55 — "License activation failed! No
+   credentials were found"** without a `LOCALSTACK_AUTH_TOKEN`. The only
+   LocalStack you can boot here is the Pro one (via the `lstk` token). So the
+   default `just tf test-localstack rds/instance` runs against **Pro**.
+2. **On Pro, a plain `aws_db_instance` apply boots a real embedded Postgres**
+   (not a mock), so it hits the **macOS named-volume `initdb` caveat** — exactly
+   like `serverless` / `cluster` / `read-replica`. An unguarded apply in the
+   default `tests-localstack/` suite would fail `initdb` on macOS unless launched
+   with the Docker named-volume workaround.
+
+Baseline RDS *would* mock cleanly under a genuine Community-tier token (no
+engine, no caveat), which is why (a) was originally chosen — but that path is not
+reachable in this env, and diverging from the three siblings' topology costs
+operator muscle-memory for no benefit. The `plan_smoke` in `tests-localstack/`
+stays green regardless of tier (plan boots no engine); the Pro-gated apply is
+where the real embedded-Postgres run + macOS named-volume caveat live.
 
 Where does the apply suite live, and which tier does it target?
 
-- **a (chosen):** A single **`tests-localstack/`** suite, **Community
-  default** (`aws_db_instance` is baseline RDS, broadly supported) — no
-  `tests-localstack-pro/`. Probe at first run; if any API 501s, apply the
-  IMPL-0005 fall-back and record the tier in `FINDINGS.md`.
-- **b:** Add a `tests-localstack-pro/` apply like `proxy` — unwarranted here,
-  since nothing in the single-instance surface is Pro-only.
+- **a (originally chosen, now superseded):** A single **`tests-localstack/`**
+  suite, **Community default** (`aws_db_instance` is baseline RDS, broadly
+  supported) — no `tests-localstack-pro/`. Probe at first run; if any API 501s,
+  apply the IMPL-0005 fall-back and record the tier in `FINDINGS.md`. Superseded
+  because no token-free Community tier exists to run it, and the Pro apply hits
+  the embedded-engine macOS caveat.
+- **b (chosen):** Add a `tests-localstack-pro/` apply like `proxy` / `cluster` /
+  `read-replica`: plan-only `tests/` gate, Community-safe `plan_smoke` in
+  `tests-localstack/`, real apply in `tests-localstack-pro/` (off by default).
+  Consistent with the three shipped siblings; keeps the default `test-localstack`
+  recipe green without the named-volume dance.
 - **other:** ______
 
 ### Q6 — MySQL coverage layout — RESOLVED (a)
