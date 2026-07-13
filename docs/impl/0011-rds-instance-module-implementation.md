@@ -387,11 +387,11 @@ the module is a valid `target_type = "rds-instance"`.
 
 #### Tasks
 
-- [ ] `outputs.tf` (each with a `description`): `instance_identifier`,
+- [x] `outputs.tf` (each with a `description`): `instance_identifier`,
       `endpoint`, `address`, `port`, `engine`, `engine_version_actual`,
       `db_subnet_group_name`, `db_parameter_group_name`, `security_group_id`,
       `kms_key_arn` (= `local.kms_key_arn`).
-- [ ] The proxy-composition set (same names + null-safe expressions as
+- [x] The proxy-composition set (same names + null-safe expressions as
       `serverless`): `master_user_secret_arn` (=
       `try(aws_db_instance.this.master_user_secret[0].secret_arn, null)`),
       `master_user_secret_kms_key_arn` (=
@@ -399,7 +399,7 @@ the module is a valid `target_type = "rds-instance"`.
       `db_subnet_ids` (= `aws_db_subnet_group.this.subnet_ids`), `vpc_id`
       (= `aws_security_group.this.vpc_id`),
       `iam_database_authentication_enabled`.
-- [ ] Regenerate `USAGE.md` (`just tf docs rds/instance`).
+- [x] Regenerate `USAGE.md` (`just tf docs rds/instance`).
 
 #### Success Criteria
 

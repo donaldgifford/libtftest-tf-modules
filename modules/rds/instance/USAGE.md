@@ -73,5 +73,21 @@ No modules.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| address | Hostname of the instance (the endpoint without the port). Useful when the port is supplied separately. |
+| db\_parameter\_group\_name | Name of the instance parameter group attached to the instance. |
+| db\_subnet\_group\_name | Name of the DB subnet group created for this instance. Read by sibling RDS modules that share the same subnet topology. |
+| db\_subnet\_ids | Raw private subnet IDs backing the DB subnet group. The RDS Proxy module reads these for aws\_db\_proxy.vpc\_subnet\_ids (the proxy must live in the same subnets as its target). |
+| endpoint | Connection endpoint in address:port form. Applications connect here for read+write workloads. |
+| engine | Instance engine (postgres or mysql) — passthrough so downstream modules don't need to refer back to their own var.engine. Read by the RDS Proxy module to derive engine\_family + port. |
+| engine\_version\_actual | The engine version AWS actually applied. Important when var.engine\_version was null — this output exposes the AWS-default version chosen at apply time. |
+| iam\_database\_authentication\_enabled | Whether IAM database authentication is enabled on the instance. The RDS Proxy module reads this so its V4 precondition can reject require\_iam\_auth = true against a target that lacks IAM auth. |
+| instance\_identifier | The instance's identifier (var.identifier\_prefix). Used by downstream modules to compose the remote-state key and by the RDS Proxy module as target\_identifier for target\_type = "rds-instance". |
+| kms\_key\_arn | KMS key ARN encrypting instance storage at rest + the master user secret. BYO ARN (when var.kms\_key\_arn was non-null) or module-managed key's ARN — resolved transparently via local.kms\_key\_arn. |
+| master\_user\_secret\_arn | ARN of the AWS-managed Secrets Manager secret holding the master user password. Null when var.manage\_master\_user\_password = false (operators wire their own secret in that opt-out path). Read by the RDS Proxy module to source database credentials. |
+| master\_user\_secret\_kms\_key\_arn | KMS key ID encrypting the AWS-managed master user secret (= local.kms\_key\_arn here). The RDS Proxy module scopes its IAM role's kms:Decrypt to exactly this key. Null when var.manage\_master\_user\_password = false. Distinct from kms\_key\_arn (storage key) by contract, even though this module uses one key for both. |
+| port | TCP port the instance accepts connections on (5432 for postgres, 3306 for mysql, or var.db\_port when overridden). |
+| security\_group\_id | Security group ID of the instance's DB-tier SG. Consumers reference this when they add their own peering ingress rules outside the module's allowed\_consumer\_sg\_ids contract. Also read by the RDS Proxy module. |
+| vpc\_id | VPC ID hosting the instance's DB-tier security group. The RDS Proxy module reads this to place the proxy's own security group in the same VPC. |
 <!-- END_TF_DOCS -->
