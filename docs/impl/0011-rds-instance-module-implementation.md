@@ -203,14 +203,17 @@ engine-port map.
 
 #### Tasks
 
-- [ ] `main.tf`: `data.terraform_remote_state.vpc` — `backend = "s3"`,
+- [x] `main.tf`: `data.terraform_remote_state.vpc` — `backend = "s3"`,
       `use_path_style = true`, key
       `${var.region}/vpc/${var.vpc_name}/terraform.tfstate`. Consumes
       `outputs.vpc_id` and `outputs.private_subnet_ids` (the EKS-cluster
       contract, IMPL-0007 Q1 — NOT `database_subnet_ids`).
-- [ ] `locals.tf`:
+- [x] `locals.tf`:
   - `kms_key_arn = coalesce(var.kms_key_arn, try(aws_kms_key.this[0].arn, null))`
-    (Phase 3 declares the gated key; `try()` keeps this phase plan-valid).
+    (references `aws_kms_key.this` from Phase 3's `kms.tf`). NB: `try()` catches
+    runtime errors only — a reference to a resource not declared *anywhere* in
+    the config fails `terraform validate` statically, so this local and Phase
+    3's `kms.tf` are interdependent and ship in one commit (locals ↔ KMS key).
   - `parameter_family_map` for the non-Aurora engines:
     `{ "postgres:18"="postgres18", "postgres:17"="postgres17",
     "postgres:16"="postgres16", "mysql:8.4"="mysql8.4",
@@ -244,14 +247,14 @@ the caller supplies none; `prevent_destroy` on the managed key.
 
 #### Tasks
 
-- [ ] `kms.tf`:
+- [x] `kms.tf`:
   - `aws_kms_key.this` with `count = var.kms_key_arn == null ? 1 : 0`,
     `enable_key_rotation = true`, `deletion_window_in_days = 30`,
     `description = "KMS key for RDS instance ${var.identifier_prefix} encryption at rest"`,
     `lifecycle { prevent_destroy = true }`, `tags = var.tags`.
   - `aws_kms_alias.this` with the same count gate; `name = local.kms_alias_name`,
     `target_key_id = aws_kms_key.this[0].key_id`.
-- [ ] Verify `local.kms_key_arn` resolves in both modes (BYO literal ARN passes
+- [x] Verify `local.kms_key_arn` resolves in both modes (BYO literal ARN passes
       through; module-managed resolves `aws_kms_key.this[0].arn`).
 
 #### Success Criteria
