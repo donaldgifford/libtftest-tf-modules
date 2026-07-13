@@ -43,7 +43,7 @@ docz create design "Your Design Title"
 | DESIGN-0009 | Claude Code on Bedrock module, tool, and enablement contracts | Draft | 2026-05-31 | Donald Gifford | [0009-claude-code-on-bedrock-module-tool-and-enablement-contracts.md](0009-claude-code-on-bedrock-module-tool-and-enablement-contracts.md) |
 | DESIGN-0010 | RDS Proxy module for the RDS and Aurora data tier | Implemented | 2026-06-29 | Donald Gifford | [0010-rds-proxy-module-for-the-rds-and-aurora-data-tier.md](0010-rds-proxy-module-for-the-rds-and-aurora-data-tier.md) |
 | DESIGN-0011 | Per-module version tagging scheme | Draft | 2026-07-01 | Donald Gifford | [0011-per-module-version-tagging-scheme.md](0011-per-module-version-tagging-scheme.md) |
-| DESIGN-0012 | RDS instance module (single aws_db_instance) | Draft | 2026-07-09 | Donald Gifford | [0012-rds-instance-module-single-awsdbinstance.md](0012-rds-instance-module-single-awsdbinstance.md) |
+| DESIGN-0012 | RDS instance module (single aws_db_instance) | Implemented | 2026-07-09 | Donald Gifford | [0012-rds-instance-module-single-awsdbinstance.md](0012-rds-instance-module-single-awsdbinstance.md) |
 | DESIGN-0013 | RDS Aurora provisioned cluster module | Implemented | 2026-07-09 | Donald Gifford | [0013-rds-aurora-provisioned-cluster-module.md](0013-rds-aurora-provisioned-cluster-module.md) |
 | DESIGN-0014 | RDS Aurora read-replica module | Implemented | 2026-07-09 | Donald Gifford | [0014-rds-aurora-read-replica-module.md](0014-rds-aurora-read-replica-module.md) |
 <!-- END DOCZ AUTO-GENERATED -->

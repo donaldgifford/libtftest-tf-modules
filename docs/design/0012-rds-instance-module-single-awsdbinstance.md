@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0012
 title: "RDS instance module (single aws_db_instance)"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # DESIGN 0012: RDS instance module (single aws_db_instance)
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
