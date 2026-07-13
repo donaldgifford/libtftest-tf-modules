@@ -464,25 +464,33 @@ plan boots no engine) and the real apply is Pro-gated in `tests-localstack-pro/`
 
 #### Tasks
 
-- [ ] `tests-localstack/fixtures/setup/main.tf` — VPC + 3 private subnets across
-      3 AZs + an S3 bucket holding a stub VPC state file at
-      `<region>/vpc/<vpc_name>/terraform.tfstate` (sibling fixture shape).
-- [ ] `tests-localstack/plan_smoke.tftest.hcl`:
-  - `run "setup"` — apply the VPC fixture.
+- [x] `tests-localstack-pro/fixtures/setup/main.tf` — VPC + 3 private subnets
+      across 3 AZs + an S3 bucket holding a stub VPC state file at
+      `<region>/vpc/<vpc_name>/terraform.tfstate` (sibling fixture shape). Lives
+      under `tests-localstack-pro/` because only the Pro apply consumes it — the
+      Community `plan_smoke` stubs the VPC state via `override_data` (matches the
+      `cluster` layout).
+- [x] `tests-localstack/plan_smoke.tftest.hcl`:
   - `run "plan_smoke"` (`engine = "postgres"`) — plan-only over the full
-    single-instance stack against the VPC remote state. No `aws_db_instance`
-    apply (no engine boot → safe on any tier / any token). Community-verified
-    offline like the sibling `plan_smoke` suites.
+    single-instance stack with the VPC remote state stubbed via `override_data`
+    (no `run "setup"`). No `aws_db_instance` apply (no engine boot → safe on any
+    tier / any token). Community-verified offline like the sibling `plan_smoke`
+    suites.
   - `run "plan_mysql"` (`engine = "mysql"`) — plan-only second-engine coverage.
-- [ ] `tests-localstack-pro/apply_pro.tftest.hcl` (off by default; run via
+- [x] `tests-localstack-pro/apply_pro.tftest.hcl` (off by default; run via
       `just tf test-localstack-pro rds/instance`):
-  - `run "setup"` — apply the VPC fixture.
+  - `run "setup"` — apply the VPC fixture module (S3 stub-state bridge).
   - `run "apply_default"` (`engine = "postgres"`) — apply the full single-
     instance stack. **Pin `engine_version = "16"`** — LocalStack Pro 2026.6.x
     does not carry PG 18/17 in its catalog (empirically required for
     `cluster` / `read-replica`; `default_major_map` stays `postgres → 18` as the
-    module default, only the fixture pins 16).
-- [ ] `tests-localstack/FINDINGS.md` — the RDS-instance coverage matrix
+    module default, only the run pins 16). **Set `deletion_protection = false`
+    + `skip_final_snapshot = true`** so `terraform test`'s teardown can
+    `DeleteDBInstance` — LocalStack Pro enforces deletion protection on a
+    standalone `aws_db_instance` (finding in FINDINGS.md).
+  - `run "plan_mysql"` (`engine = "mysql"`) — plan-only second-engine coverage
+    against the Pro endpoints.
+- [x] `tests-localstack/FINDINGS.md` — the RDS-instance coverage matrix
       (Community `plan_smoke` + the Pro apply run), the Q3 storage-autoscaling
       drift finding, and the macOS named-volume caveat (embedded Postgres
       `initdb` needs a Docker named volume, not the `lstk` bind mount — launch
