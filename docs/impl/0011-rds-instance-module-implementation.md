@@ -147,11 +147,11 @@ from `serverless` (Q1).
 
 #### Tasks
 
-- [ ] Create `modules/rds/instance/`; copy `.terraform-docs.yml` and
+- [x] Create `modules/rds/instance/`; copy `.terraform-docs.yml` and
       `.tflint.hcl` verbatim from `modules/rds/serverless/` (per the per-module
       convention in CLAUDE.md).
-- [ ] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
-- [ ] Author `variables.tf` with the DESIGN-0012 §Input surface. **Required**:
+- [x] Author `versions.tf` pinning `hashicorp/aws ~> 6.2`, Terraform `>= 1.1`.
+- [x] Author `variables.tf` with the DESIGN-0012 §Input surface. **Required**:
       `region`, `remote_state_bucket`, `vpc_name`, `identifier_prefix`,
       `engine`, `instance_class`, `allocated_storage` (Q1a — no defaults).
       **Optional** (defaults from the design table): `engine_version` (null),
@@ -170,18 +170,18 @@ from `serverless` (Q1).
       (null), `skip_final_snapshot` (false), `performance_insights_enabled`
       (false), `enhanced_monitoring_interval` (0), `enhanced_monitoring_role_arn`
       (null), `tags` (`{}`).
-- [ ] Each variable carries `description` + `type` + `default` (optional only) +
+- [x] Each variable carries `description` + `type` + `default` (optional only) +
       `nullable` — with `nullable` placed AFTER `validation` per the custom
       tflint attribute-order rule (sibling pattern in
       `modules/rds/serverless/variables.tf`).
-- [ ] Single-variable `validation` blocks for: `engine` (`^(postgres|mysql)$`);
+- [x] Single-variable `validation` blocks for: `engine` (`^(postgres|mysql)$`);
       `engine_version` if non-null (`^(\d+\.\d+|\d+)$`); `identifier_prefix`
       (`^[a-z][a-z0-9-]{0,61}[a-z0-9]$`); `allowed_consumer_sg_ids` (each
       `^sg-[a-f0-9]+$`); `backup_retention_period` in `[1,35]`;
       `allocated_storage >= 20` (AWS floor); `storage_type` in
       `["gp2","gp3","io2"]`; `enhanced_monitoring_interval` in
       `{0,1,5,10,15,30,60}`; `db_port` null or in `[1,65535]`.
-- [ ] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments; create a
+- [x] Stub `main.tf`, `locals.tf`, `outputs.tf` with header comments; create a
       `README.md` stub (one-line pointer to `USAGE.md`).
 
 #### Success Criteria
