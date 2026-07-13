@@ -419,27 +419,27 @@ shared `variables{}` so `local.kms_key_arn` is plan-known.
 
 #### Tasks
 
-- [ ] `tests/default.tftest.hcl` — one run per engine (`postgres` + `mysql`):
+- [x] `tests/default.tftest.hcl` — one run per engine (`postgres` + `mysql`):
       asserts engine, `storage_encrypted = true`, `deletion_protection = true`,
       `multi_az = false`, `storage_type = "gp3"`, `manage_master_user_password
       = true`, `master_username = "admin"`, parameter-family resolution
       (`postgres18` / `mysql8.4`), and the four proxy-composition outputs
       (`vpc_id`, `db_subnet_ids` length/contents,
       `iam_database_authentication_enabled = false`).
-- [ ] `tests/kms.tftest.hcl` — managed-KMS count (`kms_key_arn = null` → 1 key
+- [x] `tests/kms.tftest.hcl` — managed-KMS count (`kms_key_arn = null` → 1 key
       + 1 alias) and BYO-KMS (0 KMS resources; `kms_key_id` = BYO ARN).
-- [ ] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
+- [x] `tests/parameter_family_resolution.tftest.hcl` — engine + version →
       family, and explicit `parameter_family` override wins.
-- [ ] `tests/sg_ingress.tftest.hcl` — 2 consumers → 2 ingress rules; empty → 0;
+- [x] `tests/sg_ingress.tftest.hcl` — 2 consumers → 2 ingress rules; empty → 0;
       `mysql` → port 3306.
-- [ ] `tests/storage_autoscaling.tftest.hcl` — `max_allocated_storage` set →
+- [x] `tests/storage_autoscaling.tftest.hcl` — `max_allocated_storage` set →
       precondition passes and (per Q3 outcome) the chosen drift posture holds;
       inverted (`max < allocated`) → precondition fails.
-- [ ] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
+- [x] `tests/validation.tftest.hcl` with `expect_failures`: bad `engine`
       (`aurora-postgresql`), bad `allocated_storage` (`10`), bad `storage_type`
       (`gp1`), inverted `max_allocated_storage`, snapshot-required precondition,
       bad `identifier_prefix`, monitoring-role-required precondition.
-- [ ] All files open with the fake `provider "aws"` block (four `skip_*` flags).
+- [x] All files open with the fake `provider "aws"` block (four `skip_*` flags).
 
 #### Success Criteria
 
