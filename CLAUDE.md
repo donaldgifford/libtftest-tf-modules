@@ -17,8 +17,28 @@ Tracked in git. As of this writing:
   DESIGN-0006 surfaced a second ECR module). `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
-  v2 for Postgres + MySQL per DESIGN-0007). One sibling still to ship per
-  DESIGN-0007 rollout: `instance` (single `aws_db_instance`). `cluster`
+  v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
+  a single non-clustered `aws_db_instance` for Postgres + MySQL per DESIGN-0012;
+  **completes the DESIGN-0007 rollout** — serverless + cluster + read-replica +
+  proxy + instance all shipped). Forks the `serverless` scaffolding, swapping the
+  Aurora cluster + `db.serverless` for one `aws_db_instance` with the non-Aurora
+  storage surface (`allocated_storage`, `max_allocated_storage` autoscaling [Q3 —
+  no `ignore_changes`; the provider suppresses the `allocated_storage` diff for
+  autoscaling growth while deliberate resizes still apply], `storage_type`
+  gp2/gp3/io2, `iops`, `storage_throughput`, `multi_az`); a single
+  `aws_db_parameter_group` (no cluster group); 5 preconditions (parameter-family,
+  final-snapshot, `max>=allocated`, monitoring-role, io2-requires-iops); uses
+  `aws_db_instance`'s `username` arg (NOT the Aurora `master_username`). Emits the
+  7 proxy-composition outputs so it is a valid `rds-instance` proxy target.
+  **Test divergence (Q5-b, same Pro-gated split as `proxy`/`cluster`/`read-replica`):**
+  plan-only `tests/` (26 runs) is the gate, `tests-localstack/` a Community
+  `plan_smoke` (2 runs, offline-verified), and the Pro apply lives in
+  `tests-localstack-pro/` (off by default, `just tf test-localstack-pro
+  rds/instance`; the apply sets `deletion_protection=false` +
+  `skip_final_snapshot=true` for `terraform test`'s teardown since LocalStack Pro
+  enforces deletion protection on a standalone `aws_db_instance`; `engine_version=16`
+  pin + macOS named-volume caveat, same as siblings) — live Pro apply **run and
+  passing, 3/3 against LocalStack Pro 2026.6.2** (named volume). `cluster`
   (IMPL-0012, implemented — Aurora **provisioned**
   single-writer cluster for Postgres + MySQL per DESIGN-0013). It is the
   `serverless` module with two edits: no `serverlessv2_scaling_configuration`

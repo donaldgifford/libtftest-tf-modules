@@ -1,7 +1,7 @@
 ---
 id: IMPL-0011
 title: "RDS instance module implementation"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-09
 ---
@@ -9,7 +9,7 @@ created: 2026-07-09
 
 # IMPL 0011: RDS instance module implementation
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-09
 
@@ -510,14 +510,14 @@ plan boots no engine) and the real apply is Pro-gated in `tests-localstack-pro/`
 
 #### Tasks
 
-- [ ] Author `modules/rds/instance/README.md`: prerequisites (VPC module +
+- [x] Author `modules/rds/instance/README.md`: prerequisites (VPC module +
       S3 backend), minimal Postgres / minimal MySQL / BYO-KMS / storage-
       autoscaling / IAM-auth examples, post-apply Secrets-Manager + `psql` /
       `mysql` smoke recipe, operational gotchas (`deletion_protection`,
       KMS `prevent_destroy` two-step destroy, engine-major upgrade is
       destructive, the Q3 storage-autoscaling / manual-resize note).
-- [ ] Regenerate `USAGE.md`.
-- [ ] Update `CLAUDE.md`: add `modules/rds/instance` to the §Repository purpose
+- [x] Regenerate `USAGE.md`.
+- [x] Update `CLAUDE.md`: add `modules/rds/instance` to the §Repository purpose
       `rds` inventory + a shape line (note it's a valid `rds-instance` proxy
       target). `instance` is the **last** DESIGN-0007 module, so flip the
       inventory framing from "One sibling still to ship: `instance`" to
@@ -526,9 +526,9 @@ plan boots no engine) and the real apply is Pro-gated in `tests-localstack-pro/`
       three-tier test split (Q5=b: plan-only `tests/`, Community `plan_smoke` in
       `tests-localstack/`, Pro apply in `tests-localstack-pro/`) mirrors its
       siblings. Regenerate the README module table (`just readme` if wired).
-- [ ] Mark IMPL-0011 `Completed` (frontmatter + body), run `docz update`, move
+- [x] Mark IMPL-0011 `Completed` (frontmatter + body), run `docz update`, move
       DESIGN-0012 to `Implemented`.
-- [ ] `just docs lint` clean for the new docs.
+- [x] `just docs lint` clean for the new docs.
 
 #### Success Criteria
 
