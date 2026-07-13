@@ -328,7 +328,7 @@ Resolve the storage-autoscaling drift question (Q3) here.
 
 #### Tasks
 
-- [ ] `instance.tf`: `aws_db_instance.this` (alphabetical attribute order per
+- [x] `instance.tf`: `aws_db_instance.this` (alphabetical attribute order per
       the custom tflint rule):
   - `identifier = var.identifier_prefix`.
   - `engine`, `engine_version` (null OK), `instance_class`.
@@ -352,14 +352,14 @@ Resolve the storage-autoscaling drift question (Q3) here.
     (`var.performance_insights_enabled ? local.kms_key_arn : null`);
     `monitoring_interval = var.enhanced_monitoring_interval`,
     `monitoring_role_arn = var.enhanced_monitoring_role_arn`.
-- [ ] `lifecycle.precondition`s on `aws_db_instance.this`:
+- [x] `lifecycle.precondition`s on `aws_db_instance.this`:
       `local.resolved_parameter_family != null`; `var.skip_final_snapshot ||
       var.final_snapshot_identifier != null`; `var.max_allocated_storage ==
       null || var.max_allocated_storage >= var.allocated_storage`;
       `var.enhanced_monitoring_interval == 0 ||
       var.enhanced_monitoring_role_arn != null`; and (when `storage_type ==
       "io2"`) `var.iops != null`.
-- [ ] **Resolve Q3 (storage-autoscaling drift).** Probe whether the AWS
+- [x] **Resolve Q3 (storage-autoscaling drift).** Probe whether the AWS
       provider suppresses the `allocated_storage` diff once autoscaling has
       grown the volume (expected — the provider has built-in handling when
       `max_allocated_storage` is set). If confirmed, add NO `ignore_changes`;
