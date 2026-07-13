@@ -56,4 +56,9 @@ locals {
   }
 
   engine_default_port = local.engine_default_port_map[var.engine]
+
+  # Resolved listen port: var.db_port override wins, else the engine
+  # default. Used by both the SG ingress rules (Phase 4) and the instance
+  # port (Phase 6) so the two never diverge.
+  resolved_port = coalesce(var.db_port, local.engine_default_port)
 }

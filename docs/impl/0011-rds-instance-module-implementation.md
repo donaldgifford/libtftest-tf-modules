@@ -273,7 +273,7 @@ DB-tier networking, verbatim from `serverless`. Subnet group over
 
 #### Tasks
 
-- [ ] `network.tf`:
+- [x] `network.tf`:
   - `aws_db_subnet_group.this` — `name = "${var.identifier_prefix}-rds-instance"`,
     `subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids`,
     `tags = var.tags`.
