@@ -316,6 +316,15 @@ layer.
 - **Import mode → create-or-adopt** (resource-managed, import-primary) — *not*
   the read-only data-source adapter. *Marked proposed pending confirmation of the
   import specifics below.*
+- **Dogfood the fixtures → yes.** Once `modules/network/vpc` exists (it is the
+  missing dependency those consumers already assume), the ~6
+  `tests-localstack/fixtures/setup/` dirs that currently hand-roll a throwaway
+  VPC should instantiate the real module and publish its state at the
+  `${region}/vpc/${vpc_name}/...` key the module-under-test already reads. This
+  dedups the fixtures and gives the VPC module transitive real-apply coverage
+  through every consumer (the infrastructure-live → infrastructure-modules
+  pattern). Sequencing: land `modules/network/vpc` first, then migrate the
+  fixtures in a follow-up so no consumer test is broken mid-flight.
 
 ### Open questions for the DESIGN doc
 
@@ -327,9 +336,7 @@ layer.
 3. **NAT default:** single shared NAT (recommended — cost) vs one-per-AZ (HA).
 4. **Publish `public_subnet_ids` now?** No consumer reads it yet; recommend
    emitting anyway (additive — future ALB/ingress modules will want it).
-5. **Dogfood:** should this module *replace* the throwaway networking duplicated
-   across the ~6 `tests-localstack/fixtures/setup/` dirs (dedup + real coverage)?
-6. **Read-only adapter as a sibling?** If some environments must *never* let TF
+5. **Read-only adapter as a sibling?** If some environments must *never* let TF
    own the network, a thin `data`-source-only variant could ship later — deferred
    unless requested.
 
