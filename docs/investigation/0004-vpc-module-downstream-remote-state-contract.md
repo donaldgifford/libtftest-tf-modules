@@ -25,7 +25,8 @@ created: 2026-07-14
   - [Finding 3 — the state-key convention is byte-identical everywhere](#finding-3--the-state-key-convention-is-byte-identical-everywhere)
   - [Finding 4 — multi-AZ private subnets are an implicit hard requirement](#finding-4--multi-az-private-subnets-are-an-implicit-hard-requirement)
   - [Finding 5 — fully Community-LocalStack-testable, no Pro tier](#finding-5--fully-community-localstack-testable-no-pro-tier)
-  - [Finding 6 — greenfield: no prior art, established conventions apply](#finding-6--greenfield-no-prior-art-established-conventions-apply)
+  - [Finding 6 — no in-repo prior art; established conventions apply](#finding-6--no-in-repo-prior-art-established-conventions-apply)
+  - [Finding 7 — brownfield-first: the module must adopt an existing VPC via import](#finding-7--brownfield-first-the-module-must-adopt-an-existing-vpc-via-import)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
   - [Proposed module shape](#proposed-module-shape)
@@ -33,6 +34,7 @@ created: 2026-07-14
     - [Resources](#resources)
     - [Outputs](#outputs)
   - [Proposed test surface](#proposed-test-surface)
+  - [Resolved (owner input, 2026-07-14)](#resolved-owner-input-2026-07-14)
   - [Open questions for the DESIGN doc](#open-questions-for-the-design-doc)
   - [Next steps](#next-steps)
 - [References](#references)
@@ -40,12 +42,18 @@ created: 2026-07-14
 
 ## Question
 
-Six in-repo modules read a VPC through S3 remote state, but **no `modules/vpc/`
-producer module exists** — the VPC is only ever stood up as throwaway
-networking inside each module's `tests-localstack/fixtures/setup/`. What is the
-exact **output contract** a first-party VPC module must publish to satisfy those
-consumers, and what **module shape** (inputs, resources, state key, tests) does
-that contract imply?
+Six in-repo modules read a VPC through S3 remote state, but **no VPC producer
+module exists** — the VPC is only ever stood up as throwaway networking inside
+each module's `tests-localstack/fixtures/setup/`. What is the exact **output
+contract** a first-party VPC module must publish to satisfy those consumers, and
+what **module shape** (inputs, resources, state key, tests) does that contract
+imply?
+
+A second, load-bearing constraint (per the module owner): in the real fleet a
+`network/vpc` **already exists** — created by a landing-zone/account-factory,
+click-ops, or legacy Terraform. So the module cannot be create-only; it must be
+able to **adopt an existing VPC via import** and then publish its remote state
+for the downstream consumers. Greenfield create is the secondary path.
 
 ## Hypothesis
 
@@ -174,9 +182,9 @@ gymnastics. The throwaway networking already duplicated across ~6
 `tests-localstack/fixtures/setup/` directories is essentially this module — it
 can be promoted into the real module and dogfooded by those fixtures.
 
-### Finding 6 — greenfield: no prior art, established conventions apply
+### Finding 6 — no in-repo prior art; established conventions apply
 
-There is **no** `modules/vpc/`, and **no** networking ADR/RFC/DESIGN. The only
+There is **no** VPC module, and **no** networking ADR/RFC/DESIGN. The only
 `aws_vpc`/`aws_subnet` definitions in-repo are throwaway test fixtures. The
 fleet's de-facto conventions the new module must adopt:
 
@@ -191,27 +199,72 @@ fleet's de-facto conventions the new module must adopt:
   `<!-- BEGIN_TF_DOCS -->` markers), `README.md`, `tests/`, `tests-localstack/`.
   Cleanest template to copy: `modules/efs/filesystem/`.
 
+### Finding 7 — brownfield-first: the module must adopt an existing VPC via import
+
+The operating assumption is that a `network/vpc` **already exists** and is not
+currently in this repo's Terraform state. So the module's *primary* job is
+**adoption**: bring the existing VPC, subnets, IGW, NAT gateway(s), and route
+tables under management (via `terraform import` / config-driven `import {}`
+blocks) and then publish the two-output contract to remote state. Greenfield
+create is the secondary path (same resource config, no import).
+
+Two design consequences fall out of "must import cleanly":
+
+- **Import must yield a zero-diff plan.** After import, the resource config has
+  to reproduce the *existing* VPC's attributes exactly (CIDR, per-subnet CIDRs,
+  AZ placement, NAT/route topology, tags). A purely parametric layout (compute
+  every subnet CIDR with `cidrsubnet()`) will mismatch any VPC that wasn't laid
+  out by that exact formula → a perpetual diff or a destroy/recreate. This
+  favors **explicit per-AZ subnet CIDR inputs** (a `map`/`object`) over computed
+  CIDR math, with `cidrsubnet()` available only as a default *generator* for the
+  greenfield path.
+- **Resource addresses must be stable and predictable.** Import targets a
+  specific address, so subnets/route-tables should use **`for_each` keyed by AZ**
+  (`aws_subnet.private["us-east-1a"]`) — never `count` (index-based
+  `[0]` addresses shift and are hostile to import).
+
+**Version implication.** Config-driven `import {}` blocks require Terraform
+`>= 1.5`, but the fleet pins `required_version = ">= 1.1"`. Preferred resolution:
+keep the *reusable* module at `>= 1.1` with import-friendly addressing + a
+documented import runbook, and let the operator's live/Terragrunt layer (which
+can require `>= 1.5`) hold the `import {}` blocks that point at
+`module.vpc.aws_vpc.this` etc. `terraform import` (CLI) is the `< 1.5` fallback.
+
 ## Conclusion
 
-**Answer:** The VPC module's downstream contract is exactly two stable outputs —
-`vpc_id` (`string`) and `private_subnet_ids` (`list(string)` spanning **≥ 2
-AZs**) — published at state key `${region}/vpc/${name}/terraform.tfstate`. That
-is the *entire* hard requirement imposed by the six current consumers
+**Answer (contract):** The VPC module's downstream contract is exactly two stable
+outputs — `vpc_id` (`string`) and `private_subnet_ids` (`list(string)` spanning
+**≥ 2 AZs**) — published at state key `${region}/vpc/${name}/terraform.tfstate`.
+That is the *entire* hard requirement imposed by the six current consumers
 (`eks/cluster`, `eks/managed-node-group`, `rds/{serverless,cluster,instance}`,
 `efs/filesystem`).
 
-Everything else the module builds — public subnets, IGW, NAT, route tables, CIDR
-allocation — is internal plumbing needed to produce those two outputs correctly.
-Any additional outputs are additive future-proofing, not required by an existing
-consumer. The module is greenfield and fully Community-LocalStack-testable.
+**Answer (shape):** Everything else the module builds — public subnets, IGW, NAT,
+route tables, CIDR allocation — is internal plumbing needed to produce those two
+outputs correctly. The module must be **create-or-adopt** (brownfield import is
+the primary path, Finding 7), which pushes the design toward explicit per-AZ
+subnet CIDR inputs and `for_each`-by-AZ addressing so an existing VPC imports to
+a zero-diff plan. It is fully Community-LocalStack-testable (Finding 5).
 
 ## Recommendation
 
-Proceed to a DESIGN doc for a first-party VPC module. Proposed location:
-**`modules/vpc/network/`** — the `vpc/` service segment matches the state-key
-convention and leaves room for siblings (`modules/vpc/{peering,endpoints,tgw-attachment}`).
+Proceed to a DESIGN doc for a first-party VPC module.
+
+**Location (owner-directed): `modules/network/vpc/`** — a `network` service
+directory with a `vpc` component, leaving room for siblings
+(`modules/network/{tgw,peering,endpoints}`).
+
+> **Path vs. state key are independent.** The module *source* lives at
+> `modules/network/vpc/`, but its *published state key* stays
+> `${region}/vpc/${name}/terraform.tfstate` — because all six consumers already
+> hardcode `key = "${region}/vpc/${vpc_name}/..."`. Changing the key segment
+> would force an edit to every consumer, so the `vpc/` state segment is
+> contract-locked even though the code moved under `network/`.
 
 ### Proposed module shape
+
+A **create-or-adopt** module (Finding 7): the same resource config serves
+greenfield create and brownfield import; import is the primary path.
 
 #### Inputs
 
@@ -219,20 +272,25 @@ convention and leaves room for siblings (`modules/vpc/{peering,endpoints,tgw-att
 |-------|------|---------|-------|
 | `name` | `string` | — | Maps to consumers' `vpc_name`; identifier segment of the state key. Validate `^[a-z][a-z0-9-]{0,62}[a-z0-9]$`. |
 | `region` | `string` | — | AWS region; also the leading state-key segment. |
-| `cidr_block` | `string` | — | VPC CIDR. Validate it parses as a CIDR. |
-| `az_count` | `number` | `2` | **Validate `>= 2`** (Finding 4). Precondition: `<=` region AZ count via `data.aws_availability_zones`. |
+| `cidr_block` | `string` | — | VPC CIDR. Must match the existing VPC when adopting. Validate it parses as a CIDR. |
+| `availability_zones` | `list(string)` | — | Explicit AZ list (drives `for_each` keys). Length **≥ 2** (Finding 4). Explicit > `az_count` for import-stability. |
+| `private_subnets` | `map(string)` | — | AZ → CIDR map for private subnets. **Explicit CIDRs** so an existing VPC imports zero-diff (Finding 7); `cidrsubnet()` only as a greenfield default generator. |
+| `public_subnets` | `map(string)` | `{}` | AZ → CIDR map for public subnets. |
 | `enable_nat_gateway` | `bool` | `true` | Private-subnet egress. |
 | `single_nat_gateway` | `bool` | `true` | One shared NAT (cost) vs one-per-AZ (HA). |
 | `enable_dns_hostnames` / `enable_dns_support` | `bool` | `true` | Required for EKS + private DNS. |
 | `map_public_ip_on_launch` | `bool` | `false` | Public-subnet auto-assign. |
-| `tags` | `map(string)` | `{}` | `merge(var.tags, { Name = … })` per resource. |
+| `tags` | `map(string)` | `{}` | `merge(var.tags, { Name = … })` per resource. Must match existing tags when adopting. |
 
 #### Resources
 
-`aws_vpc`, `aws_subnet` (one public + one private per AZ),
-`aws_internet_gateway`, `aws_eip` + `aws_nat_gateway`, `aws_route_table`
-(public + private) + `aws_route_table_association`,
-`data.aws_availability_zones`. Prefer `for_each` over `count` for subnets.
+`aws_vpc`, `aws_subnet` (public + private, **`for_each` keyed by AZ** for stable
+import addresses — never `count`), `aws_internet_gateway`, `aws_eip` +
+`aws_nat_gateway`, `aws_route_table` (public + private) +
+`aws_route_table_association`, `data.aws_availability_zones` (validation only).
+Ship an **import runbook** in `USAGE.md` mapping each resource address to the
+`terraform import` command / `import {}` block operators drop into their live
+layer.
 
 #### Outputs
 
@@ -243,29 +301,44 @@ convention and leaves room for siblings (`modules/vpc/{peering,endpoints,tgw-att
 ### Proposed test surface
 
 - **`tests/`** (plan-only gate, the primary CI gate): `cidr_block` validation
-  negatives, `az_count >= 2` negative, subnet count == `az_count`, contract-output
-  presence.
+  negatives, `length(availability_zones) >= 2` negative, private-subnet count ==
+  AZ count, contract-output presence.
 - **`tests-localstack/`** (Community apply): real VPC/subnets/NAT; assert
   `private_subnet_ids` spans **≥ 2 distinct AZs**; assert contract outputs
-  non-empty; `fixtures/` if any upstream is needed (none expected — VPC is a
-  root producer).
+  non-empty. A second **adopt smoke** — create a VPC in a `fixtures/` setup, then
+  `import {}` it into the module and assert a zero-diff plan (LocalStack supports
+  VPC/subnet import).
 - **No `tests-localstack-pro/`** (Finding 5).
+
+### Resolved (owner input, 2026-07-14)
+
+- **Component name → `modules/network/vpc/`** (was `modules/vpc/network`).
+- **Import mode → create-or-adopt** (resource-managed, import-primary) — *not*
+  the read-only data-source adapter. *Marked proposed pending confirmation of the
+  import specifics below.*
 
 ### Open questions for the DESIGN doc
 
-1. **Component name:** `modules/vpc/network` (recommended) vs `modules/vpc/vpc`.
-2. **NAT default:** single shared NAT (recommended default — cost) vs one-per-AZ.
-3. **AZ-count default:** `2` (contract minimum, recommended) vs `3`.
+1. **CIDR strategy:** explicit per-AZ subnet CIDR maps (recommended — import-safe,
+   Finding 7) vs computed `cidrsubnet()` (greenfield-only convenience).
+2. **Where do `import {}` blocks live:** operator's live/Terragrunt layer
+   (recommended — keeps the reusable module `>= 1.1`) vs the module ships
+   var-gated import blocks (forces `>= 1.5`).
+3. **NAT default:** single shared NAT (recommended — cost) vs one-per-AZ (HA).
 4. **Publish `public_subnet_ids` now?** No consumer reads it yet; recommend
    emitting anyway (additive — future ALB/ingress modules will want it).
 5. **Dogfood:** should this module *replace* the throwaway networking duplicated
    across the ~6 `tests-localstack/fixtures/setup/` dirs (dedup + real coverage)?
+6. **Read-only adapter as a sibling?** If some environments must *never* let TF
+   own the network, a thin `data`-source-only variant could ship later — deferred
+   unless requested.
 
 ### Next steps
 
 1. `docz create design "VPC network module"` — finalize the open questions above.
 2. `docz create impl "VPC network module"` — phased build (versions/vars →
-   VPC+subnets → IGW/NAT/routes → outputs → tests/ → tests-localstack/).
+   VPC+subnets → IGW/NAT/routes → outputs → import runbook → tests/ →
+   tests-localstack/ incl. adopt smoke).
 3. Copy `modules/efs/filesystem/` scaffolding as the starting template.
 
 ## References
