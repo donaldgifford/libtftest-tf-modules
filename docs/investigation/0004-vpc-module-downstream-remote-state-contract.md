@@ -288,15 +288,17 @@ greenfield create and brownfield import; import is the primary path.
 import addresses — never `count`), `aws_internet_gateway`, `aws_eip` +
 `aws_nat_gateway`, `aws_route_table` (public + private) +
 `aws_route_table_association`, `data.aws_availability_zones` (validation only).
-Ship an **import runbook** in `USAGE.md` mapping each resource address to the
-`terraform import` command / `import {}` block operators drop into their live
-layer.
+`README.md` / `USAGE.md` must ship two worked examples: **(a)** a *consume*
+example (module block + S3 backend key), and **(b)** an *import runbook* mapping
+each resource address to the `import {}` block operators drop into their
+live/Terragrunt layer to adopt an existing VPC.
 
 #### Outputs
 
 - **Contract (stable — never rename):** `vpc_id`, `private_subnet_ids`.
-- **Additive (recommended):** `public_subnet_ids`, `vpc_cidr_block`,
-  `availability_zones`, `nat_gateway_ids`, `private_route_table_ids`, `igw_id`.
+- **Additive, shipped in v1:** `public_subnet_ids` (owner-confirmed),
+  `vpc_cidr_block`, `availability_zones`, `nat_gateway_ids`,
+  `private_route_table_ids`, `igw_id`.
 
 ### Proposed test surface
 
@@ -314,8 +316,19 @@ layer.
 
 - **Component name → `modules/network/vpc/`** (was `modules/vpc/network`).
 - **Import mode → create-or-adopt** (resource-managed, import-primary) — *not*
-  the read-only data-source adapter. *Marked proposed pending confirmation of the
-  import specifics below.*
+  the read-only data-source adapter.
+- **CIDR strategy → explicit per-AZ subnet CIDR maps.** `private_subnets` /
+  `public_subnets` are `map(string)` (AZ → CIDR) inputs; `cidrsubnet()` is *not*
+  used (import-safe, Finding 7).
+- **`import {}` blocks live in the operator's live/Terragrunt layer** — keeps the
+  reusable module at `required_version >= 1.1`. The module's `README.md` /
+  `USAGE.md` must ship a worked **consume example** *and* the live-layer
+  **import-block example**, so an operator can adopt an existing VPC by
+  copy-paste.
+- **NAT default → single shared NAT gateway** (`single_nat_gateway = true`);
+  one-per-AZ is opt-in.
+- **Publish `public_subnet_ids` in v1 → yes** (shipped now; still additive /
+  non-contract, but present from the first release).
 - **Dogfood the fixtures → yes.** Once `modules/network/vpc` exists (it is the
   missing dependency those consumers already assume), the ~6
   `tests-localstack/fixtures/setup/` dirs that currently hand-roll a throwaway
@@ -328,17 +341,14 @@ layer.
 
 ### Open questions for the DESIGN doc
 
-1. **CIDR strategy:** explicit per-AZ subnet CIDR maps (recommended — import-safe,
-   Finding 7) vs computed `cidrsubnet()` (greenfield-only convenience).
-2. **Where do `import {}` blocks live:** operator's live/Terragrunt layer
-   (recommended — keeps the reusable module `>= 1.1`) vs the module ships
-   var-gated import blocks (forces `>= 1.5`).
-3. **NAT default:** single shared NAT (recommended — cost) vs one-per-AZ (HA).
-4. **Publish `public_subnet_ids` now?** No consumer reads it yet; recommend
-   emitting anyway (additive — future ALB/ingress modules will want it).
-5. **Read-only adapter as a sibling?** If some environments must *never* let TF
-   own the network, a thin `data`-source-only variant could ship later — deferred
-   unless requested.
+1. **Read-only adapter as a sibling module?** Distinct from the create-or-adopt
+   module above: a thin `modules/network/vpc-lookup` that *manages nothing* — it
+   uses `data "aws_vpc"` / `data "aws_subnets"` to look up an already-owned VPC
+   and only republishes the two-output contract to remote state. It exists for
+   environments where Terraform must **never** own the network (a separate team,
+   landing zone, or Control Tower owns it) yet the app modules still need the
+   `vpc_id` / `private_subnet_ids` remote state. Deferred pending owner decision;
+   not required for the create-or-adopt module.
 
 ### Next steps
 
