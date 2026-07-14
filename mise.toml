@@ -1,6 +1,7 @@
 [tools]
 
 # Go
+# renovate: datasource=github-tags depName=golang/go
 go = "1.26.4"
 golines = "latest"
 "go:github.com/spf13/cobra-cli" = "latest"
@@ -9,30 +10,41 @@ golines = "latest"
 "go:golang.org/x/tools/cmd/godoc" = "latest"
 
 # Terraform
+# renovate: datasource=github-releases depName=hashicorp/terraform
 terraform = "1.14.7"
+# renovate: datasource=github-releases depName=gruntwork-io/terragrunt
 terragrunt = "0.99.4"
+# renovate: datasource=github-releases depName=terraform-linters/tflint
 tflint = "0.62.0"
+# renovate: datasource=github-releases depName=terraform-docs/terraform-docs
 terraform-docs = "0.24.0"
 
 # Repo utilities
 just = "latest"
+# renovate: datasource=github-releases depName=localstack/lstk
 "github:localstack/lstk" = "0.7.1"
 
 # Formatters and linters
+# renovate: datasource=github-releases depName=DavidAnson/markdownlint-cli2
 markdownlint-cli2 = "0.18.1"
+# renovate: datasource=github-releases depName=google/yamlfmt
 yamlfmt = "0.20.0"
+# renovate: datasource=github-tags depName=adrienverge/yamllint
 yamllint = "1.37.1"
+# renovate: datasource=npm depName=prettier
 prettier = "3.7.4"
 "github:donaldgifford/makefmt" = "latest"
 checkmake = "latest"
 
 # tools
+# renovate: datasource=github-releases depName=mikefarah/yq
 yq = "4.48.1"
 jq = "latest"
 "github:donaldgifford/docz" = "latest"
 
 
 # Release tools
+# renovate: datasource=github-releases depName=golangci/golangci-lint
 golangci-lint = "2.11.4"
 
 # Security
