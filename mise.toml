@@ -38,7 +38,7 @@ checkmake = "latest"
 
 # tools
 # renovate: datasource=github-releases depName=mikefarah/yq
-yq = "4.48.1"
+yq = "4.53.3"
 jq = "latest"
 "github:donaldgifford/docz" = "latest"
 
