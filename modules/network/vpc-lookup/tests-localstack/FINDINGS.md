@@ -25,19 +25,22 @@ that serves EC2 works.
 
 ## What the apply exercised
 
-`run "setup"` stands up a VPC (`10.0.0.0/16`) with 3 private subnets
-(`Tier=private`) across 3 AZs, 2 public subnets (`Tier=public`), an
-internet gateway, and one NAT gateway (+ EIP). The module then discovered
-it two ways:
+`run "setup"` stands up a VPC (`10.0.0.0/16`) with the reference 3-tier
+subnet topology — 3 public (`Network=Public`), 3 private
+(`Network=Private`), and 3 private EKS (`Network=Private EKS`) subnets,
+each spanning 3 AZs — plus an internet gateway and one NAT gateway
+(+ EIP). The module then discovered it two ways:
 
 - `run "discover_by_tag"` — `tag:Name = var.name` (default path)
 - `run "discover_by_id"` — explicit `var.vpc_id`
 
-Both resolved `vpc_id`, all 3 private subnet IDs (3 distinct AZs), 2
-public subnets, 1 NAT gateway, the IGW, and the route tables. Every
-LocalStack EC2 data source used — `aws_vpc`, `aws_subnets`, `aws_subnet`,
-`aws_nat_gateways`, `aws_route_tables`, and `aws_internet_gateway` with
-the `attachment.vpc-id` filter — returned correct values. **No gaps.**
+Both resolved `vpc_id`, all 3 private + 3 private-EKS subnet IDs (disjoint
+sets, 3 distinct AZs), 3 public subnets, 1 NAT gateway, the IGW, and the
+route tables. LocalStack's `aws_subnets` tag filter correctly matched the
+space-bearing `Network = "Private EKS"` value. Every EC2 data source used
+— `aws_vpc`, `aws_subnets` (×3 tiers), `aws_subnet`, `aws_nat_gateways`,
+`aws_route_tables`, and `aws_internet_gateway` with the `attachment.vpc-id`
+filter — returned correct values. **No gaps.**
 
 ## To reproduce
 

@@ -6,8 +6,9 @@ locals {
 
   # Sorted for deterministic output ordering (aws_subnets.ids order is
   # not guaranteed stable across reads).
-  private_subnet_ids = sort(data.aws_subnets.private.ids)
-  public_subnet_ids  = sort(data.aws_subnets.public.ids)
+  private_subnet_ids     = sort(data.aws_subnets.private.ids)
+  public_subnet_ids      = sort(data.aws_subnets.public.ids)
+  private_eks_subnet_ids = sort(data.aws_subnets.private_eks.ids)
 
   availability_zones = sort(distinct([
     for s in data.aws_subnet.private : s.availability_zone

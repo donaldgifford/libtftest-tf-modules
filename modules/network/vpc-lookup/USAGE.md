@@ -25,6 +25,7 @@ No modules.
 | [aws_route_tables.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route_tables) | data source |
 | [aws_subnet.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) | data source |
 | [aws_subnets.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnets) | data source |
+| [aws_subnets.private_eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnets) | data source |
 | [aws_subnets.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnets) | data source |
 | [aws_vpc.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/vpc) | data source |
 
@@ -34,8 +35,9 @@ No modules.
 | ---- | ----------- | ---- | ------- | :------: |
 | lookup\_internet\_gateway | When true (default), look up the VPC's attached internet gateway and emit internet\_gateway\_id. Set false for isolated/private-only VPCs with no IGW, where the lookup would otherwise error. | `bool` | `true` | no |
 | name | Logical VPC name. Used as the default tag:Name filter to discover the VPC (when var.vpc\_id is null) and as the <vpc\_name> segment of the remote-state key downstream modules read: <region>/vpc/<name>/terraform.tfstate. | `string` | n/a | yes |
-| private\_subnet\_tags | Tag filter selecting the private subnets within the discovered VPC. Defaults to { Tier = "private" } — the convention the fleet's test fixtures already tag with. These become the private\_subnet\_ids output the RDS/EKS/EFS modules consume. | `map(string)` | ```{ "Tier": "private" }``` | no |
-| public\_subnet\_tags | Tag filter selecting the public subnets within the discovered VPC. Defaults to { Tier = "public" }. Published as the additive public\_subnet\_ids output (no current consumer, but shipped for parity). | `map(string)` | ```{ "Tier": "public" }``` | no |
+| private\_eks\_subnet\_tags | Tag filter selecting the private EKS subnets within the discovered VPC — the internal cluster IP range the EKS control-plane ENIs use. Defaults to { Network = "Private EKS" }. Published as private\_eks\_subnet\_ids; the eks/cluster module consumes this for aws\_eks\_cluster.vpc\_config.subnet\_ids (worker nodes use the plain private tier). | `map(string)` | ```{ "Network": "Private EKS" }``` | no |
+| private\_subnet\_tags | Tag filter selecting the private (data-tier) subnets within the discovered VPC. Defaults to { Network = "Private" }. These become the private\_subnet\_ids output the RDS/EFS modules and EKS worker nodes consume. In the reference topology these subnets also carry the passive kubernetes.io/role/internal-elb = "1" tag for internal-LB auto-discovery (the AWS Load Balancer Controller reads it directly — the module does not filter on it). | `map(string)` | ```{ "Network": "Private" }``` | no |
+| public\_subnet\_tags | Tag filter selecting the public subnets within the discovered VPC. Defaults to { Network = "Public" }. Published as public\_subnet\_ids. In the reference topology these subnets also carry the passive kubernetes.io/role/elb = "1" tag for internet-facing-LB auto-discovery. | `map(string)` | ```{ "Network": "Public" }``` | no |
 | vpc\_id | Optional explicit VPC ID. When set, the module looks the VPC up by ID and ignores tag-based discovery (var.name / var.vpc\_tags). When null (default), the VPC is discovered by tag:Name = var.name plus var.vpc\_tags. | `string` | `null` | no |
 | vpc\_tags | Additional tag filters ANDed with tag:Name = var.name when discovering the VPC by tag (used only when var.vpc\_id is null). Ignored when var.vpc\_id is set. | `map(string)` | `{}` | no |
 
@@ -46,6 +48,7 @@ No modules.
 | availability\_zones | Sorted distinct AZs spanned by the private subnets. Additive — useful for callers that need to co-locate resources with the DB/compute tier. |
 | internet\_gateway\_id | ID of the VPC's attached internet gateway, or null when var.lookup\_internet\_gateway = false / none is attached. Additive. |
 | nat\_gateway\_ids | Sorted IDs of the NAT gateways in the VPC (empty when none). Additive. |
+| private\_eks\_subnet\_ids | Sorted IDs of the private EKS subnets (tag filter var.private\_eks\_subnet\_tags) — the internal cluster IP range. Consumed by eks/cluster for aws\_eks\_cluster.vpc\_config.subnet\_ids. Distinct from private\_subnet\_ids (the data tier used by RDS/EFS + worker nodes). |
 | private\_subnet\_ids | Sorted IDs of the private subnets (tag filter var.private\_subnet\_tags). Contract output — RDS DB subnet groups, EKS vpc\_config, and EFS mount targets consume this. Spans >= 2 AZs when the source VPC is laid out correctly (INV-0004 Finding 4). |
 | public\_subnet\_ids | Sorted IDs of the public subnets (tag filter var.public\_subnet\_tags). Additive — no current consumer, shipped for parity with the future modules/network/vpc. |
 | route\_table\_ids | Sorted IDs of the route tables in the VPC (includes the main route table). Additive — the future modules/network/vpc will split public/private route-table outputs. |

@@ -37,6 +37,17 @@ data "aws_subnets" "public" {
   }
 }
 
+# The private EKS tier — the internal cluster IP range, a distinct set
+# of subnets from the data-tier private subnets above.
+data "aws_subnets" "private_eks" {
+  tags = var.private_eks_subnet_tags
+
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.this.id]
+  }
+}
+
 # Per-subnet detail (availability_zone) for the private subnets — the
 # aws_subnets plural data source returns IDs only.
 data "aws_subnet" "private" {

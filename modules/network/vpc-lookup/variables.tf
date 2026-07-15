@@ -21,15 +21,21 @@ variable "vpc_tags" {
 }
 
 variable "private_subnet_tags" {
-  description = "Tag filter selecting the private subnets within the discovered VPC. Defaults to { Tier = \"private\" } — the convention the fleet's test fixtures already tag with. These become the private_subnet_ids output the RDS/EKS/EFS modules consume."
+  description = "Tag filter selecting the private (data-tier) subnets within the discovered VPC. Defaults to { Network = \"Private\" }. These become the private_subnet_ids output the RDS/EFS modules and EKS worker nodes consume. In the reference topology these subnets also carry the passive kubernetes.io/role/internal-elb = \"1\" tag for internal-LB auto-discovery (the AWS Load Balancer Controller reads it directly — the module does not filter on it)."
   type        = map(string)
-  default     = { Tier = "private" }
+  default     = { Network = "Private" }
 }
 
 variable "public_subnet_tags" {
-  description = "Tag filter selecting the public subnets within the discovered VPC. Defaults to { Tier = \"public\" }. Published as the additive public_subnet_ids output (no current consumer, but shipped for parity)."
+  description = "Tag filter selecting the public subnets within the discovered VPC. Defaults to { Network = \"Public\" }. Published as public_subnet_ids. In the reference topology these subnets also carry the passive kubernetes.io/role/elb = \"1\" tag for internet-facing-LB auto-discovery."
   type        = map(string)
-  default     = { Tier = "public" }
+  default     = { Network = "Public" }
+}
+
+variable "private_eks_subnet_tags" {
+  description = "Tag filter selecting the private EKS subnets within the discovered VPC — the internal cluster IP range the EKS control-plane ENIs use. Defaults to { Network = \"Private EKS\" }. Published as private_eks_subnet_ids; the eks/cluster module consumes this for aws_eks_cluster.vpc_config.subnet_ids (worker nodes use the plain private tier)."
+  type        = map(string)
+  default     = { Network = "Private EKS" }
 }
 
 variable "lookup_internet_gateway" {
