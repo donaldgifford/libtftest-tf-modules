@@ -111,10 +111,32 @@ Tracked in git. As of this writing:
   (bearer token) is deliberately NOT minted by Terraform — see
   `tools/bedrock-keyctl` below. The `claude-code/` sub-directory leaves room
   for siblings like `modules/bedrock/guardrails/`.
+- **`modules/network/`** — `vpc-lookup` (from INV-0004, implemented — the
+  read-only, **zero-resource** producer of the VPC remote-state contract every
+  data-tier/compute module already consumes). INV-0004 surveyed all six
+  consumers (`eks/cluster`, `eks/managed-node-group`, `rds/{serverless,cluster,
+  instance}`, `efs/filesystem`) and found the contract is exactly two stable
+  outputs — `vpc_id` (string) + `private_subnet_ids` (list, ≥2 AZs) — published
+  at state key `${region}/vpc/${name}/terraform.tfstate`. This module discovers
+  an **existing** VPC via `data` sources (`aws_vpc`/`aws_subnets`/`aws_subnet`/
+  `aws_nat_gateways`/`aws_route_tables`/`aws_internet_gateway`) — by `tag:Name =
+  var.name` (default) or explicit `var.vpc_id` — and re-publishes the two
+  contract outputs plus 6 additive ones (`public_subnet_ids`, `vpc_cidr_block`,
+  `availability_zones`, `nat_gateway_ids`, `route_table_ids`,
+  `internet_gateway_id`). It ships **first** as the stand-in that exercises the
+  consumption contract before the full **create-or-adopt** `modules/network/vpc`
+  (brownfield import-first, explicit per-AZ subnet CIDR maps, `for_each`-by-AZ
+  addressing, single NAT default — all decided in INV-0004) is built. **Testing
+  (no divergence, Community-safe):** plan-only `tests/` (2 runs, mock_provider +
+  override_data) is the gate; `tests-localstack/` is a **real Community apply**
+  (3 runs) — pure EC2/VPC API needs no Pro tier / no token / no named volume,
+  run and passing 3/3 against token-free `localstack/localstack:4.4`
+  (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
+  `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
 
 The design and decision rationale for the fleet lives in `docs/adr/`
-(ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), and `docs/design/`
-(DESIGN-0001..0009).
+(ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
+(DESIGN-0001..0014), and `docs/investigation/` (INV-0001..0004).
 
 ### In-tree Go tooling (`tools/`)
 
