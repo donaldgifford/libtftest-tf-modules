@@ -35,6 +35,7 @@ created: 2026-07-14
     - [Outputs](#outputs)
   - [Proposed test surface](#proposed-test-surface)
   - [Resolved (owner input, 2026-07-14)](#resolved-owner-input-2026-07-14)
+  - [Resolved follow-up (owner input, 2026-07-14)](#resolved-follow-up-owner-input-2026-07-14)
   - [Open questions for the DESIGN doc](#open-questions-for-the-design-doc)
   - [Next steps](#next-steps)
 - [References](#references)
@@ -339,16 +340,20 @@ live/Terragrunt layer to adopt an existing VPC.
   pattern). Sequencing: land `modules/network/vpc` first, then migrate the
   fixtures in a follow-up so no consumer test is broken mid-flight.
 
+### Resolved follow-up (owner input, 2026-07-14)
+
+- **Ship the read-only adapter first, as a stand-in.** Build
+  `modules/network/vpc-lookup` now — a thin, zero-resource module that discovers
+  an existing VPC via `data "aws_vpc"` / `data "aws_subnets"` and republishes the
+  full output contract — to exercise the remote-state consumption end-to-end
+  *before* investing in the full create-or-adopt `modules/network/vpc`. It also
+  permanently serves environments where Terraform must **never** own the network.
+
 ### Open questions for the DESIGN doc
 
-1. **Read-only adapter as a sibling module?** Distinct from the create-or-adopt
-   module above: a thin `modules/network/vpc-lookup` that *manages nothing* — it
-   uses `data "aws_vpc"` / `data "aws_subnets"` to look up an already-owned VPC
-   and only republishes the two-output contract to remote state. It exists for
-   environments where Terraform must **never** own the network (a separate team,
-   landing zone, or Control Tower owns it) yet the app modules still need the
-   `vpc_id` / `private_subnet_ids` remote state. Deferred pending owner decision;
-   not required for the create-or-adopt module.
+None outstanding for the investigation. The full create-or-adopt
+`modules/network/vpc` design is deferred to a DESIGN doc; `vpc-lookup` lands
+first as the stand-in.
 
 ### Next steps
 
