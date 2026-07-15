@@ -1,10 +1,14 @@
 # Setup fixture for terraform test `apply_localstack.tftest.hcl`.
 #
 # The vpc-lookup module discovers an EXISTING VPC via data sources, so
-# this fixture stands up a realistic network for it to find:
+# this fixture stands up the reference 3-tier topology for it to find:
 #   - a VPC tagged Name = var.name (the module's default discovery key)
-#   - 3 private subnets across 3 AZs, tagged Tier = "private"
-#   - 2 public subnets across 2 AZs, tagged Tier = "public"
+#   - 3 public subnets across 3 AZs — Network = "Public" +
+#     kubernetes.io/role/elb = "1"
+#   - 3 private (data-tier) subnets across 3 AZs — Network = "Private" +
+#     kubernetes.io/role/internal-elb = "1"
+#   - 3 private EKS subnets across 3 AZs — Network = "Private EKS"
+#     (the internal cluster IP range)
 #   - an internet gateway + one NAT gateway (with its EIP)
 #
 # Applied first (run "setup") so the module's data sources resolve.
@@ -40,7 +44,7 @@ resource "aws_vpc" "this" {
   }
 }
 
-resource "aws_subnet" "private" {
+resource "aws_subnet" "public" {
   count = 3
 
   vpc_id            = aws_vpc.this.id
@@ -48,21 +52,36 @@ resource "aws_subnet" "private" {
   cidr_block        = "10.0.${count.index}.0/24"
 
   tags = {
-    Name = "${var.name}-private-${count.index}"
-    Tier = "private"
+    Name                     = "${var.name}-public-${count.index}"
+    Network                  = "Public"
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
-resource "aws_subnet" "public" {
-  count = 2
+resource "aws_subnet" "private" {
+  count = 3
 
   vpc_id            = aws_vpc.this.id
-  availability_zone = "${var.region}${["a", "b"][count.index]}"
-  cidr_block        = "10.0.${count.index + 100}.0/24"
+  availability_zone = "${var.region}${["a", "b", "c"][count.index]}"
+  cidr_block        = "10.0.${count.index + 10}.0/24"
 
   tags = {
-    Name = "${var.name}-public-${count.index}"
-    Tier = "public"
+    Name                              = "${var.name}-private-${count.index}"
+    Network                           = "Private"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
+}
+
+resource "aws_subnet" "private_eks" {
+  count = 3
+
+  vpc_id            = aws_vpc.this.id
+  availability_zone = "${var.region}${["a", "b", "c"][count.index]}"
+  cidr_block        = "10.0.${count.index + 20}.0/24"
+
+  tags = {
+    Name    = "${var.name}-private-eks-${count.index}"
+    Network = "Private EKS"
   }
 }
 
@@ -107,4 +126,8 @@ output "private_subnet_ids" {
 
 output "public_subnet_ids" {
   value = aws_subnet.public[*].id
+}
+
+output "private_eks_subnet_ids" {
+  value = aws_subnet.private_eks[*].id
 }

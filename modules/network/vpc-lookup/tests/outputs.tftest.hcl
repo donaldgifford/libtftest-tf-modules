@@ -43,6 +43,13 @@ run "discovers_and_wires_all_outputs" {
   }
 
   override_data {
+    target = data.aws_subnets.private_eks
+    values = {
+      ids = ["subnet-eks-a", "subnet-eks-b", "subnet-eks-c"]
+    }
+  }
+
+  override_data {
     target = data.aws_subnet.private["subnet-priv-a"]
     values = {
       availability_zone = "us-east-1a"
@@ -98,6 +105,11 @@ run "discovers_and_wires_all_outputs" {
   }
 
   assert {
+    condition     = length(output.private_eks_subnet_ids) == 3 && output.private_eks_subnet_ids[0] == "subnet-eks-a"
+    error_message = "private_eks_subnet_ids must be the sorted private EKS subnet IDs (distinct from private_subnet_ids)"
+  }
+
+  assert {
     condition     = length(output.availability_zones) == 2 && output.availability_zones[0] == "us-east-1a" && output.availability_zones[1] == "us-east-1b"
     error_message = "availability_zones must be the sorted distinct private-subnet AZs"
   }
@@ -146,6 +158,13 @@ run "igw_lookup_disabled_and_no_public_subnets" {
     target = data.aws_subnets.public
     values = {
       ids = []
+    }
+  }
+
+  override_data {
+    target = data.aws_subnets.private_eks
+    values = {
+      ids = ["subnet-eks-x"]
     }
   }
 

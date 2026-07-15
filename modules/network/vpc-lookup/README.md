@@ -21,8 +21,9 @@ See [USAGE.md](USAGE.md) for the generated input / output reference.
 | Output | Source | Consumer |
 |--------|--------|----------|
 | `vpc_id` | `data.aws_vpc` | **contract** — RDS/EKS/EFS security groups |
-| `private_subnet_ids` | `data.aws_subnets` (`Tier=private`) | **contract** — RDS subnet groups, EKS `vpc_config`, EFS mount targets |
-| `public_subnet_ids` | `data.aws_subnets` (`Tier=public`) | additive |
+| `private_subnet_ids` | `data.aws_subnets` (`Network=Private`) | **contract** — RDS subnet groups, EFS mount targets, EKS worker nodes |
+| `private_eks_subnet_ids` | `data.aws_subnets` (`Network=Private EKS`) | EKS `vpc_config.subnet_ids` (internal cluster IP range) |
+| `public_subnet_ids` | `data.aws_subnets` (`Network=Public`) | additive |
 | `vpc_cidr_block` | `data.aws_vpc` | additive |
 | `availability_zones` | `data.aws_subnet` (per private subnet) | additive |
 | `nat_gateway_ids` | `data.aws_nat_gateways` | additive |
@@ -32,10 +33,26 @@ See [USAGE.md](USAGE.md) for the generated input / output reference.
 Only `vpc_id` + `private_subnet_ids` are the stable contract (INV-0004
 Finding 1); the rest are additive and may be renamed before a 1.0 tag.
 
+## Subnet topology
+
+The module expects a **three-tier** subnet layout, discriminated by a
+`Network` tag (each tier spanning ≥ 2 AZs):
+
+| Tier | `Network` tag | passive k8s role tag | Purpose |
+|------|---------------|----------------------|---------|
+| Public | `Public` | `kubernetes.io/role/elb = 1` | internet-facing load balancers |
+| Private | `Private` | `kubernetes.io/role/internal-elb = 1` | data tier (RDS/EFS) + EKS worker nodes + internal LBs |
+| Private EKS | `Private EKS` | — | internal EKS cluster IP range (control-plane ENIs) |
+
+The `kubernetes.io/role/*` tags are **passive** — the AWS Load Balancer
+Controller auto-discovers subnets by them at runtime, so the module only
+needs them to exist on the subnets; discovery filters on the `Network`
+tag (which uniquely identifies all three tiers).
+
 ## Discovery
 
 By default the module finds the VPC by `tag:Name = var.name`, and its
-subnets by their `Tier` tags:
+three subnet tiers by their `Network` tags:
 
 ```hcl
 module "vpc" {
@@ -54,14 +71,15 @@ module "vpc" {
 }
 ```
 
-Override the subnet tag conventions (e.g. for EKS-style role tags):
+Override the tier tag conventions if your VPC uses a different scheme:
 
 ```hcl
 module "vpc" {
-  source              = "../../network/vpc-lookup"
-  name                = "platform-prod"
-  private_subnet_tags = { "kubernetes.io/role/internal-elb" = "1" }
-  public_subnet_tags  = { "kubernetes.io/role/elb" = "1" }
+  source                  = "../../network/vpc-lookup"
+  name                    = "platform-prod"
+  private_subnet_tags     = { Network = "Private" }
+  public_subnet_tags      = { Network = "Public" }
+  private_eks_subnet_tags = { Network = "Private EKS" }
 }
 ```
 
@@ -105,9 +123,9 @@ tier, no auth token, no named-volume workaround. See
 | File | Purpose |
 |------|---------|
 | `versions.tf` | Provider + Terraform version pins |
-| `variables.tf` | Discovery inputs (`name`, `vpc_id`, tag filters, IGW toggle) |
-| `main.tf` | `data.aws_vpc` / `aws_subnets` / `aws_subnet` / `aws_nat_gateways` / `aws_route_tables` / `aws_internet_gateway` |
+| `variables.tf` | Discovery inputs (`name`, `vpc_id`, per-tier tag filters, IGW toggle) |
+| `main.tf` | `data.aws_vpc` / `aws_subnets` ×3 tiers / `aws_subnet` / `aws_nat_gateways` / `aws_route_tables` / `aws_internet_gateway` |
 | `locals.tf` | Tag composition, sorted subnet lists, AZ extraction |
-| `outputs.tf` | 2 contract + 6 additive outputs |
+| `outputs.tf` | 2 contract + 7 additive outputs (incl. `private_eks_subnet_ids`) |
 | `tests/` | Plan-only mock-provider suite (2 runs) |
 | `tests-localstack/` | Apply against a fixtured LocalStack VPC (3 runs) + FINDINGS.md |

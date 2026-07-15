@@ -27,6 +27,11 @@ output "public_subnet_ids" {
   value       = local.public_subnet_ids
 }
 
+output "private_eks_subnet_ids" {
+  description = "Sorted IDs of the private EKS subnets (tag filter var.private_eks_subnet_tags) — the internal cluster IP range. Consumed by eks/cluster for aws_eks_cluster.vpc_config.subnet_ids. Distinct from private_subnet_ids (the data tier used by RDS/EFS + worker nodes)."
+  value       = local.private_eks_subnet_ids
+}
+
 output "availability_zones" {
   description = "Sorted distinct AZs spanned by the private subnets. Additive — useful for callers that need to co-locate resources with the DB/compute tier."
   value       = local.availability_zones

@@ -64,7 +64,17 @@ run "discover_by_tag" {
 
   assert {
     condition     = length(output.private_subnet_ids) == 3
-    error_message = "Must discover all 3 private (Tier=private) subnets"
+    error_message = "Must discover all 3 private (Network=Private) data-tier subnets"
+  }
+
+  assert {
+    condition     = length(output.private_eks_subnet_ids) == 3
+    error_message = "Must discover all 3 private EKS (Network=Private EKS) subnets"
+  }
+
+  assert {
+    condition     = length(setintersection(toset(output.private_subnet_ids), toset(output.private_eks_subnet_ids))) == 0
+    error_message = "private and private-EKS tiers must be disjoint sets of subnets"
   }
 
   assert {
@@ -73,8 +83,8 @@ run "discover_by_tag" {
   }
 
   assert {
-    condition     = length(output.public_subnet_ids) == 2
-    error_message = "Must discover both public (Tier=public) subnets"
+    condition     = length(output.public_subnet_ids) == 3
+    error_message = "Must discover all 3 public (Network=Public) subnets"
   }
 
   assert {
@@ -109,5 +119,10 @@ run "discover_by_id" {
   assert {
     condition     = length(output.private_subnet_ids) == 3
     error_message = "Explicit-ID path must still discover all 3 private subnets"
+  }
+
+  assert {
+    condition     = length(output.private_eks_subnet_ids) == 3
+    error_message = "Explicit-ID path must still discover all 3 private EKS subnets"
   }
 }

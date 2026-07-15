@@ -120,10 +120,16 @@ Tracked in git. As of this writing:
   at state key `${region}/vpc/${name}/terraform.tfstate`. This module discovers
   an **existing** VPC via `data` sources (`aws_vpc`/`aws_subnets`/`aws_subnet`/
   `aws_nat_gateways`/`aws_route_tables`/`aws_internet_gateway`) — by `tag:Name =
-  var.name` (default) or explicit `var.vpc_id` — and re-publishes the two
-  contract outputs plus 6 additive ones (`public_subnet_ids`, `vpc_cidr_block`,
-  `availability_zones`, `nat_gateway_ids`, `route_table_ids`,
-  `internet_gateway_id`). It ships **first** as the stand-in that exercises the
+  var.name` (default) or explicit `var.vpc_id`. Subnets resolve as a **three-tier
+  topology** discriminated by a `Network` tag (`Public` / `Private` / `Private
+  EKS`); the `kubernetes.io/role/{elb,internal-elb}` tags are passive (AWS
+  Load-Balancer-Controller auto-discovery, not a module filter). It re-publishes
+  the two contract outputs plus 7 additive ones (`private_eks_subnet_ids` — the
+  internal cluster IP range for `eks/cluster`'s `vpc_config`, `public_subnet_ids`,
+  `vpc_cidr_block`, `availability_zones`, `nat_gateway_ids`, `route_table_ids`,
+  `internet_gateway_id`). `private_subnet_ids` stays the data tier (RDS/EFS +
+  EKS worker nodes); a follow-up rewires `eks/cluster` to `private_eks_subnet_ids`.
+  It ships **first** as the stand-in that exercises the
   consumption contract before the full **create-or-adopt** `modules/network/vpc`
   (brownfield import-first, explicit per-AZ subnet CIDR maps, `for_each`-by-AZ
   addressing, single NAT default — all decided in INV-0004) is built. **Testing
