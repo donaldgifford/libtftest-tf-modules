@@ -46,4 +46,5 @@ docz create design "Your Design Title"
 | DESIGN-0012 | RDS instance module (single aws_db_instance) | Implemented | 2026-07-09 | Donald Gifford | [0012-rds-instance-module-single-awsdbinstance.md](0012-rds-instance-module-single-awsdbinstance.md) |
 | DESIGN-0013 | RDS Aurora provisioned cluster module | Implemented | 2026-07-09 | Donald Gifford | [0013-rds-aurora-provisioned-cluster-module.md](0013-rds-aurora-provisioned-cluster-module.md) |
 | DESIGN-0014 | RDS Aurora read-replica module | Implemented | 2026-07-09 | Donald Gifford | [0014-rds-aurora-read-replica-module.md](0014-rds-aurora-read-replica-module.md) |
+| DESIGN-0015 | Rewire EKS cluster to the private EKS subnet tier | Draft | 2026-07-15 | Donald Gifford | [0015-rewire-eks-cluster-to-the-private-eks-subnet-tier.md](0015-rewire-eks-cluster-to-the-private-eks-subnet-tier.md) |
 <!-- END DOCZ AUTO-GENERATED -->
