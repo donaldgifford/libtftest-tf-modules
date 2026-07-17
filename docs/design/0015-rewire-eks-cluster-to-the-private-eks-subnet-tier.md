@@ -214,6 +214,9 @@ touchpoint is the *consumed* VPC state contract, which gains one list output
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
 > (Reply e.g. "1a, 2b, 3a, 4a, 5a, 6a" or override any with your own.)
+>
+> **Resolved 2026-07-17 — 1a, 2a, 3a, 4a, 5a, 6a (all recommendations
+> accepted).** Each option **a** below is the decision of record.
 
 ### 1. Guard the EKS subnet count with a precondition?
 
