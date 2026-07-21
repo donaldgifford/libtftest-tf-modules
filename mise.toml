@@ -32,7 +32,7 @@ yamlfmt = "0.20.0"
 # renovate: datasource=github-tags depName=adrienverge/yamllint
 yamllint = "1.37.1"
 # renovate: datasource=npm depName=prettier
-prettier = "3.7.4"
+prettier = "3.9.6"
 "github:donaldgifford/makefmt" = "latest"
 checkmake = "latest"
 
