@@ -22,7 +22,7 @@ terraform-docs = "0.24.0"
 # Repo utilities
 just = "latest"
 # renovate: datasource=github-releases depName=localstack/lstk
-"github:localstack/lstk" = "0.7.1"
+"github:localstack/lstk" = "0.18.0"
 
 # Formatters and linters
 # renovate: datasource=github-releases depName=DavidAnson/markdownlint-cli2
