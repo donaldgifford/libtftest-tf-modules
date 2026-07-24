@@ -163,8 +163,12 @@ Tracked in git. As of this writing:
   `rds/instance` (Pro `test-localstack-pro`) — now source it via `run "setup"` and
   their bespoke `fixtures/setup/` dirs are deleted (Phase 2, all three apply suites
   **run and passing 3/3** against LocalStack Pro 2026.7.0 on a named volume). The
-  special-case fixtures (`rds/proxy`, `rds/read-replica`) compose it next (Phase 3);
-  EKS (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
+  special-case fixtures now **compose** it (Phase 3): `rds/proxy`'s `fixtures/db`
+  and `rds/read-replica`'s `fixtures/cluster` source `module.vpc` for the DB subnet
+  group / cluster VPC and write their non-VPC stub state (target / cluster) into
+  `module.vpc.bucket_name` — zero inline VPCs, zero `Tier`-tagged subnets remain
+  under `modules/rds/` (proxy Pro apply 3/3, read-replica Pro apply 2/2). EKS
+  (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`

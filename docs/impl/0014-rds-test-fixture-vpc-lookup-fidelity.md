@@ -174,17 +174,17 @@ Question 1 for the compose-vs-retag decision.)
 
 #### Tasks
 
-- [ ] `rds/read-replica` `tests-localstack-pro/fixtures/cluster/main.tf`: replace
+- [x] `rds/read-replica` `tests-localstack-pro/fixtures/cluster/main.tf`: replace
   the inline `aws_vpc` + `aws_subnet.private` + `aws_s3_bucket` + `vpc_state`
   with `module "vpc" { source = "../../../../../../test/fixtures/reference-vpc" … }`
   (six levels up — verify); set the real `cluster` module's
   `depends_on = [module.vpc]`; write the cluster stub state into
   `module.vpc.bucket_name`.
-- [ ] `rds/proxy` `tests-localstack-pro/fixtures/db/main.tf`: source the shared
+- [x] `rds/proxy` `tests-localstack-pro/fixtures/db/main.tf`: source the shared
   fixture; use `module.vpc.private_subnet_ids` for
   `aws_db_subnet_group.this.subnet_ids`; write the target stub state into
   `module.vpc.bucket_name`; drop the inline `aws_vpc` + two `aws_subnet`.
-- [ ] Grep-confirm no fixture under `modules/rds/` still creates a
+- [x] Grep-confirm no fixture under `modules/rds/` still creates a
   `Tier`-tagged subnet.
 
 #### Success Criteria
