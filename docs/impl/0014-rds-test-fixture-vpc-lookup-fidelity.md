@@ -1,7 +1,7 @@
 ---
 id: IMPL-0014
 title: "RDS test-fixture vpc-lookup fidelity"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-07-23
 ---
@@ -9,7 +9,7 @@ created: 2026-07-23
 
 # IMPL 0014: RDS test-fixture vpc-lookup fidelity
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-07-23
 
@@ -99,25 +99,26 @@ already stands up this exact topology.
 
 #### Tasks
 
-- [ ] Create the module skeleton: `versions.tf` (`required_version >= 1.1`, aws
+- [x] Create the module skeleton: `versions.tf` (`required_version >= 1.1`, aws
   `~> 6.2`), `variables.tf`, `main.tf`, `outputs.tf`, `.tflint.hcl`.
-- [ ] Inputs: `remote_state_bucket`, `vpc_name`, `region` (required); `vpc_cidr`
+- [x] Inputs: `remote_state_bucket`, `vpc_name`, `region` (required); `vpc_cidr`
   (default `"10.0.0.0/16"`); `az_letters` (default `["a", "b", "c"]` → three AZs
   per 5a).
-- [ ] Three subnet tiers × three AZs, non-overlapping /24s:
+- [x] Three subnet tiers × three AZs, non-overlapping /24s:
   `public` (`Network = "Public"` + `kubernetes.io/role/elb = "1"`),
   `private` (`Network = "Private"` + `kubernetes.io/role/internal-elb = "1"`),
   `private_eks` (`Network = "Private EKS"`).
-- [ ] Gateways/routing so the network-fact outputs are backed by real resources:
+- [x] Gateways/routing so the network-fact outputs are backed by real resources:
   `aws_internet_gateway` + `aws_eip` + one `aws_nat_gateway` (in `public[0]`);
   public route table → IGW, private route table → NAT, with associations.
-- [ ] `aws_s3_bucket` (`force_destroy = true`) + `aws_s3_object.vpc_state`
+- [x] `aws_s3_bucket` (`force_destroy = true`) + `aws_s3_object.vpc_state`
   seeding the **full nine-output** contract at
   `${region}/vpc/${vpc_name}/terraform.tfstate`, every value computed from the
   resources above.
-- [ ] Outputs: the nine contract values **plus** `bucket_name` (so composing
+- [x] Outputs: the nine contract values **plus** `bucket_name` (so composing
   fixtures can write additional state into the same bucket — see Phase 3).
-- [ ] `terraform fmt` + `tflint` clean; `terraform-docs` if a `USAGE.md` is added.
+- [x] `terraform fmt` + `tflint` clean; no `USAGE.md` for a test fixture (matches
+  the existing `tests-localstack/fixtures/setup` convention).
 
 #### Success Criteria
 
