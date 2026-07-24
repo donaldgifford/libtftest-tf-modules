@@ -38,6 +38,11 @@ variable "region" {
   type = string
 }
 
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped VPC state key the cluster module reads (IMPL-0015)."
+  type        = string
+}
+
 resource "aws_vpc" "this" {
   cidr_block = "10.0.0.0/16"
 
@@ -80,7 +85,7 @@ resource "aws_s3_bucket" "state" {
 # `outputs.public_subnet_ids` — those are all that need to be populated.
 resource "aws_s3_object" "vpc_state" {
   bucket       = aws_s3_bucket.state.id
-  key          = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
+  key          = "${var.account_name}/${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
   content_type = "application/json"
 
   content = jsonencode({

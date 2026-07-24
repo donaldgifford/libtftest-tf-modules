@@ -66,12 +66,28 @@ provider "aws" {
   }
 }
 
+# Declarations for the Terragrunt globals this file references via var.* in the
+# setup run. Values come from the shared var-file (test/fixtures/
+# terragrunt-inputs.tfvars) via the `just tf test*` recipes — no default here.
+variable "region" {
+  type = string
+}
+
+variable "remote_state_bucket" {
+  type = string
+}
+
+variable "account_name" {
+  type = string
+}
+
+# region + remote_state_bucket now come from the shared var-file
+# (test/fixtures/terragrunt-inputs.tfvars) via the `just tf test*` recipes —
+# one shared test bucket across the fleet (IMPL-0015 Q2).
 variables {
-  name                = "tftest-apply"
-  region              = "us-east-1"
-  remote_state_bucket = "stub-bucket"
-  vpc_name            = "stub-vpc"
-  sso_cluster_policy  = "AmazonEKSViewPolicy"
+  name               = "tftest-apply"
+  vpc_name           = "stub-vpc"
+  sso_cluster_policy = "AmazonEKSViewPolicy"
   tags = {
     Account     = "libtftest"
     ClusterName = "tftest-apply"
@@ -100,6 +116,7 @@ run "setup" {
     remote_state_bucket = var.remote_state_bucket
     vpc_name            = var.vpc_name
     region              = var.region
+    account_name        = var.account_name
   }
 
   module {
