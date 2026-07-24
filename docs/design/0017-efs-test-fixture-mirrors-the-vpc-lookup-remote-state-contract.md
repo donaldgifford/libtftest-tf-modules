@@ -184,6 +184,11 @@ passive `kubernetes.io/role/*` tags. The separate EKS stub state is unchanged.
 >
 > Questions 1–3 are the cross-cutting decisions shared with DESIGN-0015 and
 > DESIGN-0016; answer them once for all three.
+>
+> **Resolved 2026-07-17 — 1a, 2a, 3a, 4a, 5a (all recommendations accepted).**
+> Shared reference fixture (1a), full nine-output contract (2a), plan stubs
+> mirrored (3a), the second (EKS) seeded state left as-is (4a), three AZs (5a).
+> These are the decisions of record.
 
 ### 1. Shared reference fixture, or per-module duplication?
 
@@ -215,6 +220,12 @@ passive `kubernetes.io/role/*` tags. The separate EKS stub state is unchanged.
 - **other:** (enter your own)
 
 ### 4. Normalize the second (EKS) seeded state too?
+
+*(**Resolved 2026-07-17 — 4a.** The EKS stub is a different producer's contract
+(`eks/cluster`, the `.eks` state at `…/eks/…`), with no VPC/subnets/`Network`
+tags for the `vpc-lookup` topology to touch. Its stub node SG lives in the VPC,
+so it inherits the normalized VPC for free — no edit needed. A faithful
+`eks/cluster` stub would be a separate effort against that producer's contract.)*
 
 - **a — Leave the EKS stub state as-is.** *(recommended)* It is not a VPC-contract
   state; the `vpc-lookup` topology does not apply to it. Out of scope.

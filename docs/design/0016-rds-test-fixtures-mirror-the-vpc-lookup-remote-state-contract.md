@@ -231,6 +231,10 @@ from two keys to nine (the full `vpc-lookup` contract). Subnet tags move from
 >
 > Questions 1–3 are the cross-cutting decisions shared with DESIGN-0015 and
 > DESIGN-0017; answering them here settles them fleet-wide.
+>
+> **Resolved 2026-07-17 — 1a, 2a, 3a, 4b, 5a.** Shared reference fixture (1a),
+> full nine-output contract (2a), plan stubs mirrored (3a), **both proxy and
+> read-replica in scope (4b)**, three AZs (5a). These are the decisions of record.
 
 ### 1. Shared reference fixture, or per-module duplication?
 
@@ -264,7 +268,12 @@ from two keys to nine (the full `vpc-lookup` contract). Subnet tags move from
 
 ### 4. Are proxy and read-replica in scope?
 
-- **a — Include `read-replica` only.** *(recommended)* Its fixture hand-writes a
+*(**Resolved 2026-07-17 — 4b.** Both are in scope: every VPC any RDS fixture
+builds moves to the reference scheme. For `proxy` this is cosmetic — it reads the
+target contract, not the VPC — but it keeps all fixture-created VPCs on one
+scheme, consistent with the fleet rule "normalize every VPC a fixture builds.")*
+
+- **a — Include `read-replica` only.** Its fixture hand-writes a
   genuine VPC-contract state (via the real `cluster` module's read), so it belongs
   on the reference scheme. Leave `proxy` out — it seeds a target state, not a VPC
   contract, so retagging its VPC is cosmetic.

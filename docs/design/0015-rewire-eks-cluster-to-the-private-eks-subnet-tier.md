@@ -253,10 +253,11 @@ of the (already-resolved) one-line cluster rewire.
 > recommendation**; b+ are alternatives; **other** = your free-text call.
 > (Reply e.g. "1a, 2b, 3a, 4a, 5a, 6a" or override any with your own.)
 >
-> **Resolved 2026-07-17 — 1a, 2a, 3a, 4a, 5a, 6a (all recommendations
-> accepted).** Each option **a** below is the decision of record. Question 7
-> (added with the fixture-fidelity addendum) is **open** — plus the three
-> cross-cutting decisions in DESIGN-0016 (Q1–Q3) apply fleet-wide.
+> **Resolved 2026-07-17 — Q1–Q6 all option a; Q7 → 7a
+> (managed-node-group fixture in scope).** Each option **a** below is the
+> decision of record. The three cross-cutting decisions are resolved fleet-wide
+> (DESIGN-0016 Q1–Q3): shared reference fixture (**1a**), full nine-output
+> contract (**2a**), plan stubs mirrored too (**3a**).
 
 ### 1. Guard the EKS subnet count with a precondition?
 
@@ -327,8 +328,9 @@ DESIGN-0002 documents the old single-private-tier wiring.
 
 ### 7. Is the managed-node-group fixture in scope?
 
-*(Open — added with the fixture-fidelity addendum. The three cross-cutting
-decisions in DESIGN-0016 Q1–Q3 also apply to the EKS fixtures.)*
+*(**Resolved 2026-07-17 — 7a.** Both EKS fixtures move to the reference topology.
+The three cross-cutting decisions in DESIGN-0016 Q1–Q3 also apply to the EKS
+fixtures.)*
 
 - **a — Yes, upgrade `managed-node-group`'s fixture too.** *(recommended)* Both
   EKS fixtures move to the reference topology together, so no EKS fixture is left
