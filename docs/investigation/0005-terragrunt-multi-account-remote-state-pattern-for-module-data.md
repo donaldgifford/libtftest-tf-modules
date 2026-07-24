@@ -226,12 +226,30 @@ the apply fixtures and the `reference-vpc` producer key are the real work, and
 
 ## Recommendation
 
-Promote this to a DESIGN once the open questions are resolved. Sequence:
-(1) spike `assume_role` + account-scoped key against LocalStack; (2) update
-`reference-vpc` + the producer key; (3) roll the four variables + block rewrite
-across the ten consumers; (4) reconcile the apply fixtures; (5) add the four
-`variable` decls to the plan suites. Land it as one coordinated change so the
-producer/consumer keys never diverge.
+Promote this to a DESIGN. Per the Q4 resolution, **two shared test artifacts**
+carry the migration and keep the producer/consumer keys from drifting:
+
+- **`test/fixtures/terragrunt-inputs.tfvars` — the shared inputs file.** A single
+  var-file holding the six terragrunt-supplied constants (`account_name`,
+  `account_id`, `region`, `remote_state_bucket`, `remote_state_bucket_region`,
+  `deploy_role_name`), wired into the `just tf test*` recipes so every suite
+  reads them without repeating a `variables {}` block. This is the "common
+  consumed inputs" the fleet's tests share; it also satisfies the plan-suite half
+  of 3a (the four new vars come from here, not per-file). A `.tfvars` — not a
+  module — because these are constants (see Q4).
+- **An expanded `reference-vpc` fixture.** Grow the *existing* shared fixture to
+  take `account_name` (+ `remote_state_bucket_region`), seed the **account-scoped**
+  key `${account_name}/${region}/vpc/${vpc_name}/…`, and re-emit those values so
+  the composing fixtures (`rds/proxy` `fixtures/db`, `rds/read-replica`
+  `fixtures/cluster`) stay in lockstep. Extend it, do not fork it, and do not add
+  a separate constants-only module.
+
+Sequence: (1) spike cross-account `assume_role` + the account-scoped key against
+LocalStack; (2) add the shared `.tfvars` **and** expand `reference-vpc` to seed
+the account-scoped key; (3) roll the four variables + the block rewrite across the
+ten consumers; (4) reconcile the apply fixtures onto the shared inputs; (5) add
+the four `variable` decls to the plan suites (values supplied by the `.tfvars`).
+Land it as one coordinated change so the producer/consumer keys never diverge.
 
 ## Open Questions
 
