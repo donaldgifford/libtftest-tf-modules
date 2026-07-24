@@ -297,6 +297,11 @@ Mirror the nine-key schema into the plan-time `override_data` blocks (decision
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
 > (Reply e.g. "1a, 2a, 3a, 4a, 5a" or override any with your own.)
+>
+> **Resolved 2026-07-17 — 1a, 2a, 3a, 4a, 5a (all recommendations accepted).**
+> Full special-case adoption (1a), `test/fixtures/reference-vpc` at the repo root
+> (2a), real IGW/NAT/route-table fidelity (3a), one PR for the whole slice (4a),
+> no new assertions (5a). Each option **a** is the decision of record.
 
 ### 1. How deeply should the special-case fixtures adopt the shared fixture?
 
