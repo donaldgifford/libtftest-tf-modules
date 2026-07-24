@@ -238,6 +238,43 @@ producer/consumer keys never diverge.
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
 > (Reply e.g. "1a, 2a, 3b".)
+>
+> **Resolved 2026-07-24 — 1a, 2a, 3a, 5a; Q4 → the "common consumed inputs"
+> variant below.** Declare the four new inputs only in the ten remote-state
+> consumers (1a); model the state-bucket region and the deploy region as two
+> distinct variables (2a); the plan suites gain only the four `variable`
+> declarations, stub outputs untouched (3a); spike cross-account assume-role
+> under LocalStack before touching the fleet (5a).
+>
+> **Q4 resolution — centralize the terragrunt test inputs; do it by *growing
+> what we have*, not by adding a constants-only module.** The instinct is
+> right and **not an anti-pattern as a goal** — a single source for the six
+> terragrunt-supplied values (`account_name`, `account_id`, `region`,
+> `remote_state_bucket`, `remote_state_bucket_region`, `deploy_role_name`)
+> keeps the consumer's remote-state *key* and the fixture's *seeded* key from
+> drifting, which is the whole failure mode 4 was worried about. The mechanism:
+>
+> - **Do — a shared `-var-file`** (e.g. `test/fixtures/terragrunt-inputs.tfvars`)
+>   holding the six constants, wired into the `just tf test*` recipes. It sets
+>   the vars globally for the module-under-test runs, and each `run "setup"`
+>   forwards `account_name` / `region` / bucket into the fixture. This also
+>   *simplifies* 3a — the plan suites read the new vars from the var-file
+>   instead of repeating them in every `variables {}` block.
+> - **Do — extend the existing shared `reference-vpc` fixture** to take
+>   `account_name` (+ `remote_state_bucket_region`) and seed the
+>   **account-scoped** key `${account_name}/${region}/vpc/${vpc_name}/…`,
+>   re-emitting those values so composing fixtures stay in lockstep. It already
+>   *is* the "common consumed test fixture"; grow it rather than fork it.
+> - **Avoid — a brand-new module whose only job is to echo constant account
+>   values.** A fixture that instantiates nothing and computes nothing is
+>   indirection for its own sake — *that* part would be the anti-pattern.
+>   `reference-vpc` earns a module because it creates resources and computes
+>   real outputs (subnet IDs, gateway IDs); a "here are your six strings"
+>   module does not — a `.tfvars` file is the honest shape for constants.
+>
+> This subsumes the original 4a (reference-vpc is where the account-scoped
+> producer key lands) and still defers the real `network/vpc` + `vpc-lookup`
+> producer keys to a follow-up INV/DESIGN.
 
 ### 1. Which modules declare the four new variables?
 
