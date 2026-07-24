@@ -17,11 +17,9 @@ locals {
   azs = [for letter in var.az_letters : "${var.region}${letter}"]
 
   # The nine-output vpc-lookup remote-state contract, computed from this
-  # fixture's own resources. Seeded at BOTH the legacy region-scoped key and
-  # the new IMPL-0015 account-scoped key during the migration transition so
-  # unmigrated (region-scoped) and migrated (account-scoped) consumers both
-  # resolve. The legacy object is removed once every consumer reads the
-  # account-scoped key (end of IMPL-0015 Phase 3).
+  # fixture's own resources. Seeded at the IMPL-0015 account-scoped key
+  # (<account_name>/<region>/vpc/<vpc_name>/…) that migrated consumers read
+  # via an assume_role S3 backend.
   vpc_state_content = jsonencode({
     version           = 4
     terraform_version = "1.14.7"
@@ -205,13 +203,9 @@ resource "aws_route_table_association" "private_eks" {
 
 #--------------------------------------------------------------
 # S3 bucket + the seeded VPC remote state (full nine-output
-# contract) at the keys downstream module tests read. Values are
-# computed from the resources above — a faithful mirror of what
-# vpc-lookup would publish for this topology.
-#
-# During the IMPL-0015 transition the same content is seeded at TWO
-# keys: the legacy region-scoped key (unmigrated consumers) and the
-# new account-scoped key (migrated consumers + assume_role reads).
+# contract) at the account-scoped key downstream module tests read.
+# Values are computed from the resources above — a faithful mirror of
+# what vpc-lookup would publish for this topology.
 #--------------------------------------------------------------
 
 resource "aws_s3_bucket" "state" {
@@ -219,20 +213,11 @@ resource "aws_s3_bucket" "state" {
   force_destroy = true
 }
 
-# Legacy region-scoped key: <region>/vpc/<vpc_name>/terraform.tfstate.
-# TODO(IMPL-0015 Phase 3): remove once every consumer reads the
-# account-scoped key below.
-resource "aws_s3_object" "vpc_state" {
-  bucket       = aws_s3_bucket.state.id
-  key          = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
-  content_type = "application/json"
-  content      = local.vpc_state_content
-}
-
 # Account-scoped key: <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate.
 # The Terragrunt-faithful key IMPL-0015-migrated consumers read via an
-# assume_role S3 backend.
-resource "aws_s3_object" "vpc_state_account_scoped" {
+# assume_role S3 backend. (The legacy region-scoped seed used during the
+# migration transition was removed once every consumer read this key.)
+resource "aws_s3_object" "vpc_state" {
   bucket       = aws_s3_bucket.state.id
   key          = "${var.account_name}/${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
   content_type = "application/json"

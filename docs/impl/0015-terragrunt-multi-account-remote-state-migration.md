@@ -301,15 +301,15 @@ fixture side is nearly free once Phase 2 lands.
 
 #### Tasks
 
-- [ ] `rds/serverless`, `rds/cluster`, `rds/instance`: add the four `variable`
+- [x] `rds/serverless`, `rds/cluster`, `rds/instance`: add the four `variable`
   declarations; rewrite the `data.terraform_remote_state.vpc` block to the
   account-scoped key + `assume_role`.
-- [ ] `rds/proxy`: same on `data.terraform_remote_state.target`; update
+- [x] `rds/proxy`: same on `data.terraform_remote_state.target`; update
   `fixtures/db` to seed the target state at the account-scoped key.
-- [ ] `rds/read-replica`: same on `data.terraform_remote_state.rds_cluster`;
+- [x] `rds/read-replica`: same on `data.terraform_remote_state.rds_cluster`;
   update `fixtures/cluster` to seed the cluster state at the account-scoped key
   (it already composes `reference-vpc` for the VPC side).
-- [ ] Add the four `variable` declarations to every RDS plan suite (serverless 6,
+- [x] Add the four `variable` declarations to every RDS plan suite (serverless 6,
   cluster 5, instance 6, proxy 5, read-replica 3 files) — declarations only; the
   `override_data` output maps are untouched (3a); values come from the var-file.
 
@@ -320,6 +320,43 @@ fixture side is nearly free once Phase 2 lands.
 - `just tf test-localstack-pro rds/{cluster,instance,proxy,read-replica}` green
   (named-volume Pro apply) — the account-scoped read resolves against the
   account-scoped seed.
+
+#### Result (2026-07-24 — all five RDS consumers migrated, green)
+
+Per module: four required globals in `variables.tf`, the data source rewritten
+to the account-scoped key + `assume_role`, and the apply suite consolidated onto
+the shared var-file bucket. Composing fixtures threaded the globals through:
+`proxy/fixtures/db` (→ its reference-vpc + account-scoped target key),
+`read-replica/fixtures/cluster` (→ its reference-vpc **and the real cluster
+module**, which now reads its own VPC state account-scoped, + account-scoped
+cluster key). Verified:
+
+| Module | Plan | Community | Pro apply |
+|--------|------|-----------|-----------|
+| `rds/serverless` | 21/21 | 3/3 | — |
+| `rds/cluster` | 19/19 | — | 3/3 |
+| `rds/instance` | 26/26 | — | 3/3 |
+| `rds/proxy` | 20/20 | 1/1 (plan_smoke) | 3/3 |
+| `rds/read-replica` | 11/11 | 1/1 (plan_smoke) | 2/2 |
+
+**Two discovered reconciliations of the task list:**
+
+- **Plan suites need no per-var edits (task 4 refinement).** Because `-var-file`
+  supplies the four new vars to every `terraform test` invocation and the plan
+  suites never reference them via `var.*` (their `override_data` stubs the data
+  source), the plan gates pass unchanged. What *does* need declaring is the
+  handful of **apply/setup** files that reference `var.account_name` etc. in a
+  `run "setup"` block: Terraform test now requires an explicit top-level
+  `variable {}` declaration for any `var.*` reference (else a deprecation
+  warning), so those files gained `variable "region" / "remote_state_bucket" /
+  "account_name" {}` declarations. This is strictly less churn than the doc's
+  "declarations in every plan suite" and matches Q6a.
+- **The legacy region-scoped `reference-vpc` seed was removed** at the end of
+  this phase (its Phase 2 `TODO`): every RDS consumer now reads the
+  account-scoped key, and EKS/EFS use bespoke fixtures (not `reference-vpc`), so
+  the region-scoped object had no readers left. `reference-vpc` now seeds the
+  account-scoped key **only**; `rds/serverless` Community apply re-verified 3/3
+  after the removal.
 
 ---
 
