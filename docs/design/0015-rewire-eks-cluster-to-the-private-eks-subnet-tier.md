@@ -28,6 +28,7 @@ created: 2026-07-15
 - [Data Model](#data-model)
 - [Testing Strategy](#testing-strategy)
 - [Migration / Rollout Plan](#migration--rollout-plan)
+- [EKS Fixture Fidelity (Addendum)](#eks-fixture-fidelity-addendum)
 - [Open Questions](#open-questions)
   - [1. Guard the EKS subnet count with a precondition?](#1-guard-the-eks-subnet-count-with-a-precondition)
   - [2. How to handle a VPC state missing the EKS subnet output?](#2-how-to-handle-a-vpc-state-missing-the-eks-subnet-output)
@@ -35,6 +36,7 @@ created: 2026-07-15
   - [4. Retag the cluster's LocalStack fixture to the Network scheme?](#4-retag-the-clusters-localstack-fixture-to-the-network-scheme)
   - [5. Update DESIGN-0002, or leave it historical?](#5-update-design-0002-or-leave-it-historical)
   - [6. Emit a cluster subnet-IDs observability output?](#6-emit-a-cluster-subnet-ids-observability-output)
+  - [7. Is the managed-node-group fixture in scope?](#7-is-the-managed-node-group-fixture-in-scope)
 - [References](#references)
 <!--toc:end-->
 
@@ -77,8 +79,10 @@ VPC-state stubs across the cluster's test suites (native HCL + libtftest Go).
 - **Fixing the pre-existing DESIGN-0002 drift** where the doc says
   `endpoint_public_access = false` but the code defaults it `true`
   (`variables.tf:69-73`). Noted, unrelated, left alone.
-- **Retiring the fleet's stub-`Tier`-tag fixtures** wholesale (only the
-  cluster's fixture is in scope; see Open Question 4).
+- **The RDS and EFS fixture slices** — the 2026-07-17 review widened the
+  stub-`Tier`-tag cleanup fleet-wide, but the RDS and EFS fixtures are covered in
+  DESIGN-0016 and DESIGN-0017. This doc's addendum covers only the two EKS
+  fixtures (`cluster` + `managed-node-group`).
 
 ## Background
 
@@ -209,6 +213,40 @@ touchpoint is the *consumed* VPC state contract, which gains one list output
    change — call it out in the operator's plan review. Greenfield clusters are
    unaffected.
 
+## EKS Fixture Fidelity (Addendum)
+
+> Added 2026-07-17. The review widened the original one-line rewire into a
+> fleet-wide effort: every test fixture that stubs the VPC remote state should be
+> a faithful `vpc-lookup` stand-in. This addendum covers the two **EKS** fixtures;
+> the RDS and EFS slices live in **DESIGN-0016** and **DESIGN-0017**. The three
+> cross-cutting decisions (shared-vs-per-module fixture, full-vs-minimal contract,
+> plan-stub schema) are posed once in DESIGN-0016 §Open Questions (Q1–Q3) and
+> apply here too — **answer them once, fleet-wide.**
+
+The goal: the EKS fixtures build the `vpc-lookup` **reference topology**
+(public / private / private-EKS subnets, real `Network` tags + the passive
+`kubernetes.io/role/{elb,internal-elb}` tags, ≥ 2 AZs) and seed the full
+nine-output contract, computed from the fixture's own resources — not the
+current `Tier`-tagged, two-output stubs.
+
+- **`eks/cluster`** — Open Question 4 (resolved **4a**) already retags this
+  fixture to the `Network` scheme and adds the `private_eks` subnets. That is now
+  the **floor**; the cross-cutting full-vs-minimal decision (DESIGN-0016 Q2)
+  determines whether it also gains the remaining contract outputs
+  (`vpc_cidr_block`, `availability_zones`, `nat_gateway_ids`, `route_table_ids`,
+  `internet_gateway_id`) plus the IGW / NAT / route-table resources that back
+  them. Q4a stands; DESIGN-0016 Q2 extends its ceiling.
+- **`eks/managed-node-group`** — its
+  `tests-localstack/fixtures/setup/main.tf` creates two `Tier = "private"` + two
+  `Tier = "public"` subnets and seeds `vpc_id` + `private_subnet_ids` +
+  `public_subnet_ids`, alongside a separate EKS stub state. Node placement does
+  not change (nodes stay on `private_subnet_ids`); only the fixture's topology and
+  seeded contract do. In-scope status is Open Question 7. The node group's
+  separate EKS stub state is orthogonal and stays as-is.
+
+No EKS module source changes in this addendum — it is purely fixture work, on top
+of the (already-resolved) one-line cluster rewire.
+
 ## Open Questions
 
 > Format: each question is numbered; options are lettered. **a = my
@@ -216,7 +254,9 @@ touchpoint is the *consumed* VPC state contract, which gains one list output
 > (Reply e.g. "1a, 2b, 3a, 4a, 5a, 6a" or override any with your own.)
 >
 > **Resolved 2026-07-17 — 1a, 2a, 3a, 4a, 5a, 6a (all recommendations
-> accepted).** Each option **a** below is the decision of record.
+> accepted).** Each option **a** below is the decision of record. Question 7
+> (added with the fixture-fidelity addendum) is **open** — plus the three
+> cross-cutting decisions in DESIGN-0016 (Q1–Q3) apply fleet-wide.
 
 ### 1. Guard the EKS subnet count with a precondition?
 
@@ -285,9 +325,24 @@ DESIGN-0002 documents the old single-private-tier wiring.
   for operator visibility.
 - **other:** (enter your own)
 
+### 7. Is the managed-node-group fixture in scope?
+
+*(Open — added with the fixture-fidelity addendum. The three cross-cutting
+decisions in DESIGN-0016 Q1–Q3 also apply to the EKS fixtures.)*
+
+- **a — Yes, upgrade `managed-node-group`'s fixture too.** *(recommended)* Both
+  EKS fixtures move to the reference topology together, so no EKS fixture is left
+  on the old `Tier` scheme. Node placement is unchanged; its separate EKS stub
+  state stays as-is.
+- **b — `cluster` fixture only.** Leave `managed-node-group`'s fixture on the
+  current `Tier` stubs for now; least churn, but the fleet stays half-migrated.
+- **other:** (enter your own)
+
 ## References
 
 - INV-0004 — VPC module downstream remote-state contract (the 3-tier split).
+- DESIGN-0016 — RDS slice of the fleet-wide fixture-fidelity effort.
+- DESIGN-0017 — EFS slice of the fleet-wide fixture-fidelity effort.
 - DESIGN-0002 — EKS Cluster Module (the module being amended).
 - ADR-0001 — Cross-module composition via `terraform_remote_state`.
 - ADR-0011 — Kubernetes-API objects delivered out-of-band (pod networking scope).
