@@ -76,9 +76,10 @@ variables {
   }
 }
 
-# Setup: VPC + 3 private subnets + S3 bucket holding the stub VPC state
-# file at the conventional key. Applied first so the module's
-# data.terraform_remote_state.vpc resolves.
+# Setup: the shared vpc-lookup-faithful reference VPC (three-tier
+# Network-tagged topology + full nine-output remote-state contract),
+# seeded into S3 at the conventional key. Applied first so the module's
+# data.terraform_remote_state.vpc resolves. See test/fixtures/reference-vpc.
 run "setup" {
   command = apply
 
@@ -89,7 +90,7 @@ run "setup" {
   }
 
   module {
-    source = "./tests-localstack-pro/fixtures/setup"
+    source = "../../../test/fixtures/reference-vpc"
   }
 }
 

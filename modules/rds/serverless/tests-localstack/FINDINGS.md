@@ -16,7 +16,7 @@ Q5):
 
 | Run | Command | Engine | Coverage |
 |-----|---------|--------|----------|
-| `setup` | apply | n/a | VPC + 3 private subnets + S3 bucket with stub VPC state file |
+| `setup` | apply | n/a | Shared `test/fixtures/reference-vpc` — three-tier `Network`-tagged topology + S3 bucket seeding the full nine-output vpc-lookup state (IMPL-0014) |
 | `apply_default` | apply | aurora-postgresql | Module-managed KMS + subnet group + SG + parameter groups + Serverless v2 cluster + db.serverless instance |
 | `plan_mysql` | plan | aurora-mysql | MySQL endpoint resolution + plan-time validation + mysql parameter family lookup |
 

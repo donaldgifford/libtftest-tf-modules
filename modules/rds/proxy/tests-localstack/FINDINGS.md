@@ -45,9 +45,11 @@ Community **and with no LocalStack at all**.
 
 ## `apply_pro` (opt-in, Pro)
 
-`fixtures/db` applies a minimal Aurora Serverless v2 target (a VPC, two
-subnets, an SG, and a cluster with an AWS-managed master secret) **and
-writes a stub remote-state file to S3** at the proxy's key
+`fixtures/db` applies a minimal Aurora Serverless v2 target — the shared
+`test/fixtures/reference-vpc` module (IMPL-0014 Phase 3) for the VPC + DB
+subnets, an SG, and a cluster with an AWS-managed master secret — **and
+writes a stub remote-state file to S3** (into the shared fixture's bucket,
+`module.vpc.bucket_name`) at the proxy's key
 (`<region>/rds/serverless/<identifier>/terraform.tfstate`) with the seven
 proxy-composition outputs. The proxy then applies and reads that state for
 real via `data.terraform_remote_state.target`. Three runs: `setup`,

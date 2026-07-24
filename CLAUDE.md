@@ -140,9 +140,44 @@ Tracked in git. As of this writing:
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
 
+### Shared test fixtures (`test/fixtures/`)
+
+- **`test/fixtures/reference-vpc/`** — the fleet's single, shared,
+  `vpc-lookup`-faithful VPC fixture (DESIGN-0016 / IMPL-0014). Stands up the
+  three-tier `Network`-tagged topology (Public / Private / Private EKS, +passive
+  `kubernetes.io/role/{elb,internal-elb}` tags) across three AZs with IGW + one
+  NAT + public/private route tables, then seeds the **full nine-output**
+  `vpc-lookup` remote-state contract into S3 at
+  `${region}/vpc/${vpc_name}/terraform.tfstate`, every value computed from its own
+  resources (it does **not** instantiate `vpc-lookup`). Inputs:
+  `remote_state_bucket` / `vpc_name` / `region` (+ `vpc_cidr`, `az_letters`
+  defaults). Outputs: the nine contract values **plus** `bucket_name` so composing
+  fixtures (`rds/proxy`, `rds/read-replica`) can write their own state objects
+  into the same bucket. Consumer apply-tests source this via `run "setup"` instead
+  of hand-rolling a `Tier`-tagged, two-output stub. **Caveat:** the real NAT
+  gateway makes each apply that uses it ~1–2 min slower on LocalStack (accepted
+  cost of DESIGN-0016 decision 3a — full network-fact fidelity). Verified with a
+  live LocalStack apply (all nine outputs seeded, tiers disjoint, 3 AZs). The RDS
+  slice adopts it first (IMPL-0014): the three direct `data.terraform_remote_state.vpc`
+  consumers — `rds/serverless` (Community `test-localstack`), `rds/cluster` +
+  `rds/instance` (Pro `test-localstack-pro`) — now source it via `run "setup"` and
+  their bespoke `fixtures/setup/` dirs are deleted (Phase 2, all three apply suites
+  **run and passing 3/3** against LocalStack Pro 2026.7.0 on a named volume). The
+  special-case fixtures now **compose** it (Phase 3): `rds/proxy`'s `fixtures/db`
+  and `rds/read-replica`'s `fixtures/cluster` source `module.vpc` for the DB subnet
+  group / cluster VPC and write their non-VPC stub state (target / cluster) into
+  `module.vpc.bucket_name` — zero inline VPCs, zero `Tier`-tagged subnets remain
+  under `modules/rds/` (proxy Pro apply 3/3, read-replica Pro apply 2/2). The
+  plan-time `data.terraform_remote_state.vpc` `override_data` stubs across the
+  `serverless`/`cluster`/`instance` plan suites (68 blocks) were likewise expanded
+  from the two-key form to the full nine-key contract (Phase 4, values-only —
+  plan tests create no VPC). IMPL-0014 (all five phases) + DESIGN-0016 are
+  **Implemented**; EKS (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
+
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
-(DESIGN-0001..0014), and `docs/investigation/` (INV-0001..0004).
+(DESIGN-0001..0017), and `docs/investigation/` (INV-0001..0004). Phase-based
+implementation tracking lives in `docs/impl/` (IMPL-0001..0014).
 
 ### In-tree Go tooling (`tools/`)
 

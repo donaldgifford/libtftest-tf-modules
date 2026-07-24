@@ -45,4 +45,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0011 | RDS instance module implementation | Completed | 2026-07-09 | Donald Gifford | [0011-rds-instance-module-implementation.md](0011-rds-instance-module-implementation.md) |
 | IMPL-0012 | RDS Aurora provisioned cluster module implementation | Completed | 2026-07-09 | Donald Gifford | [0012-rds-aurora-provisioned-cluster-module-implementation.md](0012-rds-aurora-provisioned-cluster-module-implementation.md) |
 | IMPL-0013 | RDS Aurora read-replica module implementation | Completed | 2026-07-09 | Donald Gifford | [0013-rds-aurora-read-replica-module-implementation.md](0013-rds-aurora-read-replica-module-implementation.md) |
+| IMPL-0014 | RDS test-fixture vpc-lookup fidelity | Completed | 2026-07-23 | Donald Gifford | [0014-rds-test-fixture-vpc-lookup-fidelity.md](0014-rds-test-fixture-vpc-lookup-fidelity.md) |
 <!-- END DOCZ AUTO-GENERATED -->

@@ -49,12 +49,14 @@ calls, it passes on Community **and with no LocalStack at all**.
 
 ## `apply_pro` (opt-in, Pro)
 
-`fixtures/setup` builds a VPC + 3 private subnets (Aurora needs ≥2 AZs
-for the DB subnet group) **and writes a stub VPC state file to S3** at the
-module's key (`<region>/vpc/<vpc_name>/terraform.tfstate`). The cluster
-then applies and reads that state for real via
-`data.terraform_remote_state.vpc` — the same S3-stub bridge the
-`serverless` + `proxy` apply suites use. Three runs: `setup` (apply),
+`setup` sources the shared `test/fixtures/reference-vpc` module (IMPL-0014
+Phase 2) — the vpc-lookup-faithful three-tier `Network`-tagged topology
+across three AZs (Aurora needs ≥2 AZs for the DB subnet group) — which
+**seeds the full nine-output VPC state to S3** at the module's key
+(`<region>/vpc/<vpc_name>/terraform.tfstate`). The cluster then applies and
+reads that state for real via `data.terraform_remote_state.vpc` — the same
+S3-stub bridge the `serverless` + `proxy` apply suites use. Three runs:
+`setup` (apply),
 `apply_default` (apply, `aurora-postgresql`, `engine_version` pinned to
 16), `plan_mysql` (plan-only, `aurora-mysql`).
 

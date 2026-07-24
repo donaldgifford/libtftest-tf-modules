@@ -8,11 +8,13 @@
 # fixtures/db pattern).
 #
 # Three-level state dependency: the cluster module itself reads a VPC
-# remote state, so this fixture first builds a VPC + stub VPC state, then
-# instantiates the cluster module with depends_on = [the VPC state
-# object] so the cluster's data.terraform_remote_state.vpc read is
-# deferred to apply (after the VPC state exists), then writes the cluster
-# stub state for the readers.
+# remote state, so this fixture first stands up the shared
+# test/fixtures/reference-vpc module (the vpc-lookup-faithful topology +
+# seeded nine-output VPC state), then instantiates the cluster module with
+# depends_on = [module.vpc] so the cluster's data.terraform_remote_state.vpc
+# read is deferred to apply (after the VPC state exists), then writes the
+# cluster stub state for the readers into the same bucket
+# (module.vpc.bucket_name) per IMPL-0014 Phase 3 / DESIGN-0016 decision 4b.
 
 terraform {
   required_version = ">= 1.1"
@@ -46,58 +48,21 @@ variable "cluster_identifier" {
 }
 
 #--------------------------------------------------------------
-# VPC + private subnets + S3 bucket + stub VPC state
-# (the cluster module reads vpc_id + private_subnet_ids from
-# <region>/vpc/<vpc_name>/terraform.tfstate).
+# Shared reference VPC + seeded VPC remote state. Creates the S3 bucket
+# and seeds <region>/vpc/<vpc_name>/terraform.tfstate (the key the cluster
+# module reads vpc_id + private_subnet_ids from).
 #--------------------------------------------------------------
 
-resource "aws_vpc" "this" {
-  cidr_block = "10.0.0.0/16"
-  tags       = { Name = var.vpc_name }
-}
+module "vpc" {
+  source = "../../../../../../test/fixtures/reference-vpc"
 
-resource "aws_subnet" "private" {
-  count             = 3
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = "10.0.${count.index}.0/24"
-  availability_zone = "${var.region}${["a", "b", "c"][count.index]}"
-  tags = {
-    Name = "${var.vpc_name}-private-${count.index}"
-    Tier = "private"
-  }
-}
-
-resource "aws_s3_bucket" "state" {
-  bucket        = var.remote_state_bucket
-  force_destroy = true
-}
-
-resource "aws_s3_object" "vpc_state" {
-  bucket       = aws_s3_bucket.state.id
-  key          = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
-  content_type = "application/json"
-
-  content = jsonencode({
-    version           = 4
-    terraform_version = "1.14.7"
-    serial            = 1
-    lineage           = "tftest-rr-stub-vpc"
-    outputs = {
-      vpc_id = {
-        value = aws_vpc.this.id
-        type  = "string"
-      }
-      private_subnet_ids = {
-        value = aws_subnet.private[*].id
-        type  = ["list", "string"]
-      }
-    }
-    resources = []
-  })
+  remote_state_bucket = var.remote_state_bucket
+  vpc_name            = var.vpc_name
+  region              = var.region
 }
 
 #--------------------------------------------------------------
-# The real cluster module. depends_on the VPC state object so its
+# The real cluster module. depends_on the shared VPC fixture so its
 # data.terraform_remote_state.vpc read is deferred to apply, after the
 # VPC state exists.
 #--------------------------------------------------------------
@@ -116,18 +81,18 @@ module "cluster" {
 
   skip_final_snapshot = true
 
-  depends_on = [aws_s3_object.vpc_state]
+  depends_on = [module.vpc]
 }
 
 #--------------------------------------------------------------
 # Stub cluster state at the read-replica's key
-# (<region>/rds/cluster/<cluster_identifier>/terraform.tfstate). The
-# outputs map is exactly the read-replica consumer set the cluster
-# module emits (Q4-b — no drift).
+# (<region>/rds/cluster/<cluster_identifier>/terraform.tfstate), written
+# into the shared fixture's bucket. The outputs map is exactly the
+# read-replica consumer set the cluster module emits (Q4-b — no drift).
 #--------------------------------------------------------------
 
 resource "aws_s3_object" "cluster_state" {
-  bucket       = aws_s3_bucket.state.id
+  bucket       = module.vpc.bucket_name
   key          = "${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"
   content_type = "application/json"
 

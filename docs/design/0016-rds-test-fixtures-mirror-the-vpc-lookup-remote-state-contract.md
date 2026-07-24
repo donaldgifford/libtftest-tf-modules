@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0016
 title: "RDS test fixtures mirror the vpc-lookup remote-state contract"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-07-23
 ---
@@ -9,7 +9,7 @@ created: 2026-07-23
 
 # DESIGN 0016: RDS test fixtures mirror the vpc-lookup remote-state contract
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-07-23
 
