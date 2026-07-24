@@ -61,14 +61,17 @@ assert count / identifiers / per-reader endpoints).
 ### Finding — three-level state dependency needs a deferred module read
 
 The cluster module itself reads a VPC remote state, so the fixture has a
-**three-level** state chain: VPC state → cluster state → readers. In a
-single `terraform apply`, the cluster module's
-`data.terraform_remote_state.vpc` would read at *plan* time, before the
-fixture's stub VPC state S3 object exists. The fix: give the
-`module "cluster"` block a `depends_on = [aws_s3_object.vpc_state]`, which
-**defers the module's data-source reads to apply** — after the VPC state
-object is written. The fixture then writes the cluster module's outputs to
-S3 as the stub cluster state at the read-replica's key
+**three-level** state chain: VPC state → cluster state → readers. The VPC
+now comes from the shared `test/fixtures/reference-vpc` module (IMPL-0014
+Phase 3), which seeds the nine-output VPC state. In a single `terraform
+apply`, the cluster module's `data.terraform_remote_state.vpc` would read
+at *plan* time, before that VPC state S3 object exists. The fix: give the
+`module "cluster"` block a `depends_on = [module.vpc]`, which **defers the
+module's data-source reads to apply** — after the shared VPC fixture (and
+its seeded state object) is written. The fixture then writes the cluster
+module's outputs to S3 (into the shared fixture's bucket,
+`module.vpc.bucket_name`) as the stub cluster state at the read-replica's
+key
 (`<region>/rds/cluster/<cluster_identifier>/terraform.tfstate`), and
 `apply_replicas` reads it for real. (The `proxy` fixture avoided this by
 hand-rolling its cluster, so it had no nested remote state; Q4-b's

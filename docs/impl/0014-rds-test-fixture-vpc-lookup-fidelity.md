@@ -1,7 +1,7 @@
 ---
 id: IMPL-0014
 title: "RDS test-fixture vpc-lookup fidelity"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-07-23
 ---
@@ -9,7 +9,7 @@ created: 2026-07-23
 
 # IMPL 0014: RDS test-fixture vpc-lookup fidelity
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-23
 
@@ -229,16 +229,16 @@ Mirror the nine-key schema into the plan-time `override_data` blocks (decision
 
 #### Tasks
 
-- [ ] `just tf all rds/<m>` (validate + lint + fmt + test) for `serverless`,
+- [x] `just tf all rds/<m>` (validate + lint + fmt + test) for `serverless`,
   `cluster`, `instance`; `just tf validate|lint|fmt` for `proxy`,
   `read-replica`.
-- [ ] Regenerate any `USAGE.md` that changed (fixtures are test-only → expect
-  none; confirm).
-- [ ] Update the affected `tests-localstack*/FINDINGS.md` notes to reference the
+- [x] Regenerate any `USAGE.md` that changed (fixtures are test-only → expect
+  none; confirm) — none changed (no module I/O touched).
+- [x] Update the affected `tests-localstack*/FINDINGS.md` notes to reference the
   shared fixture + the three-tier topology.
-- [ ] Update `CLAUDE.md`: record the shared `test/fixtures/reference-vpc` and the
+- [x] Update `CLAUDE.md`: record the shared `test/fixtures/reference-vpc` and the
   RDS adoption.
-- [ ] Flip DESIGN-0016 and IMPL-0014 status to Implemented / Completed;
+- [x] Flip DESIGN-0016 and IMPL-0014 status to Implemented / Completed;
   `docz update`.
 
 #### Success Criteria

@@ -167,8 +167,12 @@ Tracked in git. As of this writing:
   and `rds/read-replica`'s `fixtures/cluster` source `module.vpc` for the DB subnet
   group / cluster VPC and write their non-VPC stub state (target / cluster) into
   `module.vpc.bucket_name` — zero inline VPCs, zero `Tier`-tagged subnets remain
-  under `modules/rds/` (proxy Pro apply 3/3, read-replica Pro apply 2/2). EKS
-  (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
+  under `modules/rds/` (proxy Pro apply 3/3, read-replica Pro apply 2/2). The
+  plan-time `data.terraform_remote_state.vpc` `override_data` stubs across the
+  `serverless`/`cluster`/`instance` plan suites (68 blocks) were likewise expanded
+  from the two-key form to the full nine-key contract (Phase 4, values-only —
+  plan tests create no VPC). IMPL-0014 (all five phases) + DESIGN-0016 are
+  **Implemented**; EKS (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
