@@ -141,15 +141,15 @@ directories.
 
 #### Tasks
 
-- [ ] `rds/serverless`: point `run "setup"` in
+- [x] `rds/serverless`: point `run "setup"` in
   `tests-localstack/apply_localstack.tftest.hcl` `module.source` at
   `../../../test/fixtures/reference-vpc` (relative to the module root — verify
   depth); delete `tests-localstack/fixtures/setup/`.
-- [ ] `rds/cluster`: repoint `tests-localstack-pro/apply_pro.tftest.hcl:77`
+- [x] `rds/cluster`: repoint `tests-localstack-pro/apply_pro.tftest.hcl:77`
   `module.source`; delete `tests-localstack-pro/fixtures/setup/`.
-- [ ] `rds/instance`: repoint `tests-localstack-pro/apply_pro.tftest.hcl:92`
+- [x] `rds/instance`: repoint `tests-localstack-pro/apply_pro.tftest.hcl:92`
   `module.source`; delete `tests-localstack-pro/fixtures/setup/`.
-- [ ] Confirm the `setup` run still passes `remote_state_bucket` / `vpc_name` /
+- [x] Confirm the `setup` run still passes `remote_state_bucket` / `vpc_name` /
   `region` (the shared fixture's input names match the deleted fixtures').
 
 #### Success Criteria

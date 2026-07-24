@@ -158,8 +158,13 @@ Tracked in git. As of this writing:
   gateway makes each apply that uses it ~1–2 min slower on LocalStack (accepted
   cost of DESIGN-0016 decision 3a — full network-fact fidelity). Verified with a
   live LocalStack apply (all nine outputs seeded, tiers disjoint, 3 AZs). The RDS
-  slice adopts it first (IMPL-0014); EKS (DESIGN-0015 addendum) + EFS
-  (DESIGN-0017) follow.
+  slice adopts it first (IMPL-0014): the three direct `data.terraform_remote_state.vpc`
+  consumers — `rds/serverless` (Community `test-localstack`), `rds/cluster` +
+  `rds/instance` (Pro `test-localstack-pro`) — now source it via `run "setup"` and
+  their bespoke `fixtures/setup/` dirs are deleted (Phase 2, all three apply suites
+  **run and passing 3/3** against LocalStack Pro 2026.7.0 on a named volume). The
+  special-case fixtures (`rds/proxy`, `rds/read-replica`) compose it next (Phase 3);
+  EKS (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
