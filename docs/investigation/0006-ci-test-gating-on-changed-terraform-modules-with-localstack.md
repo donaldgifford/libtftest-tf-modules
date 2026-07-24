@@ -174,6 +174,21 @@ changes. Keep `pr-labels.yml` + `release.yml`'s `bump-version` as-is (orthogonal
 
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
+>
+> **Resolved 2026-07-24 — 1a, 2c, 3a, 4a, 5a, 6a.** Plan tier required on every
+> PR; the Community/Pro apply tiers are required but run only for changed
+> modules (1a). **Change detection is an in-repo `just` recipe** that shells
+> `git diff --name-only` into a module list (2c, *not* the third-party
+> `paths-filter` action) — keeping the mapping version-controlled,
+> unit-testable, and runnable locally to preview what CI will test. That same
+> recipe owns the 3a fan-out rules (`test/fixtures/reference-vpc`, `justfile`,
+> `mise.toml`, `.github/` → all dependent modules) and emits the matrix CI
+> consumes. LocalStack is delivered as a `services:` container per apply job
+> (4a). The commented Go-library jobs + `.bak` files are deleted, keeping
+> `security.yml`/`govulncheck` scoped to the remaining Go dirs (5a). The
+> `eks/cluster` Go-harness keep-vs-retire question is out of scope here —
+> noted for a follow-up (6a), and it interacts with INV-0007's `x/crypto`
+> alerts.
 
 ### 1. What is the *required* merge gate vs. best-effort?
 

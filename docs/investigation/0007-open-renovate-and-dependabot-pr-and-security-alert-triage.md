@@ -161,6 +161,16 @@ posture but does not close any alert).
 
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
+>
+> **Resolved 2026-07-24 — 1a, 2a, 3a, 4a (all recommendations accepted).**
+> Merge Dependabot #35 now, standalone, with a `patch` label — it clears all
+> 13 alerts (1a). Keep the `eks/cluster` Go harness for now; #35 keeps it
+> patched, and the keep-vs-retire call defers to INV-0006 Q6 (2a). Hold the
+> non-security Renovate/Dependabot bumps until the test-gating CI (INV-0006)
+> exists so each self-verifies, then batch-merge (3a). Defer the
+> `dependabot.yml` nested-go.mod `directory` gap until after the
+> `bedrock-keyctl` extraction + the Go-harness decision, since the set of
+> tracked `go.mod`s is about to change (4a).
 
 ### 1. How do we land the security fix?
 
