@@ -150,14 +150,14 @@ phase.
 
 #### Tasks
 
-- [ ] In a scratch dir, seed an S3 object at
+- [x] In a scratch dir, seed an S3 object at
   `${account_name}/${region}/vpc/${vpc_name}/terraform.tfstate` on LocalStack
   (`account_id = "000000000000"`, any `deploy_role_name`).
-- [ ] Read it back through a `data.terraform_remote_state` with the full
+- [x] Read it back through a `data.terraform_remote_state` with the full
   `assume_role` + `use_path_style` config, asserting an output resolves.
-- [ ] Confirm the backend's STS `AssumeRole` + S3 GET both route to LocalStack
+- [x] Confirm the backend's STS `AssumeRole` + S3 GET both route to LocalStack
   via `AWS_ENDPOINT_URL` (Community tier — no token needed).
-- [ ] Record the result (works / needs-endpoint-tweak) in the doc; delete the
+- [x] Record the result (works / needs-endpoint-tweak) in the doc; delete the
   scratch dir.
 
 #### Success Criteria
@@ -166,6 +166,37 @@ phase.
   backend and surfaces the seeded output.
 - Any endpoint/credential wrinkle (e.g. STS routing) is documented so Phases 2–5
   inherit a known-good backend shape.
+
+#### Result (2026-07-24 — works, no endpoint tweak needed)
+
+Ran against LocalStack Pro 2026.7.0 on `:4566`. A throwaway seeder wrote the
+account-scoped key `sandbox/us-east-1/vpc/spike-vpc/terraform.tfstate`; a reader
+with the full production backend config resolved it and surfaced
+`vpc_id = "vpc-spike00000000000"`. `TF_LOG=DEBUG` confirmed the exact call chain
+all routes to `localhost:4566` (`x-localstack: 2026.7.0`):
+
+1. **STS `AssumeRole`** — `RoleArn=arn:aws:iam::000000000000:role/Deploy-Tf-Role`,
+   `RoleSessionName=Deploy-Tf` → `200`, returns mock temp creds
+   (`tf_aws.credentials_source=AssumeRoleProvider`).
+2. **STS `GetCallerIdentity`** with the assumed-role creds →
+   `assumed-role/Deploy-Tf-Role/Deploy-Tf`.
+3. **S3 `ListObjectsV2` / `HeadObject` / `GetObject`** at
+   `.../tftest-spike-phase1-state/sandbox/us-east-1/vpc/spike-vpc/terraform.tfstate`
+   signed with the assumed-role creds.
+
+**Known-good backend shape for Phases 2–5:**
+
+- The global **`AWS_ENDPOINT_URL=http://localhost:4566`** (already wired by the
+  `just tf test*` recipes) routes **both** STS `AssumeRole` **and** S3 — **no
+  `endpoints {}` block inside the backend `config` is needed**.
+- **`use_path_style = true`** gives bucket-in-path S3 addressing
+  (`localhost:4566/<bucket>/<key>`), so no virtual-host DNS.
+- LocalStack STS **mints temp credentials for any role ARN** (it does not verify
+  the role exists), so the fixtures need not pre-create the `deploy_role_name`
+  IAM role — the `assume_role` block resolves purely from the base `test`/`test`
+  creds. Community tier suffices (STS + S3 only; no token).
+- The uniform block in [The uniform transformation](#the-uniform-transformation)
+  is confirmed correct verbatim — Phases 2–5 apply it unchanged.
 
 ---
 
