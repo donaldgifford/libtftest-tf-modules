@@ -176,9 +176,12 @@ recipe wiring, so every later phase plugs into them.
 
 #### Tasks
 
-- [ ] Create **`test/fixtures/terragrunt-inputs.tfvars`** with the shared
-  constants (`account_name`, `account_id`, `remote_state_bucket_region`,
-  `deploy_role_name`, and `region` — see Open Question 2 for `remote_state_bucket`).
+- [ ] Create **`test/fixtures/terragrunt-inputs.tfvars`** with the **six
+  Terragrunt-provided globals** (`account_name`, `account_id`, `region`,
+  `remote_state_bucket`, `remote_state_bucket_region`, `deploy_role_name`) — the
+  apply/plan suites drop their per-suite `region` / `remote_state_bucket`
+  `variables {}` entries and read both from here (Q2 resolution → one shared test
+  bucket + region across the fleet).
 - [ ] Wire `-var-file` into the `_tf-test`, `_tf-test-localstack`, and
   `_tf-test-localstack-pro` recipes in the `justfile` (relative
   `../../../test/fixtures/terragrunt-inputs.tfvars` from the module dir).
@@ -344,6 +347,32 @@ The single EFS consumer, same pattern as an EKS vpc consumer.
 > Format: each question is numbered; options are lettered. **a = my
 > recommendation**; b+ are alternatives; **other** = your free-text call.
 > (Reply e.g. "1a, 2a, 3a, 4a, 5a, 6a".)
+>
+> **Resolved 2026-07-24 — 1a, 2 → all six globals (below), 3a, 4a, 5a, 6a.**
+> Four new vars required, no defaults (1a). EKS/EFS bespoke `fixtures/setup`
+> get the minimal account-prefix; defer `reference-vpc` adoption (3a). Phase by
+> consumer group, each its own commit + gate (4a). Hard-code the assume-role
+> session name literal `"Deploy-Tf"` (5a). Accept the undeclared-variable
+> warning on producer-only modules (6a) — passing inputs a module never consumes
+> is exactly how the live Terragrunt is designed.
+>
+> **Q2 — the shared var-file carries all six Terragrunt-provided globals, not
+> just the four new ones (a refinement of 2b).** Per the user, `region` **and**
+> `remote_state_bucket` are Terragrunt-provided too, so
+> `test/fixtures/terragrunt-inputs.tfvars` holds `account_name`, `account_id`,
+> `region`, `remote_state_bucket`, `remote_state_bucket_region`, and
+> `deploy_role_name`. Consequences that revise the Phase 2/3/4/5 tasks:
+>
+> - Every plan/apply suite **drops its per-suite `region` / `remote_state_bucket`
+>   `variables {}` entries** and reads both from the var-file → **one shared test
+>   bucket + region across the fleet**, mirroring the single org state bucket.
+> - Per-consumer identifiers (`vpc_name`, `cluster_name`, `target_identifier`,
+>   `cluster_identifier`) stay per-suite — they select *which* state to read and
+>   are not Terragrunt globals, so they do not belong in the shared file.
+> - **Parallel-safety of the one shared bucket name:** safe because each CI job
+>   runs its own isolated LocalStack (INV-0006 `services:` container) and local
+>   `just tf test*` runs are serial — no cross-suite bucket create/destroy race
+>   despite the shared name.
 
 ### 1. Do the four new variables get defaults, or are they required?
 
