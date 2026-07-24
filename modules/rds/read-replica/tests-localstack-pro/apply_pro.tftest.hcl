@@ -48,24 +48,59 @@ provider "aws" {
   }
 }
 
-variables {
-  region              = "us-east-1"
-  remote_state_bucket = "tftest-rr-state"
-  cluster_identifier  = "tftest-rr-cluster"
-  identifier_prefix   = "tftest-rr"
+# Declarations for the Terragrunt globals this file references via var.* in the
+# setup run (threaded into the fixture's real cluster module). Values come from
+# the shared var-file (test/fixtures/terragrunt-inputs.tfvars) via the
+# `just tf test*` recipes — no default here.
+variable "region" {
+  type = string
 }
 
-# Stand up the real cluster module (VPC + stub VPC state + cluster +
-# writer) and write the cluster's outputs to S3 as the stub cluster
-# state at the read-replica's key.
+variable "remote_state_bucket" {
+  type = string
+}
+
+variable "account_name" {
+  type = string
+}
+
+variable "account_id" {
+  type = string
+}
+
+variable "remote_state_bucket_region" {
+  type = string
+}
+
+variable "deploy_role_name" {
+  type = string
+}
+
+# region + remote_state_bucket now come from the shared var-file
+# (test/fixtures/terragrunt-inputs.tfvars) via the `just tf test*` recipes —
+# one shared test bucket across the fleet (IMPL-0015 Q2).
+variables {
+  cluster_identifier = "tftest-rr-cluster"
+  identifier_prefix  = "tftest-rr"
+}
+
+# Stand up the real cluster module (VPC + stub VPC state + cluster + writer)
+# and write the cluster's outputs to S3 as the stub cluster state at the
+# read-replica's account-scoped key. The Terragrunt globals are threaded through
+# so the fixture's reference VPC + real cluster module + seeded cluster key all
+# match the read-replica module's assume_role read (IMPL-0015).
 run "setup" {
   command = apply
 
   variables {
-    region              = "us-east-1"
-    remote_state_bucket = "tftest-rr-state"
-    vpc_name            = "tftest-rr-vpc"
-    cluster_identifier  = "tftest-rr-cluster"
+    region                     = var.region
+    remote_state_bucket        = var.remote_state_bucket
+    vpc_name                   = "tftest-rr-vpc"
+    cluster_identifier         = var.cluster_identifier
+    account_name               = var.account_name
+    account_id                 = var.account_id
+    remote_state_bucket_region = var.remote_state_bucket_region
+    deploy_role_name           = var.deploy_role_name
   }
 
   module {
