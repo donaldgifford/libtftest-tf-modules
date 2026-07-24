@@ -28,10 +28,18 @@
 data "terraform_remote_state" "vpc" {
   backend = "s3"
 
+  # Terragrunt multi-account shape (IMPL-0015): account-scoped key, the
+  # remote-state bucket's own region, and a cross-account assume_role. The
+  # session name is the fixed production literal (Q5a).
   config = {
     bucket         = var.remote_state_bucket
-    key            = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
-    region         = var.region
+    key            = "${var.account_name}/${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
+    region         = var.remote_state_bucket_region
     use_path_style = true
+
+    assume_role = {
+      role_arn     = "arn:aws:iam::${var.account_id}:role/${var.deploy_role_name}"
+      session_name = "Deploy-Tf"
+    }
   }
 }
