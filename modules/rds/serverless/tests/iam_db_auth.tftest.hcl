@@ -32,8 +32,15 @@ run "iam_auth_off_by_default" {
     target = data.terraform_remote_state.vpc
     values = {
       outputs = {
-        vpc_id             = "vpc-0123456789abcdef0"
-        private_subnet_ids = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
       }
     }
   }
@@ -55,8 +62,15 @@ run "iam_auth_opt_in" {
     target = data.terraform_remote_state.vpc
     values = {
       outputs = {
-        vpc_id             = "vpc-0123456789abcdef0"
-        private_subnet_ids = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
       }
     }
   }

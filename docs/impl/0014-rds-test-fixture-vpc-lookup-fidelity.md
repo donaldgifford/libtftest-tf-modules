@@ -206,14 +206,14 @@ Mirror the nine-key schema into the plan-time `override_data` blocks (decision
 
 #### Tasks
 
-- [ ] `rds/serverless`: update the `data.terraform_remote_state.vpc`
+- [x] `rds/serverless`: update the `data.terraform_remote_state.vpc`
   `override_data` blocks across the six `tests/*.tftest.hcl` files to the
   nine-key `outputs` map.
-- [ ] `rds/cluster`: update the five `tests/*.tftest.hcl` files **and**
+- [x] `rds/cluster`: update the five `tests/*.tftest.hcl` files **and**
   `tests-localstack/plan_smoke.tftest.hcl`.
-- [ ] `rds/instance`: update the six `tests/*.tftest.hcl` files **and**
+- [x] `rds/instance`: update the six `tests/*.tftest.hcl` files **and**
   `tests-localstack/plan_smoke.tftest.hcl`.
-- [ ] Leave `proxy` / `read-replica` plan tests untouched — they override
+- [x] Leave `proxy` / `read-replica` plan tests untouched — they override
   `data.terraform_remote_state.target` / `.rds_cluster`, not `.vpc`.
 
 #### Success Criteria
