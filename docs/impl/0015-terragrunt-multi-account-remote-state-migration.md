@@ -207,20 +207,22 @@ recipe wiring, so every later phase plugs into them.
 
 #### Tasks
 
-- [ ] Create **`test/fixtures/terragrunt-inputs.tfvars`** with the **six
+- [x] Create **`test/fixtures/terragrunt-inputs.tfvars`** with the **six
   Terragrunt-provided globals** (`account_name`, `account_id`, `region`,
   `remote_state_bucket`, `remote_state_bucket_region`, `deploy_role_name`) — the
   apply/plan suites drop their per-suite `region` / `remote_state_bucket`
   `variables {}` entries and read both from here (Q2 resolution → one shared test
   bucket + region across the fleet).
-- [ ] Wire `-var-file` into the `_tf-test`, `_tf-test-localstack`, and
+- [x] Wire `-var-file` into the `_tf-test`, `_tf-test-localstack`, and
   `_tf-test-localstack-pro` recipes in the `justfile` (relative
-  `../../../test/fixtures/terragrunt-inputs.tfvars` from the module dir).
-- [ ] Expand **`test/fixtures/reference-vpc`**: add `account_name` +
+  `../../../test/fixtures/terragrunt-inputs.tfvars` from the module dir; hoisted
+  into the `tf_test_varfile` justfile variable).
+- [x] Expand **`test/fixtures/reference-vpc`**: add `account_name` +
   `remote_state_bucket_region` inputs; seed the VPC state at
-  `${account_name}/${region}/vpc/${vpc_name}/terraform.tfstate`; re-emit the two
+  `${account_name}/${region}/vpc/${vpc_name}/terraform.tfstate` (dual-seeded
+  alongside the legacy region-scoped key for the transition); re-emit the two
   new values as outputs for composing fixtures.
-- [ ] Define the canonical four-variable block (with descriptions, `nullable`,
+- [x] Define the canonical four-variable block (with descriptions, `nullable`,
   and default policy per Open Question 1) as the snippet Phases 3–5 copy into
   each consumer's `variables.tf`.
 
@@ -233,6 +235,62 @@ recipe wiring, so every later phase plugs into them.
   Phase 3 land together; see Open Question 4).
 - The var-file resolves for a migrated sample and the recipes pass it without
   path errors.
+
+#### Result (2026-07-24 — foundation landed, green)
+
+- `test/fixtures/terragrunt-inputs.tfvars` created with the six globals
+  (`account_name = "sandbox"`, `account_id = "000000000000"`,
+  `region = "us-east-1"`, `remote_state_bucket = "tftest-fleet-state"`,
+  `remote_state_bucket_region = "us-east-1"`,
+  `deploy_role_name = "Deploy-Tf-Role"`).
+- `justfile` gained the `tf_test_varfile` variable; `-var-file` wired into all
+  three `_tf-test*` recipes. Confirmed non-breaking: `just tf test rds/serverless`
+  passes **21/21** with the var-file supplying the undeclared new vars **with no
+  warning** (cleaner than 6a anticipated).
+- `reference-vpc` **dual-seeds** the same nine-output contract at the legacy
+  region-scoped key **and** the new account-scoped key (content hoisted into
+  `local.vpc_state_content`); added `account_name` (default `"sandbox"`) +
+  `remote_state_bucket_region` (default `"us-east-1"`) inputs and matching
+  outputs. `just tf test-localstack rds/serverless` stays green **3/3** (reads
+  the legacy key, still seeded).
+- The legacy region-scoped object carries a `TODO(IMPL-0015 Phase 3)` to be
+  removed once every consumer reads the account-scoped key.
+
+**Canonical four-variable block** (Phases 3–5 copy verbatim into each consumer's
+`variables.tf`; required per Q1 1a — no default, `nullable = false`; `region` and
+`remote_state_bucket` already exist and are not repeated here):
+
+```hcl
+# Terragrunt-injected multi-account remote-state inputs (IMPL-0015). In
+# production these come from Terragrunt includes; in tests from the shared
+# test/fixtures/terragrunt-inputs.tfvars via the `just tf test*` recipes.
+# Required (no default) — production always injects them and a wrong default
+# would silently mis-scope the cross-account remote-state read.
+
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped remote-state key this module reads (<account_name>/<region>/<shape>/terraform.tfstate)."
+  type        = string
+  nullable    = false
+}
+
+variable "account_id" {
+  description = "12-digit AWS account ID that owns the remote-state bucket. Composed into the assume_role role_arn (arn:aws:iam::<account_id>:role/<deploy_role_name>) for the cross-account state read."
+  type        = string
+  nullable    = false
+}
+
+variable "remote_state_bucket_region" {
+  description = "Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform_remote_state backend reads from this region."
+  type        = string
+  nullable    = false
+}
+
+variable "deploy_role_name" {
+  description = "Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume_role role_arn with account_id."
+  type        = string
+  nullable    = false
+}
+```
 
 ---
 

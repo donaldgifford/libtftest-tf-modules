@@ -53,3 +53,13 @@ output "bucket_name" {
   description = "Name of the S3 bucket holding the seeded VPC remote state, so composing fixtures (proxy, read-replica) can write additional state objects into the same bucket."
   value       = aws_s3_bucket.state.id
 }
+
+output "account_name" {
+  description = "Terragrunt account name used as the <account_name> prefix of the seeded account-scoped key, so composing fixtures (proxy, read-replica) build their own account-scoped state keys from one source."
+  value       = var.account_name
+}
+
+output "remote_state_bucket_region" {
+  description = "Region of the remote-state S3 bucket, re-emitted so composing fixtures/consumers read it from one source."
+  value       = var.remote_state_bucket_region
+}

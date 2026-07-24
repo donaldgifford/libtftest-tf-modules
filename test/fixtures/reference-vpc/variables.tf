@@ -14,6 +14,20 @@ variable "vpc_name" {
   nullable    = false
 }
 
+variable "account_name" {
+  description = "Terragrunt account name. The <account_name> prefix of the seeded account-scoped remote-state key (<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate) that IMPL-0015-migrated consumers read. Re-emitted as an output so composing fixtures build their own state keys from one source. Defaults to the shared var-file's value so setup runs that do not yet pass it keep resolving during the transition."
+  type        = string
+  default     = "sandbox"
+  nullable    = false
+}
+
+variable "remote_state_bucket_region" {
+  description = "Region of the remote-state S3 bucket. Distinct from var.region in production Terragrunt; re-emitted as an output for composing fixtures/consumers. Defaults to us-east-1 (LocalStack, where both regions coincide)."
+  type        = string
+  default     = "us-east-1"
+  nullable    = false
+}
+
 variable "region" {
   description = "AWS region. Used to compose subnet availability zones (region + az_letters) and the seeded remote-state key."
   type        = string

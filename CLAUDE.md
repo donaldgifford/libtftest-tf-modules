@@ -173,11 +173,34 @@ Tracked in git. As of this writing:
   from the two-key form to the full nine-key contract (Phase 4, values-only —
   plan tests create no VPC). IMPL-0014 (all five phases) + DESIGN-0016 are
   **Implemented**; EKS (DESIGN-0015 addendum) + EFS (DESIGN-0017) follow.
+- **`test/fixtures/terragrunt-inputs.tfvars`** — the fleet-wide shared var-file
+  (INV-0005 / IMPL-0015) carrying the **six Terragrunt-provided globals** every
+  remote-state consumer needs (`account_name`, `account_id`, `region`,
+  `remote_state_bucket`, `remote_state_bucket_region`, `deploy_role_name`). In
+  production Terragrunt injects these via includes into every module regardless
+  of use; this file is the test-time stand-in. The `just tf test*` recipes pass
+  it to `terraform test` via `-var-file` (hoisted into the `tf_test_varfile`
+  justfile variable). Producer-only modules that declare none of these emit no
+  error (and, in `terraform test`, not even a warning) — matching Terragrunt's
+  pass-every-input design (Q6a). **IMPL-0015 is in progress** (Phase 1 spike +
+  Phase 2 foundation shipped): the migration rewires every
+  `data.terraform_remote_state` read from the region-scoped key
+  (`${region}/<shape>/…`) to the Terragrunt-faithful **account-scoped key**
+  (`${account_name}/${region}/<shape>/…`) with a cross-account `assume_role`
+  block (`role_arn = arn:aws:iam::${account_id}:role/${deploy_role_name}`,
+  `session_name = "Deploy-Tf"`), `region = ${remote_state_bucket_region}`. Phase 1
+  proved on LocalStack that the global `AWS_ENDPOINT_URL` routes both STS
+  `AssumeRole` and S3 — no `endpoints{}` block needed, and LocalStack STS mints
+  creds for any role ARN (no pre-created IAM role). `reference-vpc` now
+  **dual-seeds** both keys during the transition (legacy region-scoped +
+  account-scoped, content hoisted into `local.vpc_state_content`) and gained
+  `account_name` + `remote_state_bucket_region` inputs/outputs; the legacy seed
+  is removed at the end of Phase 3 once every consumer reads the account key.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
-(DESIGN-0001..0017), and `docs/investigation/` (INV-0001..0004). Phase-based
-implementation tracking lives in `docs/impl/` (IMPL-0001..0014).
+(DESIGN-0001..0017), and `docs/investigation/` (INV-0001..0007). Phase-based
+implementation tracking lives in `docs/impl/` (IMPL-0001..0015).
 
 ### In-tree Go tooling (`tools/`)
 

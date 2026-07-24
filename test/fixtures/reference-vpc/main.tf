@@ -15,6 +15,58 @@
 
 locals {
   azs = [for letter in var.az_letters : "${var.region}${letter}"]
+
+  # The nine-output vpc-lookup remote-state contract, computed from this
+  # fixture's own resources. Seeded at BOTH the legacy region-scoped key and
+  # the new IMPL-0015 account-scoped key during the migration transition so
+  # unmigrated (region-scoped) and migrated (account-scoped) consumers both
+  # resolve. The legacy object is removed once every consumer reads the
+  # account-scoped key (end of IMPL-0015 Phase 3).
+  vpc_state_content = jsonencode({
+    version           = 4
+    terraform_version = "1.14.7"
+    serial            = 1
+    lineage           = "reference-vpc-stub"
+    outputs = {
+      vpc_id = {
+        value = aws_vpc.this.id
+        type  = "string"
+      }
+      private_subnet_ids = {
+        value = aws_subnet.private[*].id
+        type  = ["list", "string"]
+      }
+      private_eks_subnet_ids = {
+        value = aws_subnet.private_eks[*].id
+        type  = ["list", "string"]
+      }
+      public_subnet_ids = {
+        value = aws_subnet.public[*].id
+        type  = ["list", "string"]
+      }
+      vpc_cidr_block = {
+        value = aws_vpc.this.cidr_block
+        type  = "string"
+      }
+      availability_zones = {
+        value = local.azs
+        type  = ["list", "string"]
+      }
+      nat_gateway_ids = {
+        value = [aws_nat_gateway.this.id]
+        type  = ["list", "string"]
+      }
+      route_table_ids = {
+        value = [aws_route_table.public.id, aws_route_table.private.id]
+        type  = ["list", "string"]
+      }
+      internet_gateway_id = {
+        value = aws_internet_gateway.this.id
+        type  = "string"
+      }
+    }
+    resources = []
+  })
 }
 
 resource "aws_vpc" "this" {
@@ -153,9 +205,13 @@ resource "aws_route_table_association" "private_eks" {
 
 #--------------------------------------------------------------
 # S3 bucket + the seeded VPC remote state (full nine-output
-# contract) at the key downstream module tests read. Values are
+# contract) at the keys downstream module tests read. Values are
 # computed from the resources above — a faithful mirror of what
 # vpc-lookup would publish for this topology.
+#
+# During the IMPL-0015 transition the same content is seeded at TWO
+# keys: the legacy region-scoped key (unmigrated consumers) and the
+# new account-scoped key (migrated consumers + assume_role reads).
 #--------------------------------------------------------------
 
 resource "aws_s3_bucket" "state" {
@@ -163,54 +219,22 @@ resource "aws_s3_bucket" "state" {
   force_destroy = true
 }
 
+# Legacy region-scoped key: <region>/vpc/<vpc_name>/terraform.tfstate.
+# TODO(IMPL-0015 Phase 3): remove once every consumer reads the
+# account-scoped key below.
 resource "aws_s3_object" "vpc_state" {
   bucket       = aws_s3_bucket.state.id
   key          = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
   content_type = "application/json"
+  content      = local.vpc_state_content
+}
 
-  content = jsonencode({
-    version           = 4
-    terraform_version = "1.14.7"
-    serial            = 1
-    lineage           = "reference-vpc-stub"
-    outputs = {
-      vpc_id = {
-        value = aws_vpc.this.id
-        type  = "string"
-      }
-      private_subnet_ids = {
-        value = aws_subnet.private[*].id
-        type  = ["list", "string"]
-      }
-      private_eks_subnet_ids = {
-        value = aws_subnet.private_eks[*].id
-        type  = ["list", "string"]
-      }
-      public_subnet_ids = {
-        value = aws_subnet.public[*].id
-        type  = ["list", "string"]
-      }
-      vpc_cidr_block = {
-        value = aws_vpc.this.cidr_block
-        type  = "string"
-      }
-      availability_zones = {
-        value = local.azs
-        type  = ["list", "string"]
-      }
-      nat_gateway_ids = {
-        value = [aws_nat_gateway.this.id]
-        type  = ["list", "string"]
-      }
-      route_table_ids = {
-        value = [aws_route_table.public.id, aws_route_table.private.id]
-        type  = ["list", "string"]
-      }
-      internet_gateway_id = {
-        value = aws_internet_gateway.this.id
-        type  = "string"
-      }
-    }
-    resources = []
-  })
+# Account-scoped key: <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate.
+# The Terragrunt-faithful key IMPL-0015-migrated consumers read via an
+# assume_role S3 backend.
+resource "aws_s3_object" "vpc_state_account_scoped" {
+  bucket       = aws_s3_bucket.state.id
+  key          = "${var.account_name}/${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
+  content_type = "application/json"
+  content      = local.vpc_state_content
 }
