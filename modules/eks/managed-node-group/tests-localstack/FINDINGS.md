@@ -69,3 +69,23 @@ mirror the cluster module's findings:
 - Module surface changes — any new resource type appearing in this
   module re-opens the gap-discovery question.
 - New AWS API features the module starts consuming — same.
+
+## IMPL-0015 — Terragrunt account-scoped remote-state read
+
+This module's `data.terraform_remote_state` read(s) were migrated to the
+Terragrunt multi-account shape (IMPL-0015): the account-scoped key
+`<account_name>/<region>/<shape>/terraform.tfstate`, `region =
+<remote_state_bucket_region>`, and a cross-account `assume_role`
+(`role_arn = arn:aws:iam::<account_id>:role/<deploy_role_name>`,
+`session_name = "Deploy-Tf"`).
+
+LocalStack finding (Phase 1 spike, re-confirmed by this apply suite): the global
+`AWS_ENDPOINT_URL` (wired by the `just tf test*` recipes) routes **both** the STS
+`AssumeRole` call and the S3 GET to LocalStack — no `endpoints {}` block is
+needed inside the backend `config`. LocalStack STS mints temporary credentials
+for **any** role ARN (it does not verify the role exists), so the setup fixture
+need not pre-create the IAM role. The six Terragrunt-provided globals
+(`account_name`/`account_id`/`region`/`remote_state_bucket`/
+`remote_state_bucket_region`/`deploy_role_name`) come from the shared
+`test/fixtures/terragrunt-inputs.tfvars`, passed via `-var-file` by the recipes;
+the setup run seeds its stub state at the matching account-scoped key.

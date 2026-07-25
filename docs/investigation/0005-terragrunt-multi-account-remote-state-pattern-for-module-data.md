@@ -1,7 +1,7 @@
 ---
 id: INV-0005
 title: "Terragrunt multi-account remote-state pattern for module data lookups"
-status: Open
+status: Concluded
 author: Donald Gifford
 created: 2026-07-24
 ---
@@ -9,7 +9,7 @@ created: 2026-07-24
 
 # INV 0005: Terragrunt multi-account remote-state pattern for module data lookups
 
-**Status:** Open
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-07-24
 

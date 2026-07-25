@@ -182,9 +182,9 @@ Tracked in git. As of this writing:
   it to `terraform test` via `-var-file` (hoisted into the `tf_test_varfile`
   justfile variable). Producer-only modules that declare none of these emit no
   error (and, in `terraform test`, not even a warning) — matching Terragrunt's
-  pass-every-input design (Q6a). **IMPL-0015 is in progress** (Phases 1-3
-  shipped): the migration rewires every `data.terraform_remote_state` read from
-  the region-scoped key (`${region}/<shape>/…`) to the Terragrunt-faithful
+  pass-every-input design (Q6a). **IMPL-0015 is Implemented** (all six phases):
+  the migration rewired every `data.terraform_remote_state` read across the fleet
+  from the region-scoped key (`${region}/<shape>/…`) to the Terragrunt-faithful
   **account-scoped key** (`${account_name}/${region}/<shape>/…`) with a
   cross-account `assume_role` block
   (`role_arn = arn:aws:iam::${account_id}:role/${deploy_role_name}`,
@@ -192,20 +192,26 @@ Tracked in git. As of this writing:
   proved on LocalStack that the global `AWS_ENDPOINT_URL` routes both STS
   `AssumeRole` and S3 — no `endpoints{}` block needed, and LocalStack STS mints
   creds for any role ARN (no pre-created IAM role). `reference-vpc` gained
-  `account_name` + `remote_state_bucket_region` inputs/outputs and now seeds the
+  `account_name` + `remote_state_bucket_region` inputs/outputs and seeds the
   **account-scoped key only** (content hoisted into `local.vpc_state_content`;
   the Phase-2 transitional dual-seed of the legacy region-scoped key was removed
-  at the end of Phase 3). **Phase 3 migrated all five RDS consumers**
+  at the end of Phase 3). **All ten consumers migrated** — the five RDS
   (`serverless`/`cluster`/`instance` VPC reads, `proxy` target read,
-  `read-replica` cluster read) — apply suites consolidated onto the shared
-  `remote_state_bucket` and their composing fixtures (`proxy/fixtures/db`,
-  `read-replica/fixtures/cluster` — the latter threading the globals into the
-  **real cluster module**) seed account-scoped keys. Plan suites need no
-  per-suite edits (the var-file supplies the four new vars); only apply/setup
-  files that reference `var.<new>` in a `run "setup"` block gained top-level
-  `variable {}` declarations. EKS (Phase 4) + EFS (Phase 5) follow. Verified live:
-  serverless Community 3/3, cluster/instance/proxy Pro 3/3, read-replica Pro 2/2,
-  all plan gates green.
+  `read-replica` cluster read), the four EKS (`cluster` VPC read;
+  `managed-node-group` reads **both** eks + vpc; `addons` + `pod-identity-access`
+  eks reads), and `efs/filesystem` (reads **both** vpc + eks) — for **12
+  `data.terraform_remote_state` blocks total, all 12 carrying `assume_role`**.
+  Apply suites consolidated onto the shared `remote_state_bucket`; composing
+  fixtures (`proxy/fixtures/db`, `read-replica/fixtures/cluster` — the latter
+  threading the globals into the **real cluster module**) and the EKS/EFS bespoke
+  `fixtures/setup` seed account-scoped keys. Plan suites need no per-suite edits
+  (the var-file supplies the four new vars); only apply/setup files that reference
+  `var.<new>` in a `run "setup"` block gained top-level `variable {}`
+  declarations. Verified live: every plan gate green; Community applies
+  (serverless, all four EKS, efs) and Pro applies (cluster/instance/proxy 3/3,
+  read-replica 2/2) all pass; fidelity grep clean (zero region-scoped consumer
+  keys, zero un-prefixed fixture keys). Each consumer's `tests-localstack*/
+  FINDINGS.md` records the account-scoped-read + assume_role-on-LocalStack note.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
 (ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`

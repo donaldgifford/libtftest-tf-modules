@@ -1,7 +1,7 @@
 ---
 id: IMPL-0015
 title: "Terragrunt multi-account remote-state migration"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-07-24
 ---
@@ -9,7 +9,7 @@ created: 2026-07-24
 
 # IMPL 0015: Terragrunt multi-account remote-state migration
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-24
 
@@ -23,20 +23,26 @@ created: 2026-07-24
   - [Phase 1: Spike the account-scoped read on LocalStack](#phase-1-spike-the-account-scoped-read-on-localstack)
     - [Tasks](#tasks)
     - [Success Criteria](#success-criteria)
+    - [Result (2026-07-24 — works, no endpoint tweak needed)](#result-2026-07-24--works-no-endpoint-tweak-needed)
   - [Phase 2: Shared foundation](#phase-2-shared-foundation)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
+    - [Result (2026-07-24 — foundation landed, green)](#result-2026-07-24--foundation-landed-green)
   - [Phase 3: RDS consumer migration](#phase-3-rds-consumer-migration)
     - [Tasks](#tasks-2)
     - [Success Criteria](#success-criteria-2)
+    - [Result (2026-07-24 — all five RDS consumers migrated, green)](#result-2026-07-24--all-five-rds-consumers-migrated-green)
   - [Phase 4: EKS consumer migration](#phase-4-eks-consumer-migration)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+    - [Result (2026-07-24 — all four EKS consumers migrated, green)](#result-2026-07-24--all-four-eks-consumers-migrated-green)
   - [Phase 5: EFS consumer migration](#phase-5-efs-consumer-migration)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
+    - [Result (2026-07-24 — EFS migrated, green)](#result-2026-07-24--efs-migrated-green)
   - [Phase 6: Verify and document](#phase-6-verify-and-document)
     - [Tasks](#tasks-5)
+    - [Result (2026-07-24 — verified fleet-wide, Implemented)](#result-2026-07-24--verified-fleet-wide-implemented)
     - [Success Criteria](#success-criteria-5)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
@@ -443,17 +449,30 @@ account-scoped reads via `assume_role`, no deprecation warnings).
 
 #### Tasks
 
-- [ ] `just tf all <m>` for all ten consumers; `just tf validate|lint|fmt` for the
+- [x] `just tf all <m>` for all ten consumers; `just tf validate|lint|fmt` for the
   two producer-only modules (`network/vpc-lookup`, and confirm no regression).
-- [ ] Grep-confirm: zero consumer blocks still use a region-scoped key or omit
+- [x] Grep-confirm: zero consumer blocks still use a region-scoped key or omit
   `assume_role`; all seeded fixture keys carry the `${account_name}/` prefix.
-- [ ] Confirm `terraform-docs` regen for the ten consumers (four new inputs land
+- [x] Confirm `terraform-docs` regen for the ten consumers (four new inputs land
   in each `USAGE.md`).
-- [ ] Update the affected `tests-localstack*/FINDINGS.md` to note the
+- [x] Update the affected `tests-localstack*/FINDINGS.md` to note the
   account-scoped key + the shared var-file.
-- [ ] Update `CLAUDE.md`: record the remote-state contract change + the shared
+- [x] Update `CLAUDE.md`: record the remote-state contract change + the shared
   var-file.
-- [ ] Flip INV-0005 → Concluded and IMPL-0015 → Completed; `docz update`.
+- [x] Flip INV-0005 → Concluded and IMPL-0015 → Completed; `docz update`.
+
+#### Result (2026-07-24 — verified fleet-wide, Implemented)
+
+- **`just tf all` green for all 11 modules** (ten consumers + `network/vpc-lookup`
+  producer): validate + lint + fmt + plan.
+- **Fidelity grep clean:** zero region-scoped keys in consumer module source;
+  **12 `data.terraform_remote_state` blocks, 12 `assume_role` blocks** (1:1 — the
+  two dual-read modules account for the 12 vs. 10); zero seeded fixture keys
+  without the `${account_name}/` prefix.
+- **All ten `USAGE.md` carry 4/4 new inputs**, no `terraform-docs` drift.
+- **10 consumer `FINDINGS.md`** gained the account-scoped-read + assume_role note.
+- `CLAUDE.md` records the shipped contract; INV-0005 → Concluded, IMPL-0015 →
+  Completed.
 
 #### Success Criteria
 
