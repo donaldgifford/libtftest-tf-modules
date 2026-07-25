@@ -37,10 +37,26 @@ provider "aws" {
   }
 }
 
+# Declarations for the Terragrunt globals this file references via var.* in the
+# setup run. Values come from the shared var-file (test/fixtures/
+# terragrunt-inputs.tfvars) via the `just tf test*` recipes — no default here.
+variable "region" {
+  type = string
+}
+
+variable "remote_state_bucket" {
+  type = string
+}
+
+variable "account_name" {
+  type = string
+}
+
+# region + remote_state_bucket now come from the shared var-file
+# (test/fixtures/terragrunt-inputs.tfvars) via the `just tf test*` recipes —
+# one shared test bucket across the fleet (IMPL-0015 Q2).
 variables {
-  remote_state_bucket = "tftest-addons-bucket"
-  region              = "us-east-1"
-  cluster_name        = "tftest-addons-cluster"
+  cluster_name = "tftest-addons-cluster"
   # Versions pinned to what LocalStack Pro publishes for K8s 1.35 in
   # describe-addon-versions. Caller-pinned versions short-circuit the
   # data source (IMPL-0003 Q4 — keep the apply test deterministic
@@ -69,6 +85,7 @@ run "setup" {
     remote_state_bucket = var.remote_state_bucket
     cluster_name        = var.cluster_name
     region              = var.region
+    account_name        = var.account_name
   }
 
   module {
