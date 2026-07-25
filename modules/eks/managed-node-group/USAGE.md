@@ -45,12 +45,15 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| account\_id | 12-digit AWS account ID that owns the remote-state bucket. Composed into the assume\_role role\_arn (arn:aws:iam::<account\_id>:role/<deploy\_role\_name>) for the cross-account state reads. | `string` | n/a | yes |
+| account\_name | Terragrunt account name — the <account\_name> prefix of the account-scoped remote-state keys this module reads (<account\_name>/<region>/{eks,vpc}/<name>/terraform.tfstate). | `string` | n/a | yes |
 | additional\_labels | Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class labels. | `map(string)` | `{}` | no |
 | additional\_taints | Extra taints to apply on top of the always-on workload-class=secure:NO\_SCHEDULE taint. | ```list(object({ key = string value = string effect = string }))``` | `[]` | no |
 | architecture | Architecture object: name (arm64\|amd64), ami\_type, gvisor\_arch (aarch64\|x86\_64), k8s\_arch (arm64\|amd64), and default\_instance\_types. Boilerplate-derived per DESIGN-0001. | ```object({ name = string ami_type = string gvisor_arch = string k8s_arch = string default_instance_types = list(string) })``` | ```{ "ami_type": "AL2023_ARM_64_STANDARD", "default_instance_types": [ "m7g.large", "m7g.xlarge", "c7g.large", "c7g.xlarge" ], "gvisor_arch": "aarch64", "k8s_arch": "arm64", "name": "arm64" }``` | no |
 | capacity\_type | Node group capacity type. ON\_DEMAND default per ADR-0009; SPOT permitted for explicitly batch / non-critical workloads. | `string` | `"ON_DEMAND"` | no |
 | cluster\_name | EKS cluster name. Used as the remote-state key fragment and as aws\_eks\_node\_group.cluster\_name (read from the cluster's remote state output at the use site, ADR-0001). | `string` | n/a | yes |
 | containerd\_pull\_through\_mirror | When enabled, user data writes a containerd config drop-in redirecting upstream registries to cache\_url\_prefix. Requires the corresponding ECR pull-through cache module to be instantiated and the matching node IAM policy attached via var.extra\_node\_policies. | ```object({ enabled = bool cache_url_prefix = optional(string) upstreams = optional(list(object({ host = string prefix = string })), []) })``` | ```{ "enabled": false }``` | no |
+| deploy\_role\_name | Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume\_role role\_arn with account\_id. | `string` | n/a | yes |
 | desired\_size | Initial desired size. After create, drift is ignored via lifecycle.ignore\_changes so a cluster autoscaler can manage it without Terraform fighting back. | `number` | `1` | no |
 | disk\_size\_gib | Root EBS volume size in GiB. gp3, KMS-encrypted with the cluster module's KMS key (read from remote state). | `number` | `100` | no |
 | enable\_ssm | Attach AmazonSSMManagedInstanceCore to the node role for Session Manager break-glass access. Off by default per ADR-0012. | `bool` | `false` | no |
@@ -64,6 +67,7 @@ No modules.
 | nodegroup\_name | Logical name of this node group. Combined with cluster\_name for the IAM role + node group name. | `string` | n/a | yes |
 | region | AWS region. Used in the remote-state key prefix and for AWS API calls. | `string` | n/a | yes |
 | remote\_state\_bucket | S3 bucket holding the cluster module's and VPC stack's remote state. Used by data.terraform\_remote\_state.eks and .vpc per ADR-0001. | `string` | n/a | yes |
+| remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backends read from this region. | `string` | n/a | yes |
 | tags | AWS resource tags applied to every resource in the module. | `map(string)` | `{}` | no |
 | vpc\_name | VPC stack name. Used in the VPC remote-state key fragment. | `string` | n/a | yes |
 

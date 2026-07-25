@@ -42,6 +42,11 @@ variable "region" {
   type = string
 }
 
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped eks + vpc state keys the module reads (IMPL-0015)."
+  type        = string
+}
+
 #--------------------------------------------------------------
 # VPC + subnets
 #--------------------------------------------------------------
@@ -153,7 +158,7 @@ resource "aws_s3_bucket" "state" {
 
 resource "aws_s3_object" "vpc_state" {
   bucket       = aws_s3_bucket.state.id
-  key          = "${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
+  key          = "${var.account_name}/${var.region}/vpc/${var.vpc_name}/terraform.tfstate"
   content_type = "application/json"
 
   content = jsonencode({
@@ -181,7 +186,7 @@ resource "aws_s3_object" "vpc_state" {
 
 resource "aws_s3_object" "eks_state" {
   bucket       = aws_s3_bucket.state.id
-  key          = "${var.region}/eks/${var.cluster_name}/terraform.tfstate"
+  key          = "${var.account_name}/${var.region}/eks/${var.cluster_name}/terraform.tfstate"
   content_type = "application/json"
 
   content = jsonencode({
