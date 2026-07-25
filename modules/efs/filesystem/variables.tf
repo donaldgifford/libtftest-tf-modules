@@ -9,13 +9,44 @@ variable "region" {
 }
 
 variable "remote_state_bucket" {
-  description = "S3 bucket holding both the VPC stack's terraform state (read at <region>/vpc/<vpc_name>/terraform.tfstate for vpc_id + private_subnet_ids) and the EKS cluster stack's terraform state (read at <region>/eks/<cluster_name>/terraform.tfstate for node_security_group_id) — per DESIGN-0008 Q1."
+  description = "S3 bucket holding both the VPC stack's terraform state (read at <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate for vpc_id + private_subnet_ids) and the EKS cluster stack's terraform state (read at <account_name>/<region>/eks/<cluster_name>/terraform.tfstate for node_security_group_id) — per DESIGN-0008 Q1; account-scoped keys per IMPL-0015."
   type        = string
   nullable    = false
 }
 
 variable "vpc_name" {
   description = "VPC name used to compose the VPC remote-state key. Must match the VPC stack's identifier."
+  type        = string
+  nullable    = false
+}
+
+# Terragrunt-injected multi-account remote-state inputs (IMPL-0015). In
+# production these come from Terragrunt includes; in tests from the shared
+# test/fixtures/terragrunt-inputs.tfvars via the `just tf test*` recipes.
+# Required (no default) — production always injects them and a wrong default
+# would silently mis-scope the cross-account remote-state read. Both the vpc
+# and eks reads use them.
+
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped remote-state keys this module reads (<account_name>/<region>/{vpc,eks}/<name>/terraform.tfstate)."
+  type        = string
+  nullable    = false
+}
+
+variable "account_id" {
+  description = "12-digit AWS account ID that owns the remote-state bucket. Composed into the assume_role role_arn (arn:aws:iam::<account_id>:role/<deploy_role_name>) for the cross-account state reads."
+  type        = string
+  nullable    = false
+}
+
+variable "remote_state_bucket_region" {
+  description = "Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform_remote_state backends read from this region."
+  type        = string
+  nullable    = false
+}
+
+variable "deploy_role_name" {
+  description = "Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume_role role_arn with account_id."
   type        = string
   nullable    = false
 }
