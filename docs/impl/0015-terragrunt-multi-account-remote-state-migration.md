@@ -129,13 +129,13 @@ three; `eks/managed-node-group` reads the **eks** state, not vpc):
 
 | Shape | Consumers |
 |-------|-----------|
-| `vpc/${vpc_name}` | `eks/cluster`, `eks/managed-node-group`†, `rds/serverless`, `rds/cluster`, `rds/instance`, `efs/filesystem` |
-| `eks/${cluster_name}` | `eks/managed-node-group`†, `eks/addons`, `eks/pod-identity-access` |
+| `vpc/${vpc_name}` | `eks/cluster`, `eks/managed-node-group`†, `rds/serverless`, `rds/cluster`, `rds/instance`, `efs/filesystem`† |
+| `eks/${cluster_name}` | `eks/managed-node-group`†, `eks/addons`, `eks/pod-identity-access`, `efs/filesystem`† |
 | `rds/${target_dir}/${target_identifier}` | `rds/proxy` |
 | `rds/cluster/${cluster_identifier}` | `rds/read-replica` |
 
-† `eks/managed-node-group` reads **both** the `eks` and `vpc` states (two
-`data.terraform_remote_state` blocks) — both were migrated.
+† `eks/managed-node-group` and `efs/filesystem` each read **both** the `eks` and
+`vpc` states (two `data.terraform_remote_state` blocks) — both were migrated.
 
 ## Implementation Phases
 
@@ -416,16 +416,26 @@ The single EFS consumer, same pattern as an EKS vpc consumer.
 
 #### Tasks
 
-- [ ] `efs/filesystem`: add the four variables; rewrite
+- [x] `efs/filesystem`: add the four variables; rewrite
   `data.terraform_remote_state.vpc` to the account-scoped key + `assume_role`;
   account-scope its `fixtures/setup` VPC seed.
-- [ ] Add the four `variable` declarations to the EFS plan suite (9 files);
+- [x] Add the four `variable` declarations to the EFS plan suite (9 files);
   stub outputs untouched (3a).
 
 #### Success Criteria
 
 - `just tf test efs/filesystem` green (plan).
 - `just tf test-localstack efs/filesystem` green (Community apply).
+
+#### Result (2026-07-24 — EFS migrated, green)
+
+**Same correction as `managed-node-group`:** `efs/filesystem` reads **two**
+remote states — `data.terraform_remote_state.vpc` **and**
+`data.terraform_remote_state.eks` (for `node_security_group_id`, DESIGN-0008 Q1;
+its fixture seeds both keys) — so both blocks were migrated and both seeded keys
+account-scoped. Q3a bespoke-fixture approach + the same plan-suite reconciliation
+as Phases 3-4. Verified: plan **23/23**; Community apply **3/3** (both
+account-scoped reads via `assume_role`, no deprecation warnings).
 
 ---
 
