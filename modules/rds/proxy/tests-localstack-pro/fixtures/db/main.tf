@@ -39,6 +39,11 @@ variable "remote_state_bucket" {
   type        = string
 }
 
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped target state key (IMPL-0015). Passed through to the shared reference VPC so its seeded keys match, and used for the target state key below."
+  type        = string
+}
+
 #--------------------------------------------------------------
 # Shared reference VPC — provides vpc_id + private_subnet_ids for the DB
 # subnet group and creates the S3 bucket the target state is written into.
@@ -50,6 +55,7 @@ module "vpc" {
   remote_state_bucket = var.remote_state_bucket
   vpc_name            = "${var.identifier}-vpc"
   region              = var.region
+  account_name        = var.account_name
 }
 
 resource "aws_security_group" "this" {
@@ -86,15 +92,15 @@ resource "aws_rds_cluster_instance" "this" {
 }
 
 #--------------------------------------------------------------
-# Stub target state at the proxy's key
-# (<region>/rds/serverless/<identifier>/terraform.tfstate), written into
-# the shared fixture's bucket. The outputs map mirrors the serverless
-# module's proxy-composition outputs (IMPL-0010 Phase 2).
+# Stub target state at the proxy's account-scoped key
+# (<account_name>/<region>/rds/serverless/<identifier>/terraform.tfstate),
+# written into the shared fixture's bucket. The outputs map mirrors the
+# serverless module's proxy-composition outputs (IMPL-0010 Phase 2).
 #--------------------------------------------------------------
 
 resource "aws_s3_object" "target_state" {
   bucket       = module.vpc.bucket_name
-  key          = "${var.region}/rds/serverless/${var.identifier}/terraform.tfstate"
+  key          = "${var.account_name}/${var.region}/rds/serverless/${var.identifier}/terraform.tfstate"
   content_type = "application/json"
 
   content = jsonencode({

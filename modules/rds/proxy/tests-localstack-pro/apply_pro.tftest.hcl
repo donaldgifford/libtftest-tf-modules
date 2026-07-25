@@ -38,23 +38,42 @@ provider "aws" {
   }
 }
 
-variables {
-  region              = "us-east-1"
-  name                = "tftest-proxy"
-  remote_state_bucket = "tftest-proxy-state"
-  target_type         = "serverless"
-  target_identifier   = "tftest-rds"
+# Declarations for the Terragrunt globals this file references via var.* in the
+# setup run. Values come from the shared var-file (test/fixtures/
+# terragrunt-inputs.tfvars) via the `just tf test*` recipes — no default here.
+variable "region" {
+  type = string
 }
 
-# Stand up the Aurora target + write its stub state to S3 at the
-# proxy's remote-state key.
+variable "remote_state_bucket" {
+  type = string
+}
+
+variable "account_name" {
+  type = string
+}
+
+# region + remote_state_bucket now come from the shared var-file
+# (test/fixtures/terragrunt-inputs.tfvars) via the `just tf test*` recipes —
+# one shared test bucket across the fleet (IMPL-0015 Q2).
+variables {
+  name              = "tftest-proxy"
+  target_type       = "serverless"
+  target_identifier = "tftest-rds"
+}
+
+# Stand up the Aurora target + write its stub state to S3 at the proxy's
+# account-scoped remote-state key. account_name is passed through to the
+# fixture (and its reference VPC) so the seeded key matches the module's
+# assume_role read exactly (IMPL-0015).
 run "setup" {
   command = apply
 
   variables {
-    identifier          = "tftest-rds"
-    region              = "us-east-1"
-    remote_state_bucket = "tftest-proxy-state"
+    identifier          = var.target_identifier
+    region              = var.region
+    remote_state_bucket = var.remote_state_bucket
+    account_name        = var.account_name
   }
 
   module {

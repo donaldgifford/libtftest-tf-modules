@@ -2,6 +2,14 @@
 # Run `just` for the menu, `just --list` to see everything.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
+# Shared Terragrunt-provided test inputs passed to every `terraform test`
+# (IMPL-0015). Centralizes the six globals Terragrunt injects in production
+# (account_name/account_id/region/remote_state_bucket/remote_state_bucket_region/
+# deploy_role_name) so each consumer's account-scoped remote-state read +
+# assume_role resolves. Relative to a module dir (modules/<service>/<module>),
+# the repo-root fixtures dir is three levels up.
+tf_test_varfile := "../../../test/fixtures/terragrunt-inputs.tfvars"
+
 # Show this menu.
 default:
     @just --list --unsorted
@@ -79,7 +87,7 @@ _tf-docs module:
 [private]
 _tf-test module:
     @just _log "terraform test (plan-only) → modules/{{module}}"
-    cd modules/{{module}} && terraform init -backend=false -input=false >/dev/null && terraform test
+    cd modules/{{module}} && terraform init -backend=false -input=false >/dev/null && terraform test -var-file={{tf_test_varfile}}
 
 # Opt-in apply-against-LocalStack suite (tests-localstack/). Requires a
 # running LocalStack Pro container on :4566. Wires the env vars the s3
@@ -94,7 +102,7 @@ _tf-test-localstack module:
         AWS_ACCESS_KEY_ID=test \
         AWS_SECRET_ACCESS_KEY=test \
         AWS_REGION=us-east-1 \
-        terraform test -test-directory=tests-localstack
+        terraform test -test-directory=tests-localstack -var-file={{tf_test_varfile}}
 
 # Opt-in LocalStack PRO apply suite (tests-localstack-pro/). OFF BY
 # DEFAULT — for Pro-only surfaces (e.g. RDS Proxy, IMPL-0010 Q7) whose
@@ -111,7 +119,7 @@ _tf-test-localstack-pro module:
         AWS_ACCESS_KEY_ID=test \
         AWS_SECRET_ACCESS_KEY=test \
         AWS_REGION=us-east-1 \
-        terraform test -test-directory=tests-localstack-pro
+        terraform test -test-directory=tests-localstack-pro -var-file={{tf_test_varfile}}
 
 # Run validate + lint + fmt + test (plan-only) in order. Stops on first failure.
 [private]

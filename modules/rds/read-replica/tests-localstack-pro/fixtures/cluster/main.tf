@@ -47,6 +47,25 @@ variable "cluster_identifier" {
   type        = string
 }
 
+# Terragrunt globals (IMPL-0015) threaded into the real cluster module (which
+# now requires them for its own account-scoped VPC read) and used to
+# account-scope the cluster state key the readers consume.
+variable "account_name" {
+  type = string
+}
+
+variable "account_id" {
+  type = string
+}
+
+variable "remote_state_bucket_region" {
+  type = string
+}
+
+variable "deploy_role_name" {
+  type = string
+}
+
 #--------------------------------------------------------------
 # Shared reference VPC + seeded VPC remote state. Creates the S3 bucket
 # and seeds <region>/vpc/<vpc_name>/terraform.tfstate (the key the cluster
@@ -59,6 +78,7 @@ module "vpc" {
   remote_state_bucket = var.remote_state_bucket
   vpc_name            = var.vpc_name
   region              = var.region
+  account_name        = var.account_name
 }
 
 #--------------------------------------------------------------
@@ -75,6 +95,13 @@ module "cluster" {
   vpc_name            = var.vpc_name
   identifier_prefix   = var.cluster_identifier
 
+  # The real cluster module reads its VPC state account-scoped (IMPL-0015),
+  # so it needs the same Terragrunt globals threaded through.
+  account_name               = var.account_name
+  account_id                 = var.account_id
+  remote_state_bucket_region = var.remote_state_bucket_region
+  deploy_role_name           = var.deploy_role_name
+
   engine         = "aurora-postgresql"
   engine_version = "16"
   instance_class = "db.t3.medium"
@@ -85,15 +112,15 @@ module "cluster" {
 }
 
 #--------------------------------------------------------------
-# Stub cluster state at the read-replica's key
-# (<region>/rds/cluster/<cluster_identifier>/terraform.tfstate), written
-# into the shared fixture's bucket. The outputs map is exactly the
+# Stub cluster state at the read-replica's account-scoped key
+# (<account_name>/<region>/rds/cluster/<cluster_identifier>/terraform.tfstate),
+# written into the shared fixture's bucket. The outputs map is exactly the
 # read-replica consumer set the cluster module emits (Q4-b — no drift).
 #--------------------------------------------------------------
 
 resource "aws_s3_object" "cluster_state" {
   bucket       = module.vpc.bucket_name
-  key          = "${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"
+  key          = "${var.account_name}/${var.region}/rds/cluster/${var.cluster_identifier}/terraform.tfstate"
   content_type = "application/json"
 
   content = jsonencode({

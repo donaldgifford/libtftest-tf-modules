@@ -51,9 +51,25 @@ provider "aws" {
   }
 }
 
+# Declarations for the Terragrunt globals this file references via var.* in the
+# setup run. Values come from the shared var-file (test/fixtures/
+# terragrunt-inputs.tfvars) via the `just tf test*` recipes — no default here.
+variable "region" {
+  type = string
+}
+
+variable "remote_state_bucket" {
+  type = string
+}
+
+variable "account_name" {
+  type = string
+}
+
+# region + remote_state_bucket now come from the shared var-file
+# (test/fixtures/terragrunt-inputs.tfvars) via the `just tf test*` recipes —
+# one shared test bucket across the fleet (IMPL-0015 Q2).
 variables {
-  region                    = "us-east-1"
-  remote_state_bucket       = "tftest-rds-instance-state"
   vpc_name                  = "tftest-rds-instance-vpc"
   identifier_prefix         = "tftest-rds"
   engine                    = "postgres"
@@ -77,9 +93,11 @@ variables {
 }
 
 # Setup: the shared vpc-lookup-faithful reference VPC (three-tier
-# Network-tagged topology + full nine-output remote-state contract),
-# seeded into S3 at the conventional key. Applied first so the module's
-# data.terraform_remote_state.vpc resolves. See test/fixtures/reference-vpc.
+# Network-tagged topology + full nine-output remote-state contract), seeded
+# into S3 at the account-scoped key. Applied first so the module's
+# data.terraform_remote_state.vpc resolves. account_name is passed explicitly
+# so the seeded key matches the module's assume_role read exactly (not the
+# fixture's default). See test/fixtures/reference-vpc.
 run "setup" {
   command = apply
 
@@ -87,6 +105,7 @@ run "setup" {
     remote_state_bucket = var.remote_state_bucket
     vpc_name            = var.vpc_name
     region              = var.region
+    account_name        = var.account_name
   }
 
   module {

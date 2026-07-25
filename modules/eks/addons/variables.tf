@@ -20,6 +20,36 @@ variable "cluster_name" {
   nullable    = false
 }
 
+# Terragrunt-injected multi-account remote-state inputs (IMPL-0015). In
+# production these come from Terragrunt includes; in tests from the shared
+# test/fixtures/terragrunt-inputs.tfvars via the `just tf test*` recipes.
+# Required (no default) — production always injects them and a wrong default
+# would silently mis-scope the cross-account remote-state read.
+
+variable "account_name" {
+  description = "Terragrunt account name — the <account_name> prefix of the account-scoped remote-state key this module reads (<account_name>/<region>/eks/<cluster_name>/terraform.tfstate)."
+  type        = string
+  nullable    = false
+}
+
+variable "account_id" {
+  description = "12-digit AWS account ID that owns the remote-state bucket. Composed into the assume_role role_arn (arn:aws:iam::<account_id>:role/<deploy_role_name>) for the cross-account state read."
+  type        = string
+  nullable    = false
+}
+
+variable "remote_state_bucket_region" {
+  description = "Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform_remote_state backend reads from this region."
+  type        = string
+  nullable    = false
+}
+
+variable "deploy_role_name" {
+  description = "Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume_role role_arn with account_id."
+  type        = string
+  nullable    = false
+}
+
 #--------------------------------------------------------------
 # Addon versions
 #--------------------------------------------------------------

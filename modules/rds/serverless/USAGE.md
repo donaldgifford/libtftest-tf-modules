@@ -37,12 +37,15 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| account\_id | 12-digit AWS account ID that owns the remote-state bucket. Composed into the assume\_role role\_arn (arn:aws:iam::<account\_id>:role/<deploy\_role\_name>) for the cross-account state read. | `string` | n/a | yes |
+| account\_name | Terragrunt account name — the <account\_name> prefix of the account-scoped remote-state key this module reads (<account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate). | `string` | n/a | yes |
 | allowed\_consumer\_sg\_ids | Security group IDs whose members may reach the cluster on the engine's default port. Empty list (default) leaves the cluster reachable from nowhere — operators add ingress deliberately. | `list(string)` | `[]` | no |
 | apply\_immediately | When true, modifications apply immediately instead of waiting for the maintenance window. Default false (AWS-recommended posture; prevents accidental cluster reboots from benign tag/parameter changes). | `bool` | `false` | no |
 | auto\_minor\_version\_upgrade | When true (default), AWS applies engine-minor upgrades automatically during the maintenance window. Engine-major upgrades remain explicit operator PRs (bumping var.engine\_version). | `bool` | `true` | no |
 | backup\_retention\_period | Days to retain automated backups. Range: 1 - 35. Default 7 (matches AWS RDS default). | `number` | `7` | no |
 | database\_name | Optional initial database created on cluster startup. Null (default) leaves the cluster without an initial database; consumers create their schemas via Flyway/Liquibase/Atlas (per DESIGN-0007 Non-Goals — module manages infrastructure, not schema). | `string` | `null` | no |
 | deletion\_protection | When true (default), the cluster cannot be destroyed via the AWS API until this flag is flipped to false in a deliberate operator plan. Matches the org-registry module's safety posture. | `bool` | `true` | no |
+| deploy\_role\_name | Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume\_role role\_arn with account\_id. | `string` | n/a | yes |
 | engine | Aurora engine: 'aurora-postgresql' or 'aurora-mysql'. The module rejects non-Aurora engines (those belong to the future modules/rds/instance module). | `string` | n/a | yes |
 | engine\_version | Optional engine version pin (e.g. '16', '16.4', '8.0'). When null, AWS picks the engine's default at apply time and the parameter family lookup falls back to the default major map in locals.tf (per IMPL-0007 Q3). | `string` | `null` | no |
 | enhanced\_monitoring\_interval | Seconds between Enhanced Monitoring data points (1, 5, 10, 15, 30, 60). Default 0 (disabled, per IMPL-0007 Q6). Setting > 0 requires var.enhanced\_monitoring\_role\_arn. | `number` | `0` | no |
@@ -61,7 +64,8 @@ No modules.
 | preferred\_maintenance\_window | Weekly UTC window during which AWS applies maintenance + engine-minor upgrades. Format: ddd:HH:MM-ddd:HH:MM. Default sun:04:00-sun:05:00. | `string` | `"sun:04:00-sun:05:00"` | no |
 | publicly\_accessible | When true, the cluster instance gets a public DNS endpoint. Default false (private-subnet-only). | `bool` | `false` | no |
 | region | AWS region for the cluster + the S3 backend hosting the VPC remote state. | `string` | n/a | yes |
-| remote\_state\_bucket | S3 bucket holding the VPC stack's terraform state. The module reads <region>/vpc/<vpc\_name>/terraform.tfstate for vpc\_id + private\_subnet\_ids (per IMPL-0007 Q1). | `string` | n/a | yes |
+| remote\_state\_bucket | S3 bucket holding the VPC stack's terraform state. The module reads <account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate for vpc\_id + private\_subnet\_ids (per IMPL-0007 Q1; account-scoped key per IMPL-0015). | `string` | n/a | yes |
+| remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backend reads from this region. | `string` | n/a | yes |
 | skip\_final\_snapshot | When true, skips the final snapshot at cluster destroy. Default false — operators MUST supply var.final\_snapshot\_identifier at destroy time unless they flip this to true. | `bool` | `false` | no |
 | tags | AWS resource tags applied to every taggable resource in the module (cluster, instance, subnet group, security group, parameter groups, KMS key). | `map(string)` | `{}` | no |
 | vpc\_name | VPC name used to compose the remote-state key. Must match the VPC stack's identifier. | `string` | n/a | yes |
