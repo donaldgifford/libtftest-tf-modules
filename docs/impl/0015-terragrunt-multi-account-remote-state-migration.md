@@ -129,10 +129,13 @@ three; `eks/managed-node-group` reads the **eks** state, not vpc):
 
 | Shape | Consumers |
 |-------|-----------|
-| `vpc/${vpc_name}` | `eks/cluster`, `rds/serverless`, `rds/cluster`, `rds/instance`, `efs/filesystem` |
-| `eks/${cluster_name}` | `eks/managed-node-group`, `eks/addons`, `eks/pod-identity-access` |
+| `vpc/${vpc_name}` | `eks/cluster`, `eks/managed-node-group`†, `rds/serverless`, `rds/cluster`, `rds/instance`, `efs/filesystem` |
+| `eks/${cluster_name}` | `eks/managed-node-group`†, `eks/addons`, `eks/pod-identity-access` |
 | `rds/${target_dir}/${target_identifier}` | `rds/proxy` |
 | `rds/cluster/${cluster_identifier}` | `rds/read-replica` |
+
+† `eks/managed-node-group` reads **both** the `eks` and `vpc` states (two
+`data.terraform_remote_state` blocks) — both were migrated.
 
 ## Implementation Phases
 
@@ -368,13 +371,13 @@ this phase account-scopes their source blocks **and** their bespoke seeders
 
 #### Tasks
 
-- [ ] `eks/cluster`: add the four variables; rewrite `data.terraform_remote_state.vpc`
+- [x] `eks/cluster`: add the four variables; rewrite `data.terraform_remote_state.vpc`
   to the account-scoped key + `assume_role`; account-scope its `fixtures/setup`
   VPC seed.
-- [ ] `eks/managed-node-group`, `eks/addons`, `eks/pod-identity-access`: add the
+- [x] `eks/managed-node-group`, `eks/addons`, `eks/pod-identity-access`: add the
   four variables; rewrite `data.terraform_remote_state.eks` to the account-scoped
   key + `assume_role`; account-scope their `fixtures/setup` EKS-state seeds.
-- [ ] Add the four `variable` declarations to every EKS plan suite (cluster 3,
+- [x] Add the four `variable` declarations to every EKS plan suite (cluster 3,
   managed-node-group 3, addons 4, pod-identity-access 4 files); stub outputs
   untouched (3a).
 
@@ -385,6 +388,25 @@ this phase account-scopes their source blocks **and** their bespoke seeders
 - `just tf test-localstack eks/{cluster,managed-node-group,addons,pod-identity-access}`
   green (Community apply) — each account-scoped read resolves against its
   account-scoped seed.
+
+#### Result (2026-07-24 — all four EKS consumers migrated, green)
+
+Per Q3a the bespoke `fixtures/setup` seeders kept their topology and were only
+account-scoped (each gained an `account_name` input + prefixed seed key). Same
+plan-suite reconciliation as Phase 3 (var-file supplies the four vars; only the
+apply/setup files that reference `var.*` gained top-level declarations).
+
+**Correction to the shape table:** `eks/managed-node-group` reads **two** remote
+states — `data.terraform_remote_state.eks` **and** `data.terraform_remote_state.vpc`
+(its fixture seeds both keys) — so both blocks were migrated. The other three
+read a single state (`vpc` for `cluster`, `eks` for `addons`/`pod-identity-access`).
+
+| Module | Reads | Plan | Community apply |
+|--------|-------|------|-----------------|
+| `eks/cluster` | vpc | 4/4 | 2/2 |
+| `eks/managed-node-group` | eks + vpc | 6/6 | 2/2 |
+| `eks/addons` | eks | 5/5 | 2/2 |
+| `eks/pod-identity-access` | eks | 5/5 | 3/3 |
 
 ---
 
