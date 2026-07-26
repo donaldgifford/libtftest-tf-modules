@@ -48,4 +48,5 @@ docz create adr "Your ADR Title"
 | ADR-0015 | Permit opt-in third managed policy on node role for ECR pull-through cache | Proposed | 2026-05-15 | Donald Gifford | [0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md](0015-permit-opt-in-third-managed-policy-on-node-role-for-ecr-pull.md) |
 | ADR-0016 | Use ECR Repository Creation Templates for OCI Artifact Repos | Proposed | 2026-05-18 | Donald Gifford | [0016-use-ecr-repository-creation-templates-for-oci-artifact-repos.md](0016-use-ecr-repository-creation-templates-for-oci-artifact-repos.md) |
 | ADR-0017 | RDS Blue Green deployments are opt-in and default off | Accepted | 2026-07-09 | Donald Gifford | [0017-rds-blue-green-deployments-are-opt-in-and-default-off.md](0017-rds-blue-green-deployments-are-opt-in-and-default-off.md) |
+| ADR-0018 | Gate PRs with a repo-wide plan test and changed-module apply tiers | Accepted | 2026-07-25 | Donald Gifford | [0018-gate-prs-with-a-repo-wide-plan-test-and-changed-module-apply.md](0018-gate-prs-with-a-repo-wide-plan-test-and-changed-module-apply.md) |
 <!-- END DOCZ AUTO-GENERATED -->
