@@ -276,27 +276,50 @@ a `tests-localstack/` suite, backed by a `services:` container.
 
 #### Tasks
 
-- [ ] Add a `test-localstack` job: `strategy.matrix.module` from
+- [x] Add a `test-localstack` job: `strategy.matrix.module` from
   `fromJSON(needs.detect.outputs.community)`, guarded by
-  `if: needs.detect.outputs.community != '[]'` so an empty matrix skips cleanly.
-- [ ] Declare a `localstack/localstack` (Community, token-free) `services:`
-  container exposing `:4566` with a health check; wire the
-  `AWS_ENDPOINT_URL`/key/secret/region env the `just tf test-localstack` recipe
-  expects.
-- [ ] Run `just tf test-localstack ${{ matrix.module }}` via `jdx/mise-action`;
-  confirm the shared `test/fixtures/reference-vpc` apply (real NAT gateway) works
-  on the runner and record its wall-clock cost.
-- [ ] Add `test-localstack` to the `ci-gate` `needs:` list and its
-  empty/skip-tolerant success logic.
+  `if: needs.detect.outputs.community != '[]'` (empty matrix skips) **and** the
+  same-repo condition (see revision below).
+- [x] ~~Declare a `localstack/localstack` (Community, token-free) container~~
+  **Revised → LocalStack Pro `services:` container** (`localstack/localstack-pro:2026.7.0`
+  + `LOCALSTACK_AUTH_TOKEN`), `:4566` + health check. **Why:** the premise that
+  `tests-localstack/` is Community-safe is false for most modules — `eks/{cluster,
+  addons,managed-node-group,pod-identity-access}`, `efs/filesystem`, and
+  `rds/serverless` do real applies against **Pro-only** AWS APIs (EKS/EFS/Aurora
+  `501` on the Community image, per their `FINDINGS.md`); only `network/vpc-lookup`
+  is genuinely token-free, and the `ecr`/RDS-quartet `tests-localstack/` suites are
+  plan-only. Pro is a Community superset, so one Pro-backed tier covers all — far
+  simpler than per-module image selection. The recipe wires its own
+  `AWS_ENDPOINT_URL`/key/secret/region.
+- [x] Run `just tf test-localstack ${{ matrix.module }}` via `jdx/mise-action`.
+  The `reference-vpc` (real NAT) applies were confirmed green **locally against
+  Pro `2026.7.0`** this cycle (vpc-lookup 3/3, efs 3/3, each eks 2/2, serverless
+  3/3); the **CI-runner** confirmation + wall-clock is recorded in Phase 6's live
+  validation PR.
+- [x] Add `test-localstack` to the `ci-gate` `needs:` list + skip-tolerant loop
+  (a skipped/empty apply matrix counts as pass).
 
 #### Success Criteria
 
-- A PR touching a module with a `tests-localstack/` suite runs its Community apply
-  green against the service container.
-- A PR touching only Pro-quartet or no-apply modules does **not** spin up the
-  Community job (or it skips cleanly), and `ci-gate` still resolves correctly.
-- The `reference-vpc` fan-out (Phase 1) correctly triggers the Community applies
-  of its consumers when the fixture changes.
+- A PR touching a module with a `tests-localstack/` suite runs its apply green
+  against the service container.
+- A PR touching only no-apply modules does **not** spin up the apply job (empty
+  matrix / fork PR → skipped), and `ci-gate` still resolves correctly.
+- The `reference-vpc` fan-out (Phase 1) correctly triggers the applies of its
+  consumers when the fixture changes.
+
+#### Result
+
+**Code complete; static validation green; local apply-parity proven.** Added the
+`test-localstack` matrix job over `detect.outputs.community`, backed by a
+Pro-pinned LocalStack `services:` container, fork-guarded. `ci-gate` extended to
+`needs: [detect, plan, test-localstack]` with skip-tolerance. yamllint +
+actionlint clean. **Design revision recorded:** the "Community token-free image"
+premise (INV-0006 F5 / Phase-3 draft) was corrected to a Pro-backed tier — the
+evidence is each module's `FINDINGS.md` (EKS/EFS/Aurora are Pro-only) and this
+cycle's local sweep, which ran those `test-localstack` suites green **only**
+against the Pro container. ADR-0018 §1's taxonomy "Needs" column updated to match.
+Live CI confirmation is Phase 6.
 
 ---
 

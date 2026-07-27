@@ -74,7 +74,7 @@ framework split:
 | Tier | Directory | Recipe | Needs | Applies to |
 |------|-----------|--------|-------|------------|
 | **Plan** | `tests/` | `just tf test <m>` | nothing (no AWS, no LocalStack) | **every** module (ADR-0013) |
-| **Community apply** | `tests-localstack/` | `just tf test-localstack <m>` | LocalStack Community `:4566` | **every** module (plan-smoke where an upstream gap blocks apply) |
+| **Community apply** | `tests-localstack/` | `just tf test-localstack <m>` | LocalStack `:4566` — Community-safe for `network/vpc-lookup` + plan-only suites, **Pro image for the real EKS/EFS/Aurora applies** | **every** module (plan-smoke where an upstream gap blocks apply) |
 | **Pro apply** | `tests-localstack-pro/` | `just tf test-localstack-pro <m>` | LocalStack **Pro** + token | **only** modules with a Pro-gated surface (the RDS quartet today) |
 
 The plan tier is the universal invariant gate. The apply tiers exercise the
@@ -120,11 +120,13 @@ guards against drift in CI.
 
 ### 5. Fork PRs degrade gracefully
 
-`LOCALSTACK_AUTH_TOKEN` is not exposed to `pull_request` runs from forks, so the
-Pro tier cannot run there. Same-repo branches and push-to-`main` are fully
-Pro-gated; fork PRs skip the Pro tier with a neutral/soft status rather than
-hard-failing on the missing secret. This repo is internal-first, so fork PRs are
-rare. (INV-0006 Q4a)
+`LOCALSTACK_AUTH_TOKEN` is not exposed to `pull_request` runs from forks. Because
+both apply tiers are backed by the LocalStack Pro image (most `tests-localstack/`
+suites exercise Pro-only EKS/EFS/Aurora APIs, not just the `tests-localstack-pro/`
+tier), the **apply tiers as a whole** cannot run on fork PRs. Same-repo branches
+and push-to-`main` are fully apply-gated; fork PRs skip the apply tiers (the plan
+tier still gates them) rather than hard-failing on the missing secret. This repo
+is internal-first, so fork PRs are rare. (INV-0006 Q4a)
 
 ## Consequences
 

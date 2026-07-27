@@ -69,6 +69,45 @@ jobs:
       - name: just tf all ${{ matrix.module }}
         run: just tf all ${{ matrix.module }}
 
+  # ── Community apply tier (changed modules that ship tests-localstack/) ──────
+  # Backed by the LocalStack *Pro* image: most tests-localstack/ suites (eks×4,
+  # efs, rds/serverless) exercise Pro-only AWS APIs that 501 on the Community
+  # image — only network/vpc-lookup is genuinely token-free. Pro is a Community
+  # superset, so a single Pro-backed tier covers them all. Skipped on fork PRs
+  # (the auth token is not exposed to forks — INV-0006 F5 / ADR-0018 §5).
+  test-localstack:
+    name: LocalStack apply (${{ matrix.module }})
+    needs: detect
+    if: >-
+      needs.detect.outputs.community != '[]'
+      && (github.event_name == 'push'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.community) }}
+    services:
+      localstack:
+        image: localstack/localstack-pro:2026.7.0
+        ports:
+          - 4566:4566
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        options: >-
+          --health-cmd "curl -sf http://localhost:4566/_localstack/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf test-localstack ${{ matrix.module }}
+        run: just tf test-localstack ${{ matrix.module }}
+
   # ── Aggregate gate (the single required status check) ──────────────────────
   # A dynamic matrix cannot be enumerated in branch protection, so this one job
   # gates the merge: it fails if any needed job failed/was cancelled and passes
@@ -76,7 +115,7 @@ jobs:
   # Phases 3–4 as the Community / Pro apply tiers land.
   ci-gate:
     name: CI gate
-    needs: [detect, plan]
+    needs: [detect, plan, test-localstack]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -84,9 +123,10 @@ jobs:
         env:
           DETECT_RESULT: ${{ needs.detect.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
+          TEST_LOCALSTACK_RESULT: ${{ needs.test-localstack.result }}
         run: |
           failed=0
-          for job in DETECT PLAN; do
+          for job in DETECT PLAN TEST_LOCALSTACK; do
             varname="${job}_RESULT"
             result="${!varname}"
             if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then
