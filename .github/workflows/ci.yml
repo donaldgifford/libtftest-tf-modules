@@ -85,6 +85,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Cap concurrent LocalStack Pro license activations (each job activates the
+      # shared auth token) to stay within the CI seat limit.
+      max-parallel: 4
       matrix:
         module: ${{ fromJSON(needs.detect.outputs.community) }}
     services:
