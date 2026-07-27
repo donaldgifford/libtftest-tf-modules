@@ -108,6 +108,44 @@ jobs:
       - name: just tf test-localstack ${{ matrix.module }}
         run: just tf test-localstack ${{ matrix.module }}
 
+  # ── Pro apply tier (changed modules that ship tests-localstack-pro/) ────────
+  # The RDS quartet's real Aurora/instance applies boot LocalStack Pro's embedded
+  # Postgres. As a `services:` container there is no host bind-mount, so the
+  # macOS Docker-Desktop `initdb` ownership gotcha (the named-volume workaround)
+  # cannot occur on the Linux runner (INV-0006 F4). Skipped on fork PRs.
+  test-localstack-pro:
+    name: LocalStack Pro apply (${{ matrix.module }})
+    needs: detect
+    if: >-
+      needs.detect.outputs.pro != '[]'
+      && (github.event_name == 'push'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.pro) }}
+    services:
+      localstack:
+        image: localstack/localstack-pro:2026.7.0
+        ports:
+          - 4566:4566
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        options: >-
+          --health-cmd "curl -sf http://localhost:4566/_localstack/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf test-localstack-pro ${{ matrix.module }}
+        run: just tf test-localstack-pro ${{ matrix.module }}
+
   # ── Aggregate gate (the single required status check) ──────────────────────
   # A dynamic matrix cannot be enumerated in branch protection, so this one job
   # gates the merge: it fails if any needed job failed/was cancelled and passes
@@ -115,7 +153,7 @@ jobs:
   # Phases 3–4 as the Community / Pro apply tiers land.
   ci-gate:
     name: CI gate
-    needs: [detect, plan, test-localstack]
+    needs: [detect, plan, test-localstack, test-localstack-pro]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -124,9 +162,10 @@ jobs:
           DETECT_RESULT: ${{ needs.detect.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
           TEST_LOCALSTACK_RESULT: ${{ needs.test-localstack.result }}
+          TEST_LOCALSTACK_PRO_RESULT: ${{ needs.test-localstack-pro.result }}
         run: |
           failed=0
-          for job in DETECT PLAN TEST_LOCALSTACK; do
+          for job in DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO; do
             varname="${job}_RESULT"
             result="${!varname}"
             if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then

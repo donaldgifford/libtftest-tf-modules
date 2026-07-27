@@ -331,20 +331,23 @@ on a Linux runner).
 
 #### Tasks
 
-- [ ] Add a `test-localstack-pro` job: `strategy.matrix.module` from
+- [x] Add a `test-localstack-pro` job: `strategy.matrix.module` from
   `fromJSON(needs.detect.outputs.pro)`, guarded by `if:` on a non-empty matrix
-  **and** the same-repo condition (fork PRs cannot read the secret — F5); see
-  Open Question 4 for the fork-handling policy.
-- [ ] Declare a `localstack/localstack-pro` `services:` container with
+  **and** the same-repo condition (fork PRs cannot read the secret — F5 / Q4a).
+- [x] Declare a `localstack/localstack-pro:2026.7.0` `services:` container with
   `LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}`, `:4566` +
-  health check; wire the Pro recipe's env
-  (`AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566`).
-- [ ] Run `just tf test-localstack-pro ${{ matrix.module }}` and **confirm the
-  embedded-Postgres `initdb` succeeds without a Docker named volume** on
-  `ubuntu-latest` (F4). If it fails, add the named-volume workaround and document
-  it; if it passes, record that CI is simpler than the local macOS path.
-- [ ] Add `test-localstack-pro` to the `ci-gate` `needs:` list with skip/empty
-  tolerance and a documented behavior for fork PRs (neutral/soft status).
+  health check. The Pro recipe wires its own
+  `AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566` (resolves to
+  127.0.0.1 → the mapped service port).
+- [x] Run `just tf test-localstack-pro ${{ matrix.module }}`. **F4 resolved by
+  design:** a `services:` container declares no `volumes:`, so
+  `/var/lib/localstack` is in the container's own layer (no host bind-mount) — the
+  macOS Docker-Desktop `initdb`-ownership issue that forces the named-volume
+  workaround locally cannot occur on the Linux runner. The **live run + the
+  RDS-quartet `FINDINGS.md` note** are executed in Phase 6.
+- [x] Add `test-localstack-pro` to the `ci-gate` `needs:` list with skip/empty
+  tolerance; fork-PR behavior documented (ADR-0018 §5 — apply tiers skip, plan
+  tier still gates).
 
 #### Success Criteria
 
@@ -354,6 +357,18 @@ on a Linux runner).
   the affected modules' `FINDINGS.md`.
 - Fork PRs degrade gracefully per Open Question 4 (they do not hard-fail on the
   missing secret), while same-repo PRs are fully gated.
+
+#### Result
+
+**Code complete; static validation green; F4 resolved structurally.** Added the
+`test-localstack-pro` matrix job over `detect.outputs.pro` (Pro `services:`
+container, fork-guarded) and extended `ci-gate` to `needs: [detect, plan,
+test-localstack, test-localstack-pro]`. yamllint + actionlint clean. The Pro
+applies were verified green locally against Pro `2026.7.0` this cycle
+(cluster/instance/proxy 3/3, read-replica 2/2). The named-volume question (F4) is
+answered by the services-container model (no host bind-mount → no `initdb`
+ownership failure); the **live CI run that proves it on `ubuntu-latest`** and the
+FINDINGS.md notes are Phase 6, which owns end-to-end verification.
 
 ---
 
