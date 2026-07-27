@@ -32,17 +32,17 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`bedrock/claude-code`](modules/bedrock/claude-code) | `v0.10.0` | IMPL-0009 | 7 | apply | — |
 | [`ecr/org-registry`](modules/ecr/org-registry) | `v0.7.0` | IMPL-0006 | 8 | plan-only | — |
 | [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `v0.6.1` | IMPL-0005 | 7 | plan-only | — |
-| [`efs/filesystem`](modules/efs/filesystem) | `v0.9.0` | IMPL-0008 | 9 | apply | — |
-| [`eks/addons`](modules/eks/addons) | `v0.4.0` | IMPL-0003 | 4 | apply | — |
-| [`eks/cluster`](modules/eks/cluster) | `v0.2.0` | IMPL-0001 | 3 | apply | — |
-| [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.3.0` | IMPL-0002 | 3 | apply | — |
-| [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.5.0` | IMPL-0004 | 4 | apply | — |
-| [`network/vpc-lookup`](modules/network/vpc-lookup) | `unreleased` | — | 1 | apply | — |
-| [`rds/cluster`](modules/rds/cluster) | `v0.12.0` | IMPL-0012 | 5 | plan-only | ✅ |
-| [`rds/instance`](modules/rds/instance) | `v0.14.0` | IMPL-0011 | 6 | plan-only | ✅ |
-| [`rds/proxy`](modules/rds/proxy) | `v0.10.1` | IMPL-0010 | 5 | plan-only | ✅ |
-| [`rds/read-replica`](modules/rds/read-replica) | `v0.13.0` | IMPL-0013 | 3 | plan-only | ✅ |
-| [`rds/serverless`](modules/rds/serverless) | `v0.11.0` | IMPL-0007 | 6 | apply | — |
+| [`efs/filesystem`](modules/efs/filesystem) | `v0.17.0` | IMPL-0008 | 9 | apply | — |
+| [`eks/addons`](modules/eks/addons) | `v0.17.0` | IMPL-0003 | 4 | apply | — |
+| [`eks/cluster`](modules/eks/cluster) | `v0.17.0` | IMPL-0001 | 3 | apply | — |
+| [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.17.0` | IMPL-0002 | 3 | apply | — |
+| [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.17.0` | IMPL-0004 | 4 | apply | — |
+| [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
+| [`rds/cluster`](modules/rds/cluster) | `v0.17.0` | IMPL-0012 | 5 | plan-only | ✅ |
+| [`rds/instance`](modules/rds/instance) | `v0.17.0` | IMPL-0011 | 6 | plan-only | ✅ |
+| [`rds/proxy`](modules/rds/proxy) | `v0.17.0` | IMPL-0010 | 5 | plan-only | ✅ |
+| [`rds/read-replica`](modules/rds/read-replica) | `v0.17.0` | IMPL-0013 | 3 | plan-only | ✅ |
+| [`rds/serverless`](modules/rds/serverless) | `v0.17.0` | IMPL-0007 | 6 | apply | — |
 
 <!-- END_MODULE_TABLE -->
 

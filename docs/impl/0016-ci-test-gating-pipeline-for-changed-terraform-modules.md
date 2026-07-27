@@ -1,7 +1,7 @@
 ---
 id: IMPL-0016
 title: "CI test-gating pipeline for changed Terraform modules"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-07-25
 ---
@@ -9,7 +9,7 @@ created: 2026-07-25
 
 # IMPL 0016: CI test-gating pipeline for changed Terraform modules
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-07-25
 

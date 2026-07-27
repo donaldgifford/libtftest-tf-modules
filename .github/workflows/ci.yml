@@ -146,6 +146,24 @@ jobs:
       - name: just tf test-localstack-pro ${{ matrix.module }}
         run: just tf test-localstack-pro ${{ matrix.module }}
 
+  # ── README coverage-matrix drift guard (ADR-0018 §4) ───────────────────────
+  # `just readme --check` fails if the module × test-tier table (and version
+  # column) in README.md is stale. Needs full history + tags because
+  # gen-readme.sh derives each module's version from `git tag --contains`.
+  readme-check:
+    name: README matrix drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: jdx/mise-action@v3
+
+      - name: just readme --check
+        run: just readme --check
+
   # ── Aggregate gate (the single required status check) ──────────────────────
   # A dynamic matrix cannot be enumerated in branch protection, so this one job
   # gates the merge: it fails if any needed job failed/was cancelled and passes
@@ -153,7 +171,7 @@ jobs:
   # Phases 3–4 as the Community / Pro apply tiers land.
   ci-gate:
     name: CI gate
-    needs: [detect, plan, test-localstack, test-localstack-pro]
+    needs: [detect, plan, test-localstack, test-localstack-pro, readme-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -163,9 +181,10 @@ jobs:
           PLAN_RESULT: ${{ needs.plan.result }}
           TEST_LOCALSTACK_RESULT: ${{ needs.test-localstack.result }}
           TEST_LOCALSTACK_PRO_RESULT: ${{ needs.test-localstack-pro.result }}
+          README_CHECK_RESULT: ${{ needs.readme-check.result }}
         run: |
           failed=0
-          for job in DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO; do
+          for job in DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO README_CHECK; do
             varname="${job}_RESULT"
             result="${!varname}"
             if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then
