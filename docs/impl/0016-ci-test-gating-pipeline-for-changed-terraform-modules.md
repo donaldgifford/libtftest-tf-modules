@@ -458,10 +458,12 @@ Prove the pipeline on a real PR and record the design.
 
 #### Result
 
-**In Progress — apply tiers blocked on external LocalStack licensing.** The
-pipeline **code** is complete and proven on real runners; the live apply-tier
-verification is blocked on a LocalStack Pro license that will not activate
-headless, which is outside this repo.
+**Pipeline delivered; live apply-tier verification deferred behind an
+off-by-default toggle.** The pipeline **code** is complete and proven on real
+runners. The live apply-tier verification is deferred (not abandoned) because a
+LocalStack Pro license would not activate headless — an issue outside this repo —
+so the apply tiers are gated off by an explicit CI variable to unblock merge on
+the green plan gate (see "Resolution taken" below).
 
 Verified green on CI (run `30262147311`, branch `feat/ci-test-gating-changed-modules`):
 
@@ -499,20 +501,25 @@ Apply-tier blocker (all 18 apply jobs, both community and Pro):
   already pass. The only local-vs-CI difference (named volume vs. `services:`
   container) is the F4 non-issue already documented in Phase 4.
 
-Resolution paths (maintainer decision):
+**Resolution taken — an off-by-default apply toggle (`CI_RUN_LOCALSTACK_APPLY`).**
+Rather than hold the whole pipeline behind an external LocalStack subscription
+fix, both apply tiers are gated on a repository variable
+`CI_RUN_LOCALSTACK_APPLY == 'true'` in their job `if:`, defaulting to skip (the
+variable is unset). This unblocks merge on the fully-green plan gate now:
+`ci-gate` tolerates the skipped apply tiers, and the "all present tiers must
+pass" rule is **preserved for when the toggle is on** — this is an explicit
+operator switch, not a silent per-token skip. To enable once the token activates
+headless (no code change, no PR):
 
-1. **Fix the license** (keeps the gate as designed — apply tiers required when a
-   module ships them): restore headless Pro activation, then re-run and confirm
-   the apply tiers green.
-2. **Graceful-skip to ship now** (trades away the "all present tiers must pass"
-   rule when no valid token is available): a `detect`-job `has_token` output gates
-   the apply tiers, `network/vpc-lookup` moves to the token-free Community image,
-   and the invalid secret is removed so the tiers skip cleanly rather than
-   hard-fail. `ci-gate` already tolerates skipped tiers.
+```sh
+gh variable set CI_RUN_LOCALSTACK_APPLY --repo <owner>/<repo> --body true
+```
 
-Remaining Phase 6 tasks (validation PR matrix proof, wall-clock capture,
-FINDINGS.md notes, `docz update`, status flip, branch protection on `ci-gate`)
-stay open until path 1 or 2 lands.
+Deferred to the maintainer's post-merge validation (behind the toggle, once the
+LocalStack Pro license activates headless): the live validation-PR matrix proof,
+per-tier wall-clock capture, apply-tier FINDINGS.md notes, and enabling branch
+protection to *require* the apply tiers. The plan-gate half of `ci-gate` is
+enforceable on `main` immediately.
 
 ---
 

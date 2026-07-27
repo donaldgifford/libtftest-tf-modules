@@ -331,7 +331,13 @@ inherited Go-library boilerplate it used to be): a `detect` job runs
 all`), a `test-localstack` matrix (changed modules, LocalStack Pro service
 container), and a `test-localstack-pro` matrix (changed RDS-quartet modules) — all
 gated by a single aggregate `ci-gate` check (all-present-tiers-must-pass; see
-ADR-0018). PR auto-labeling moved to `.github/workflows/labeler.yml`;
+ADR-0018). **Both apply tiers are gated by the repo-variable toggle
+`CI_RUN_LOCALSTACK_APPLY` and are OFF by default** (IMPL-0016 Phase 6): the
+LocalStack Pro `LOCALSTACK_AUTH_TOKEN` would not activate headless (a LocalStack
+subscription issue external to the repo), so the tiers skip until the variable is
+set to `'true'` (`gh variable set CI_RUN_LOCALSTACK_APPLY --body true`) — no code
+change to flip. `ci-gate` tolerates the skipped tiers; the plan gate stays
+enforced. PR auto-labeling moved to `.github/workflows/labeler.yml`;
 `release.yml` keeps only `bump-version`; `security.yml`'s `govulncheck` is scoped
 to the two real Go modules (`tools/bedrock-keyctl`, `modules/eks/cluster/test`).
 

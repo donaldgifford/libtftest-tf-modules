@@ -80,11 +80,20 @@ jobs:
   # image — only network/vpc-lookup is genuinely token-free. Pro is a Community
   # superset, so a single Pro-backed tier covers them all. Skipped on fork PRs
   # (the auth token is not exposed to forks — INV-0006 F5 / ADR-0018 §5).
+  #
+  # Master toggle: both apply tiers below require a working LocalStack Pro license
+  # (LOCALSTACK_AUTH_TOKEN). They are OFF until the repository variable
+  # CI_RUN_LOCALSTACK_APPLY == 'true' (IMPL-0016 Phase 6): the token could not be
+  # activated headless, so the tiers are gated off to unblock merge on the green
+  # plan gate. Flip on — with no code change — once the token activates:
+  #   gh variable set CI_RUN_LOCALSTACK_APPLY --repo <owner>/<repo> --body true
+  # `ci-gate` tolerates the skipped tiers; when enabled they become required again.
   test-localstack:
     name: LocalStack apply (${{ matrix.module }})
     needs: detect
     if: >-
       needs.detect.outputs.community != '[]'
+      && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
       && (github.event_name == 'push'
           || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
@@ -124,8 +133,11 @@ jobs:
   test-localstack-pro:
     name: LocalStack Pro apply (${{ matrix.module }})
     needs: detect
+    # Gated by the same CI_RUN_LOCALSTACK_APPLY toggle as the community tier
+    # (see its comment) — OFF until a headless-activating token is available.
     if: >-
       needs.detect.outputs.pro != '[]'
+      && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
       && (github.event_name == 'push'
           || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
