@@ -3,150 +3,100 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same PR / ref.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  labeler:
-    permissions:
-      contents: read
-      pull-requests: write
+  # ── Change detection ──────────────────────────────────────────────────────
+  # Runs scripts/changed-modules.sh to compute the three CI matrix tiers.
+  # `plan` is the full module inventory (repo-wide, INV-0006 1a); `community`
+  # and `pro` are the changed modules that ship each apply tier.
+  detect:
+    name: Detect changed modules
     runs-on: ubuntu-latest
-    name: Label PR
+    outputs:
+      plan: ${{ steps.matrix.outputs.plan }}
+      community: ${{ steps.matrix.outputs.community }}
+      pro: ${{ steps.matrix.outputs.pro }}
     steps:
-      - name: Checkout code
-        uses: actions/labeler@v6
-        # lint:
-        #   name: Lint
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run golangci-lint
-        #       uses: golangci/golangci-lint-action@v9
-        #       with:
-        #         version: v2.11.4
-        #
-        # test-go:
-        #   name: Test Go
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run unit tests
-        #       run: make test-coverage
-        #
-        #     - name: Upload coverage to Codecov
-        #       uses: codecov/codecov-action@v5
-        #       with:
-        #         files: coverage.out
-        #         token: ${{ secrets.CODECOV_TOKEN }}
-        #         slug: donaldgifford/libtftest
-        #       continue-on-error: true
-        #
-        # test-integration:
-        #   name: Integration Tests
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Set up Terraform
-        #       uses: hashicorp/setup-terraform@v3
-        #       with:
-        #         terraform_version: "1.9"
-        #         terraform_wrapper: false
-        #
-        #     - name: Run integration tests
-        #       run: go test -tags=integration -v -race ./...
-        #
-        #     - name: Run docs/examples integration tests
-        #       run: go test -tags=integration_examples -v -race ./docs/examples/...
-        #
-        # test-integration-pro:
-        #   name: Integration Tests (Pro)
-        #   runs-on: ubuntu-latest
-        #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Set up Terraform
-        #       uses: hashicorp/setup-terraform@v3
-        #       with:
-        #         terraform_version: "1.9"
-        #         terraform_wrapper: false
-        #
-        #     - name: Run Pro integration tests
-        #       run: go test -tags='integration localstack_pro' -v -race ./...
-        #       env:
-        #         LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
-        #
-        # security:
-        #   name: Security Scan
-        #   runs-on: ubuntu-latest
-        #   permissions:
-        #     security-events: write
-        #     contents: read
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run govulncheck
-        #       uses: donaldgifford/govulncheck-action@v1
-        #       with:
-        #         go-version-file: go.mod
-        #         go-package: ./...
-        #
-        #     - name: Run Trivy vulnerability scanner
-        #       uses: aquasecurity/trivy-action@v0.36.0
-        #       with:
-        #         scan-type: fs
-        #         scan-ref: .
-        #         scanners: vuln
-        #         severity: HIGH,CRITICAL
-        #         exit-code: "1"
-        #
-        # build:
-        #   name: Build
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Verify builds for all platforms
-        #       uses: goreleaser/goreleaser-action@v7
-        #       with:
-        #         version: "~> v2"
-        #         args: build --snapshot --clean
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v3
+
+      - id: matrix
+        name: Compute test matrix
+        env:
+          BASE_REF: >-
+            ${{ github.event_name == 'pull_request'
+                && github.event.pull_request.base.sha
+                || github.event.before }}
+        run: |
+          matrix="$(scripts/changed-modules.sh "${BASE_REF}")"
+          {
+            echo "plan=$(jq -c '.plan' <<<"${matrix}")"
+            echo "community=$(jq -c '.community' <<<"${matrix}")"
+            echo "pro=$(jq -c '.pro' <<<"${matrix}")"
+          } >>"${GITHUB_OUTPUT}"
+
+  # ── Plan tier (repo-wide, required on every PR) ────────────────────────────
+  # `just tf all` = validate + lint + fmt + plan-only `terraform test`.
+  # No LocalStack, no secrets.
+  plan:
+    name: Plan (${{ matrix.module }})
+    needs: detect
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.plan) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf all ${{ matrix.module }}
+        run: just tf all ${{ matrix.module }}
+
+  # ── Aggregate gate (the single required status check) ──────────────────────
+  # A dynamic matrix cannot be enumerated in branch protection, so this one job
+  # gates the merge: it fails if any needed job failed/was cancelled and passes
+  # when apply matrices are legitimately empty/skipped. `needs` is extended in
+  # Phases 3–4 as the Community / Pro apply tiers land.
+  ci-gate:
+    name: CI gate
+    needs: [detect, plan]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify required jobs succeeded
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+        run: |
+          failed=0
+          for job in DETECT PLAN; do
+            varname="${job}_RESULT"
+            result="${!varname}"
+            if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then
+              echo "::error::required CI job '${job}' concluded '${result}'"
+              failed=1
+            else
+              echo "ok: ${job} = ${result}"
+            fi
+          done
+          if [[ "${failed}" -ne 0 ]]; then
+            exit 1
+          fi
+          echo "All required CI jobs passed (or were legitimately skipped)."

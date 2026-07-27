@@ -220,27 +220,31 @@ protection).
 
 #### Tasks
 
-- [ ] Rewrite `ci.yml`: a `detect` job (checkout with `fetch-depth: 0` +
+- [x] Rewrite `ci.yml`: a `detect` job (checkout with `fetch-depth: 0` +
   `jdx/mise-action`) runs the Phase-1 recipe and sets `outputs.plan` /
-  `outputs.community` / `outputs.pro` via `$GITHUB_OUTPUT`.
-- [ ] Add a `plan` job: `strategy.matrix.module` from `fromJSON(needs.detect.
+  `outputs.community` / `outputs.pro` via `$GITHUB_OUTPUT` (base ref =
+  `pull_request.base.sha` on PRs, `github.event.before` on push).
+- [x] Add a `plan` job: `strategy.matrix.module` from `fromJSON(needs.detect.
   outputs.plan)` (the **repo-wide** module list — all modules, no LocalStack, per
   1a), `fail-fast: false`, running `just tf all ${{ matrix.module }}` (validate +
   lint + fmt + plan `terraform test`) with tools from `jdx/mise-action`.
-- [ ] Add an aggregate `ci-gate` job that `needs: [detect, plan]` (extended in
-  Phases 3–4) and fails if any needed job's result is `failure`/`cancelled`,
-  passing when apply matrices are legitimately empty/skipped — this is the
-  **one** job set as the required status check in branch protection. Gate
+- [x] Add an aggregate `ci-gate` job that `needs: [detect, plan]` (extended in
+  Phases 3–4), `if: always()`, that fails if any needed job's result is
+  `failure`/`cancelled` and passes when apply matrices are legitimately
+  empty/skipped — the **one** job branch protection will require. Gate
   semantics: for a changed module the run is green only when **every tier that
-  module ships** is green (**all-present-tiers-must-pass** — a module with plan +
-  Community + Pro must pass all three).
-- [ ] Preserve PR auto-labeling: move the (currently miswired) `labeler` step into
-  its own correctly-wired job/workflow (`uses: actions/labeler@v6` with the
-  default `labeler.yml`), so `documentation`/`security`/etc. labels keep landing.
-- [ ] Add `concurrency` (group by workflow + PR ref, `cancel-in-progress: true`)
-  so superseded runs are cancelled; set minimal `permissions:` per job.
-- [ ] Configure branch protection on `main` to require the `ci-gate` check (and
-  keep the existing `Check Required Labels`).
+  module ships** is green (**all-present-tiers-must-pass**).
+- [x] Preserve PR auto-labeling: moved the (mis-wired) `labeler` step into its own
+  correctly-wired `.github/workflows/labeler.yml` (`actions/labeler@v6`, job name
+  `Label PR` preserved so the check name is unchanged).
+- [x] Add `concurrency` (group by PR number / ref, `cancel-in-progress: true`) so
+  superseded runs are cancelled; top-level `permissions: contents: read`
+  (labeler workflow adds `pull-requests: write`).
+- [ ] **Deferred to Phase 6.** Configure branch protection on `main` to require
+  the `ci-gate` check (+ keep `Check Required Labels`). A required status check
+  can only be enforced once the check has run at least once, so this is sequenced
+  into the Phase-6 validation PR (which proves `ci-gate` green before it is made
+  required).
 
 #### Success Criteria
 
@@ -250,6 +254,18 @@ protection).
   plan job fails.
 - PRs still receive their path/branch labels (parity with today's behavior).
 - A docs-only PR passes `ci-gate` without running any apply job.
+
+#### Result
+
+**Code complete; static validation green.** `ci.yml` rewritten as
+`detect` → `plan` (repo-wide matrix) → `ci-gate` (aggregate required check),
+with `concurrency` + least-privilege `permissions`; PR auto-labeling moved to
+`labeler.yml` preserving the `Label PR` check name. **yamllint + actionlint
+clean** (actionlint shellchecks the run blocks). The `detect` emission and
+`fromJSON` matrix shape verified locally against synthetic diffs. Branch-protection
+enforcement + the live "runs green on a PR" success criteria are exercised in
+**Phase 6** (they need the workflow on a PR / an existing check run) — everything
+that can be built and statically proven now is done.
 
 ---
 
