@@ -456,6 +456,64 @@ Prove the pipeline on a real PR and record the design.
 - CLAUDE.md + FINDINGS.md reflect the pipeline and the Linux named-volume finding.
 - IMPL-0016 is marked Completed with a per-phase Result summary.
 
+#### Result
+
+**In Progress — apply tiers blocked on external LocalStack licensing.** The
+pipeline **code** is complete and proven on real runners; the live apply-tier
+verification is blocked on a LocalStack Pro license that will not activate
+headless, which is outside this repo.
+
+Verified green on CI (run `30262147311`, branch `feat/ci-test-gating-changed-modules`):
+
+- **Plan tier — 14/14 green**, plus `detect`, `readme-check`, and the `labeler`
+  workflow. `detect` fans the full inventory to `plan` and the changed set to the
+  apply matrices exactly as designed.
+- **`tflint` rate-limit hardening.** The first full run flaked one plan job
+  (`bedrock/claude-code`) on `tflint --init` hitting GitHub's unauthenticated
+  60/hr API limit (`403`) — 14 concurrent plan jobs each fetch the AWS ruleset.
+  Fixed by passing the runner's built-in `GITHUB_TOKEN` to the plan step
+  (5000/hr); the job is green on the next run.
+- **Community apply concurrency guard.** `max-parallel: 4` caps concurrent
+  LocalStack Pro license activations in the community matrix.
+
+Apply-tier blocker (all 18 apply jobs, both community and Pro):
+
+- Every apply job's LocalStack Pro service container exits at init with
+  `code 55 — License activation failed! … The credentials defined in your
+  environment are invalid`, before any `terraform test` runs. Because all apply
+  jobs share the one `localstack/localstack-pro:2026.7.0` service container, even
+  the token-free `network/vpc-lookup` suite fails (container never goes healthy).
+- **Root cause is external, not a pipeline defect.** The `LOCALSTACK_AUTH_TOKEN`
+  secret was rotated (and freshly regenerated), yet a plain local
+  `docker run -e LOCALSTACK_AUTH_TOKEN localstack/localstack-pro:2026.7.0` fails
+  identically — so the token/account does not grant **headless** Pro activation.
+  The maintainer's normal local container works because it was activated by a
+  different path (e.g. a cached license via `localstack auth login`), which keeps
+  a running container valid even after a token/subscription lapses. This is a
+  LocalStack subscription/activation matter to resolve in the LocalStack web app.
+- The CI apply path itself was de-risked and is sound: the `reference-vpc`
+  fixture self-provisions the remote-state S3 bucket (`aws_s3_bucket.state`,
+  `force_destroy = true`) in the `run "setup"` step, the recipe wires
+  endpoint/creds/region, and the assume-role-against-LocalStack-STS read is
+  proven (IMPL-0015) — so the CI environment mirrors the local apply runs that
+  already pass. The only local-vs-CI difference (named volume vs. `services:`
+  container) is the F4 non-issue already documented in Phase 4.
+
+Resolution paths (maintainer decision):
+
+1. **Fix the license** (keeps the gate as designed — apply tiers required when a
+   module ships them): restore headless Pro activation, then re-run and confirm
+   the apply tiers green.
+2. **Graceful-skip to ship now** (trades away the "all present tiers must pass"
+   rule when no valid token is available): a `detect`-job `has_token` output gates
+   the apply tiers, `network/vpc-lookup` moves to the token-free Community image,
+   and the invalid secret is removed so the tiers skip cleanly rather than
+   hard-fail. `ci-gate` already tolerates skipped tiers.
+
+Remaining Phase 6 tasks (validation PR matrix proof, wall-clock capture,
+FINDINGS.md notes, `docz update`, status flip, branch protection on `ci-gate`)
+stay open until path 1 or 2 lands.
+
 ---
 
 ## File Changes
