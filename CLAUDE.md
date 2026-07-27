@@ -308,6 +308,12 @@ golangci-lint, docz, just, etc. binaries all come from mise.
     Same env wiring; requires a LocalStack **Pro** container + token. Only
     `modules/rds/proxy` has a `tests-localstack-pro/` directory today.
   - `all` — runs validate + lint + fmt + test in order.
+- `just changed [base]` — preview the CI test matrix for HEAD vs `base` (default
+  `origin/main`): which modules CI runs at the plan (repo-wide) / community / pro
+  tiers. Wraps `scripts/changed-modules.sh` (IMPL-0016 / ADR-0018) — emits the
+  `{plan, community, pro}` JSON matrix the CI `detect` job feeds to
+  `strategy.matrix`, with a human summary on stderr. Self-tested by
+  `scripts/changed-modules.test.sh` (`CHANGED_FILES_OVERRIDE` seam, no network).
 
 Direct invocation still works (and is what the recipes call under the hood):
 

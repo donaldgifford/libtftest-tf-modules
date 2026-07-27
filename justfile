@@ -129,3 +129,11 @@ _tf-all module:
     @just tf fmt {{module}}
     @just tf test {{module}}
 
+# Wraps scripts/changed-modules.sh (IMPL-0016 / ADR-0018): JSON matrix to stdout,
+# human summary to stderr. `plan` is repo-wide; `community`/`pro` cover only
+# changed modules. base defaults to origin/main.
+# Preview the CI test matrix (plan/community/pro) for HEAD vs a base ref.
+[group('tf')]
+changed base="origin/main":
+    @scripts/changed-modules.sh {{base}} | jq .
+

@@ -126,7 +126,7 @@ resolution:
 
 Grounding facts confirmed during research (2026-07-25):
 
-- **15 leaf modules** at uniform `modules/<service>/<name>/`. All 15 have `tests/`
+- **14 leaf modules** at uniform `modules/<service>/<name>/`. All 14 have `tests/`
   and `tests-localstack/`; only the RDS quartet (`cluster`, `instance`, `proxy`,
   `read-replica`) has `tests-localstack-pro/`; only `eks/cluster` has a Go `test/`.
 - `ci.yml` today is a single **miswired `labeler` job** (`uses: actions/labeler@v6`
@@ -158,41 +158,56 @@ and unit-testable without a runner.
 
 #### Tasks
 
-- [ ] Add `scripts/changed-modules.sh` that takes a base ref (default
-  `origin/main`, overridable via `$1` / env for `push` vs `pull_request`),
-  runs `git diff --name-only <base>...HEAD`, and maps changed paths under
-  `modules/<service>/<name>/**` to a deduplicated module-slug list
-  (`<service>/<name>`), reusing `gen-readme.sh`'s discovery convention.
-- [ ] Implement the fan-out rules (Q3a): a changed `justfile`, `mise.toml`, or
-  `.github/**` path expands to **all** modules; a changed `test/fixtures/**`
-  path expands to that fixture's dependent modules (computed by grepping which
-  modules reference the fixture, e.g. `reference-vpc` → its remote-state
-  consumers) — see Open Question 3 for the exact breadth.
-- [ ] Emit machine-readable output for CI: a JSON object with `plan`, `community`,
-  and `pro` arrays. **`plan` is the full module inventory (repo-wide, per 1a) —
-  independent of the diff**; `community` = changed modules having
-  `tests-localstack/`; `pro` = changed modules ∩ the RDS quartet. Suitable for
-  `strategy.matrix` via `fromJSON`; print a human-readable summary to stderr.
-- [ ] Add a `just` recipe wrapper (e.g. `just tf changed [base]` / `just ci-matrix
-  [base]`) that runs the script and pretty-prints the resulting tiers so a
-  developer can preview what CI will run locally.
-- [ ] Handle edge cases: empty result (docs-only PR) emits `[]` arrays cleanly;
-  a module directory deletion does not crash the mapping; paths outside
-  `modules/` and the fan-out set are ignored.
-- [ ] Self-test the mapping: add `scripts/changed-modules.test.sh` (or bats-style
-  cases) exercising representative diffs — single module, RDS Pro module,
-  `reference-vpc` fan-out, `mise.toml` fan-out, docs-only (empty).
-- [ ] `shellcheck` / project shell-style clean on the new script(s).
+- [x] Add `scripts/changed-modules.sh` that takes a base ref (default
+  `origin/main`, overridable via `$1`; plus a `CHANGED_FILES_OVERRIDE` testing
+  seam), runs `git diff --name-only <base>...HEAD` (two-dot fallback), and maps
+  changed paths under `modules/<service>/<name>/**` to a deduplicated module-slug
+  list (`<service>/<name>`), reusing `gen-readme.sh`'s `list_modules` convention.
+- [x] Implement the fan-out rules (Q3a): a changed `justfile`, `mise.toml`,
+  `.github/**`, or `test/fixtures/terragrunt-inputs.tfvars` path expands to
+  **all** modules; a changed `test/fixtures/<name>/**` path expands to that
+  fixture's consumers (grepped — `reference-vpc` → its 5 RDS remote-state
+  consumers today, auto-widening as EKS/EFS adopt it).
+- [x] Emit machine-readable output for CI: a JSON object with `plan`, `community`,
+  and `pro` arrays via `jq`. **`plan` is the full module inventory (repo-wide,
+  per 1a) — independent of the diff**; `community` = changed modules having
+  `tests-localstack/`; `pro` = changed modules having `tests-localstack-pro/`
+  (the RDS quartet). Consumable by `strategy.matrix` via `fromJSON`; human summary
+  to stderr.
+- [x] Add a `just` recipe wrapper (`just changed [base]`, in the `tf` group) that
+  runs the script and pretty-prints the tiers (`jq`) so a developer can preview
+  what CI will run locally.
+- [x] Handle edge cases: empty result (docs-only PR) emits `[]` arrays cleanly;
+  a module directory deletion / stray path is dropped by the `intersect`-with-real-modules
+  normalization; paths outside `modules/` and the fan-out set are ignored.
+- [x] Self-test the mapping: `scripts/changed-modules.test.sh` exercises 9 cases
+  (single module, RDS Pro module, `reference-vpc` fan-out, `mise.toml`/`.github`/
+  var-file global fan-out, docs-only, stray paths, empty) — **18/18 assertions
+  pass**, no network / no LocalStack.
+- [x] `shellcheck` clean on both scripts; matches the repo's leading-pipe shell
+  style (`gen-readme.sh`), which is the project convention (shfmt's trailing-pipe
+  default is not used — `gen-readme.sh` itself doesn't follow it, and there is no
+  shfmt gate).
 
 #### Success Criteria
 
 - `scripts/changed-modules.sh <base>` run locally against a synthetic diff prints
   the correct `plan` / `community` / `pro` lists and valid JSON.
 - A `test/fixtures/reference-vpc` edit fans out to (at minimum) all its
-  remote-state consumers; a `mise.toml` edit fans out to all 15 modules.
+  remote-state consumers; a `mise.toml` edit fans out to all 14 modules.
 - A docs-only diff yields empty apply arrays (and, per Open Question 1, the
   correct plan array).
 - The self-test script passes and is runnable with no network / no LocalStack.
+
+#### Result
+
+**Complete.** `scripts/changed-modules.sh` + `scripts/changed-modules.test.sh` +
+the `just changed [base]` recipe shipped. All four success criteria met:
+`reference-vpc` fans out to its 5 RDS consumers, `mise.toml`/`.github`/var-file
+fan out to all 14, docs-only/stray/empty diffs yield `[]` apply tiers with the
+plan tier staying repo-wide (14). Self-test **18/18** green, shellcheck clean,
+no network. Corrected a stale "15 modules" count in this doc + research notes to
+the authoritative **14** (`list_modules`).
 
 ---
 
@@ -435,7 +450,7 @@ INV-0006 Q1a makes the plan tier "required on every PR" but leaves whether it
 runs for *all* modules or only *changed* modules unstated. Plan tests are ~1s
 each (≈15–25s fleet-wide).
 
-- **a — Fleet-wide: `just tf all` for all 15 modules on every PR.** *(recommended)*
+- **a — Fleet-wide: `just tf all` for all 14 modules on every PR.** *(recommended)*
   Simplest possible universal gate, catches cross-module breakage a diff-scoped
   run would miss, and the cost is trivial. The matrix scoping is reserved for the
   expensive apply tiers only.
@@ -472,7 +487,7 @@ dependent) modules." The breadth trades safety against apply-minutes (each
   → **all** modules (toolchain/CI-wide blast radius); `test/fixtures/reference-vpc`
   and other shared fixtures → **only that fixture's consumers**, computed by
   grepping which modules reference it. Safe where it must be, cheap elsewhere.
-- **b — Any cross-cutting change → all 15 modules.** Trivially correct and
+- **b — Any cross-cutting change → all 14 modules.** Trivially correct and
   simplest to reason about, but re-runs every apply suite (including the slow Pro
   quartet) for an unrelated fixture tweak.
 - **c — Directly-changed modules only; a nightly scheduled full run covers
