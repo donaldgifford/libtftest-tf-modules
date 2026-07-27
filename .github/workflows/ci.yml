@@ -67,6 +67,11 @@ jobs:
       - uses: jdx/mise-action@v3
 
       - name: just tf all ${{ matrix.module }}
+        # Authenticate `tflint --init`'s GitHub API plugin fetch. With 14 plan
+        # jobs each installing the AWS ruleset, the unauthenticated 60/hr limit
+        # trips a 403; the runner token lifts it to 5000/hr.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: just tf all ${{ matrix.module }}
 
   # ── Community apply tier (changed modules that ship tests-localstack/) ──────
