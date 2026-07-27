@@ -1,21 +1,20 @@
 ---
-# Add 'root' label to any root file changes
-# Quotation marks are required for the leading asterisk
+# Path/branch auto-labels applied by .github/workflows/labeler.yml.
+# Retargeted to the real tree in IMPL-0016 Phase 5 (the inherited cmd/pkg/
+# collector/Makefile/.goreleaser globs referenced dirs that never existed here).
+
+# Go lives only in the in-tree tool + the eks/cluster libtftest harness.
 go:
   - changed-files:
-      - any-glob-to-any-file: "cmd/**.go"
-      - any-glob-to-any-file: "pkg/**.go"
-      - any-glob-to-any-file: "collector/**.go"
-      - any-glob-to-any-file: "config/**.go"
-      - any-glob-to-any-file: "exporter/**.go"
+      - any-glob-to-any-file: "tools/**/*.go"
+      - any-glob-to-any-file: "modules/**/*.go"
 
 dependencies:
   - changed-files:
-      - any-glob-to-any-file: "go.mod"
-      - any-glob-to-any-file: "go.sum"
+      - any-glob-to-any-file: "**/go.mod"
+      - any-glob-to-any-file: "**/go.sum"
       - any-glob-to-any-file: mise.toml
 
-# Add 'Documentation' label to any changes within 'docs' folder or any subfolders
 documentation:
   - changed-files:
       - any-glob-to-any-file: docs/**
@@ -24,27 +23,19 @@ documentation:
 ci:
   - changed-files:
       - any-glob-to-any-file: .github/**
-      - any-glob-to-any-file: Makefile
 
 repo:
   - changed-files:
-      - any-glob-to-any-file: .codecov.yml
-      - any-glob-to-any-file: .chglog.yml
-      - any-glob-to-any-file: .golangci.yml
-      - any-glob-to-any-file: .goreleaser.yaml
+      - any-glob-to-any-file: justfile
+      - any-glob-to-any-file: .docz.yaml
       - any-glob-to-any-file: .markdownlint.yaml
-      - any-glob-to-any-file: .prettierrc.yaml
-      - any-glob-to-any-file: .yamlfmt.yml
       - any-glob-to-any-file: .yamllint.yml
-      - any-glob-to-any-file: changelog.yaml
-      - any-glob-to-any-file: scripts/**.sh
+      - any-glob-to-any-file: .yamlfmt.yml
+      - any-glob-to-any-file: .prettierrc.yaml
+      - any-glob-to-any-file: "**/.tflint.hcl"
+      - any-glob-to-any-file: "scripts/**"
 
-docker:
-  - changed-files:
-      - any-glob-to-any-file: Dockerfile
-      - any-glob-to-any-file: docker-bake.hcl
-
-# Add label to any PR where the head branch name starts with label name or has a label name in the section in the name
+# Branch-name prefixes.
 feature:
   - head-branch: ["^feature", "feature"]
 fix:

@@ -324,9 +324,16 @@ Direct invocation still works (and is what the recipes call under the hood):
   `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->`
   markers)
 
-There is **no Makefile and no Go code** at the repo root, despite the inherited
-`.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI
-caveat" section below.
+There is **no Makefile and no Go code** at the repo root. As of IMPL-0016,
+`.github/workflows/ci.yml` is the real **Terraform test-gating pipeline** (not the
+inherited Go-library boilerplate it used to be): a `detect` job runs
+`scripts/changed-modules.sh` and fans out to a `plan` matrix (repo-wide `just tf
+all`), a `test-localstack` matrix (changed modules, LocalStack Pro service
+container), and a `test-localstack-pro` matrix (changed RDS-quartet modules) — all
+gated by a single aggregate `ci-gate` check (all-present-tiers-must-pass; see
+ADR-0018). PR auto-labeling moved to `.github/workflows/labeler.yml`;
+`release.yml` keeps only `bump-version`; `security.yml`'s `govulncheck` is scoped
+to the two real Go modules (`tools/bedrock-keyctl`, `modules/eks/cluster/test`).
 
 ## Documentation lifecycle
 

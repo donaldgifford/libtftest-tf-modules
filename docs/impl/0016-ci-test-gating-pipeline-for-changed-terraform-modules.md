@@ -379,23 +379,28 @@ pipeline is the real gate.
 
 #### Tasks
 
-- [ ] Delete the commented Go jobs remaining in `ci.yml` and the commented
-  `release`/`changelog-sync`/`docker` jobs in `release.yml` (keep the live
-  `bump-version`).
-- [ ] Delete `.github/workflows/changelog.yml.bak` and
+- [x] `ci.yml`'s commented Go jobs are gone (fully rewritten in Phase 2); removed
+  the commented `release`/`changelog-sync`/`docker` jobs from `release.yml`
+  (kept the live `bump-version`, trimmed its permissions to `contents: write` +
+  `pull-requests: read`).
+- [x] Deleted `.github/workflows/changelog.yml.bak` and
   `.github/workflows/license-check.yml.bak`.
-- [ ] Fix `.github/labeler.yml`: its `go`/`repo` globs reference non-existent dirs
-  (`cmd/`, `pkg/`, `collector/`, `config/`, `exporter/`, `Makefile`,
-  `.goreleaser.yaml`, …). Rewrite to match reality (`modules/**` Terraform,
-  `tools/**` Go if still present, `docs/**`, `.github/**`).
-- [ ] Scope `security.yml`/`govulncheck` to the Go dirs that actually remain
-  (today `tools/bedrock-keyctl` + `modules/eks/cluster/test`; after bedrock-keyctl
-  leaves, just the eks/cluster harness) so it neither errors on "no Go" nor
-  scans deleted trees.
-- [ ] Reconcile `dependabot.yml`: its `docker@cicd` + `gomod@/` entries assume a
-  root Go module / `cicd/` Dockerfile that may not exist — align or remove.
-- [ ] Update CLAUDE.md's "CI caveat" section to reflect the new reality (there IS
-  a Terraform gate now; the Makefile/root-Go references are gone).
+- [x] Fixed `.github/labeler.yml`: the dead `cmd/`/`pkg/`/`collector/`/`config/`/
+  `exporter/`/`Makefile`/`.goreleaser.yaml`/`.codecov.yml`/`.chglog.yml`/`docker`
+  globs are replaced with the real tree (`tools/**/*.go` + `modules/**/*.go`,
+  `**/go.mod`, `docs/**`, `.github/**`, the actual root config files + `**/.tflint.hcl`
+  + `scripts/**`); branch-prefix labels kept.
+- [x] Scoped `security.yml`/`govulncheck` to a matrix over the two real Go modules
+  (`tools/bedrock-keyctl`, `modules/eks/cluster/test`) — there is no root `go.mod`.
+  `continue-on-error` + SARIF-per-module keeps this non-gating push/cron scan from
+  reddening on the out-of-scope CVEs triaged in INV-0007.
+- [x] Reconciled `dependabot.yml`: dropped the broken `docker@cicd` entry (no
+  `cicd/` dir / no Dockerfile) and repointed `gomod` from the non-existent root to
+  `directories: [/tools/bedrock-keyctl, /modules/eks/cluster/test]` (security-only,
+  `open-pull-requests-limit: 0`).
+- [x] Updated CLAUDE.md's CI-caveat paragraph: it now describes the real
+  `ci.yml` test-gating pipeline (detect → plan/community/pro → `ci-gate`), the
+  `labeler.yml` split, the trimmed `release.yml`, and the scoped `security.yml`.
 
 #### Success Criteria
 
@@ -406,6 +411,16 @@ pipeline is the real gate.
 - `security.yml` runs green (or is correctly a no-op) against the remaining Go,
   with no scan errors on missing paths.
 - CLAUDE.md no longer claims "there is no CI that gates module correctness."
+
+#### Result
+
+**Complete.** Inherited Go-library CI cruft removed: two `.bak` workflows deleted,
+`release.yml` trimmed to `bump-version`, `labeler.yml` retargeted to the real
+tree, `security.yml`/`govulncheck` scoped to the two actual Go modules
+(`continue-on-error`, non-gating), `dependabot.yml`'s dead `docker@cicd` +
+root-`gomod` entries fixed, and CLAUDE.md's CI-caveat rewritten. yamllint +
+actionlint clean across all workflows; markdownlint clean. The `eks/cluster` Go
+harness + `bedrock-keyctl` extraction stay out of scope (Q6a / INV-0007).
 
 ---
 
