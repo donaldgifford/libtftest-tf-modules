@@ -1,0 +1,21 @@
+---
+# $schema=https://schemastore.org/https://www.schemastore.org/github-action.json
+name: Labeler
+
+# Auto-applies path/branch labels from .github/labeler.yml. Split out of ci.yml
+# (IMPL-0016 Phase 2) where it previously lived as a mis-wired step. The semver
+# gate (major/minor/patch/dont-release) is separate — see pr-labels.yml.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Label PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v6

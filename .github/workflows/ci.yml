@@ -3,150 +3,218 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same PR / ref.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  labeler:
-    permissions:
-      contents: read
-      pull-requests: write
+  # ── Change detection ──────────────────────────────────────────────────────
+  # Runs scripts/changed-modules.sh to compute the three CI matrix tiers.
+  # `plan` is the full module inventory (repo-wide, INV-0006 1a); `community`
+  # and `pro` are the changed modules that ship each apply tier.
+  detect:
+    name: Detect changed modules
     runs-on: ubuntu-latest
-    name: Label PR
+    outputs:
+      plan: ${{ steps.matrix.outputs.plan }}
+      community: ${{ steps.matrix.outputs.community }}
+      pro: ${{ steps.matrix.outputs.pro }}
     steps:
-      - name: Checkout code
-        uses: actions/labeler@v6
-        # lint:
-        #   name: Lint
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run golangci-lint
-        #       uses: golangci/golangci-lint-action@v9
-        #       with:
-        #         version: v2.11.4
-        #
-        # test-go:
-        #   name: Test Go
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run unit tests
-        #       run: make test-coverage
-        #
-        #     - name: Upload coverage to Codecov
-        #       uses: codecov/codecov-action@v5
-        #       with:
-        #         files: coverage.out
-        #         token: ${{ secrets.CODECOV_TOKEN }}
-        #         slug: donaldgifford/libtftest
-        #       continue-on-error: true
-        #
-        # test-integration:
-        #   name: Integration Tests
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Set up Terraform
-        #       uses: hashicorp/setup-terraform@v3
-        #       with:
-        #         terraform_version: "1.9"
-        #         terraform_wrapper: false
-        #
-        #     - name: Run integration tests
-        #       run: go test -tags=integration -v -race ./...
-        #
-        #     - name: Run docs/examples integration tests
-        #       run: go test -tags=integration_examples -v -race ./docs/examples/...
-        #
-        # test-integration-pro:
-        #   name: Integration Tests (Pro)
-        #   runs-on: ubuntu-latest
-        #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Set up Terraform
-        #       uses: hashicorp/setup-terraform@v3
-        #       with:
-        #         terraform_version: "1.9"
-        #         terraform_wrapper: false
-        #
-        #     - name: Run Pro integration tests
-        #       run: go test -tags='integration localstack_pro' -v -race ./...
-        #       env:
-        #         LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
-        #
-        # security:
-        #   name: Security Scan
-        #   runs-on: ubuntu-latest
-        #   permissions:
-        #     security-events: write
-        #     contents: read
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Run govulncheck
-        #       uses: donaldgifford/govulncheck-action@v1
-        #       with:
-        #         go-version-file: go.mod
-        #         go-package: ./...
-        #
-        #     - name: Run Trivy vulnerability scanner
-        #       uses: aquasecurity/trivy-action@v0.36.0
-        #       with:
-        #         scan-type: fs
-        #         scan-ref: .
-        #         scanners: vuln
-        #         severity: HIGH,CRITICAL
-        #         exit-code: "1"
-        #
-        # build:
-        #   name: Build
-        #   runs-on: ubuntu-latest
-        #   steps:
-        #     - uses: actions/checkout@v6
-        #
-        #     - name: Set up Go
-        #       uses: actions/setup-go@v6
-        #       with:
-        #         go-version-file: go.mod
-        #
-        #     - name: Verify builds for all platforms
-        #       uses: goreleaser/goreleaser-action@v7
-        #       with:
-        #         version: "~> v2"
-        #         args: build --snapshot --clean
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v3
+
+      - id: matrix
+        name: Compute test matrix
+        env:
+          BASE_REF: >-
+            ${{ github.event_name == 'pull_request'
+                && github.event.pull_request.base.sha
+                || github.event.before }}
+        run: |
+          matrix="$(scripts/changed-modules.sh "${BASE_REF}")"
+          {
+            echo "plan=$(jq -c '.plan' <<<"${matrix}")"
+            echo "community=$(jq -c '.community' <<<"${matrix}")"
+            echo "pro=$(jq -c '.pro' <<<"${matrix}")"
+          } >>"${GITHUB_OUTPUT}"
+
+  # ── Plan tier (repo-wide, required on every PR) ────────────────────────────
+  # `just tf all` = validate + lint + fmt + plan-only `terraform test`.
+  # No LocalStack, no secrets.
+  plan:
+    name: Plan (${{ matrix.module }})
+    needs: detect
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.plan) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf all ${{ matrix.module }}
+        # Authenticate `tflint --init`'s GitHub API plugin fetch. With 14 plan
+        # jobs each installing the AWS ruleset, the unauthenticated 60/hr limit
+        # trips a 403; the runner token lifts it to 5000/hr.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: just tf all ${{ matrix.module }}
+
+  # ── Community apply tier (changed modules that ship tests-localstack/) ──────
+  # Backed by the LocalStack *Pro* image: most tests-localstack/ suites (eks×4,
+  # efs, rds/serverless) exercise Pro-only AWS APIs that 501 on the Community
+  # image — only network/vpc-lookup is genuinely token-free. Pro is a Community
+  # superset, so a single Pro-backed tier covers them all. Skipped on fork PRs
+  # (the auth token is not exposed to forks — INV-0006 F5 / ADR-0018 §5).
+  #
+  # Master toggle: both apply tiers below require a working LocalStack Pro license
+  # (LOCALSTACK_AUTH_TOKEN). They are OFF until the repository variable
+  # CI_RUN_LOCALSTACK_APPLY == 'true' (IMPL-0016 Phase 6): the token could not be
+  # activated headless, so the tiers are gated off to unblock merge on the green
+  # plan gate. Flip on — with no code change — once the token activates:
+  #   gh variable set CI_RUN_LOCALSTACK_APPLY --repo <owner>/<repo> --body true
+  # `ci-gate` tolerates the skipped tiers; when enabled they become required again.
+  test-localstack:
+    name: LocalStack apply (${{ matrix.module }})
+    needs: detect
+    if: >-
+      needs.detect.outputs.community != '[]'
+      && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
+      && (github.event_name == 'push'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Cap concurrent LocalStack Pro license activations (each job activates the
+      # shared auth token) to stay within the CI seat limit.
+      max-parallel: 4
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.community) }}
+    services:
+      localstack:
+        image: localstack/localstack-pro:2026.7.0
+        ports:
+          - 4566:4566
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        options: >-
+          --health-cmd "curl -sf http://localhost:4566/_localstack/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf test-localstack ${{ matrix.module }}
+        run: just tf test-localstack ${{ matrix.module }}
+
+  # ── Pro apply tier (changed modules that ship tests-localstack-pro/) ────────
+  # The RDS quartet's real Aurora/instance applies boot LocalStack Pro's embedded
+  # Postgres. As a `services:` container there is no host bind-mount, so the
+  # macOS Docker-Desktop `initdb` ownership gotcha (the named-volume workaround)
+  # cannot occur on the Linux runner (INV-0006 F4). Skipped on fork PRs.
+  test-localstack-pro:
+    name: LocalStack Pro apply (${{ matrix.module }})
+    needs: detect
+    # Gated by the same CI_RUN_LOCALSTACK_APPLY toggle as the community tier
+    # (see its comment) — OFF until a headless-activating token is available.
+    if: >-
+      needs.detect.outputs.pro != '[]'
+      && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
+      && (github.event_name == 'push'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect.outputs.pro) }}
+    services:
+      localstack:
+        image: localstack/localstack-pro:2026.7.0
+        ports:
+          - 4566:4566
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        options: >-
+          --health-cmd "curl -sf http://localhost:4566/_localstack/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just tf test-localstack-pro ${{ matrix.module }}
+        run: just tf test-localstack-pro ${{ matrix.module }}
+
+  # ── README coverage-matrix drift guard (ADR-0018 §4) ───────────────────────
+  # `just readme --check` fails if the module × test-tier table (and version
+  # column) in README.md is stale. Needs full history + tags because
+  # gen-readme.sh derives each module's version from `git tag --contains`.
+  readme-check:
+    name: README matrix drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: jdx/mise-action@v3
+
+      - name: just readme --check
+        run: just readme --check
+
+  # ── Aggregate gate (the single required status check) ──────────────────────
+  # A dynamic matrix cannot be enumerated in branch protection, so this one job
+  # gates the merge: it fails if any needed job failed/was cancelled and passes
+  # when apply matrices are legitimately empty/skipped. `needs` is extended in
+  # Phases 3–4 as the Community / Pro apply tiers land.
+  ci-gate:
+    name: CI gate
+    needs: [detect, plan, test-localstack, test-localstack-pro, readme-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify required jobs succeeded
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          TEST_LOCALSTACK_RESULT: ${{ needs.test-localstack.result }}
+          TEST_LOCALSTACK_PRO_RESULT: ${{ needs.test-localstack-pro.result }}
+          README_CHECK_RESULT: ${{ needs.readme-check.result }}
+        run: |
+          failed=0
+          for job in DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO README_CHECK; do
+            varname="${job}_RESULT"
+            result="${!varname}"
+            if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then
+              echo "::error::required CI job '${job}' concluded '${result}'"
+              failed=1
+            else
+              echo "ok: ${job} = ${result}"
+            fi
+          done
+          if [[ "${failed}" -ne 0 ]]; then
+            exit 1
+          fi
+          echo "All required CI jobs passed (or were legitimately skipped)."

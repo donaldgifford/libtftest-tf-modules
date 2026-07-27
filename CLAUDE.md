@@ -308,6 +308,12 @@ golangci-lint, docz, just, etc. binaries all come from mise.
     Same env wiring; requires a LocalStack **Pro** container + token. Only
     `modules/rds/proxy` has a `tests-localstack-pro/` directory today.
   - `all` — runs validate + lint + fmt + test in order.
+- `just changed [base]` — preview the CI test matrix for HEAD vs `base` (default
+  `origin/main`): which modules CI runs at the plan (repo-wide) / community / pro
+  tiers. Wraps `scripts/changed-modules.sh` (IMPL-0016 / ADR-0018) — emits the
+  `{plan, community, pro}` JSON matrix the CI `detect` job feeds to
+  `strategy.matrix`, with a human summary on stderr. Self-tested by
+  `scripts/changed-modules.test.sh` (`CHANGED_FILES_OVERRIDE` seam, no network).
 
 Direct invocation still works (and is what the recipes call under the hood):
 
@@ -318,9 +324,22 @@ Direct invocation still works (and is what the recipes call under the hood):
   `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->`
   markers)
 
-There is **no Makefile and no Go code** at the repo root, despite the inherited
-`.golangci.yml` and `.github/workflows/ci.yml` referencing both. See the "CI
-caveat" section below.
+There is **no Makefile and no Go code** at the repo root. As of IMPL-0016,
+`.github/workflows/ci.yml` is the real **Terraform test-gating pipeline** (not the
+inherited Go-library boilerplate it used to be): a `detect` job runs
+`scripts/changed-modules.sh` and fans out to a `plan` matrix (repo-wide `just tf
+all`), a `test-localstack` matrix (changed modules, LocalStack Pro service
+container), and a `test-localstack-pro` matrix (changed RDS-quartet modules) — all
+gated by a single aggregate `ci-gate` check (all-present-tiers-must-pass; see
+ADR-0018). **Both apply tiers are gated by the repo-variable toggle
+`CI_RUN_LOCALSTACK_APPLY` and are OFF by default** (IMPL-0016 Phase 6): the
+LocalStack Pro `LOCALSTACK_AUTH_TOKEN` would not activate headless (a LocalStack
+subscription issue external to the repo), so the tiers skip until the variable is
+set to `'true'` (`gh variable set CI_RUN_LOCALSTACK_APPLY --body true`) — no code
+change to flip. `ci-gate` tolerates the skipped tiers; the plan gate stays
+enforced. PR auto-labeling moved to `.github/workflows/labeler.yml`;
+`release.yml` keeps only `bump-version`; `security.yml`'s `govulncheck` is scoped
+to the two real Go modules (`tools/bedrock-keyctl`, `modules/eks/cluster/test`).
 
 ## Documentation lifecycle
 

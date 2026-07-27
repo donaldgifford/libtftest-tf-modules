@@ -6,28 +6,22 @@
 
 version: 2
 updates:
-  # version updates: enabled
-  # security updates: enabled
+  # version updates: enabled / security updates: enabled
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 7
-  - package-ecosystem: "docker"
-    directory: "cicd"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "golang"
-        update-types: ["version-update:semver-major"]
-    cooldown:
-      default-days: 7
-  # version updates: disabled
-  # security updates: enabled
-  # https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/configuring-dependabot-security-updates#overriding-the-default-behavior-with-a-configuration-file
+  # version updates: disabled (open-pull-requests-limit: 0) / security: enabled.
+  # Scoped to the repo's real Go modules — there is no root go.mod, and the
+  # inherited docker@cicd entry pointed at a cicd/ dir that never existed
+  # (removed in IMPL-0016 Phase 5). tools/bedrock-keyctl is slated to move to
+  # its own repo; drop its directory here when it leaves.
   - package-ecosystem: "gomod"
-    directory: "/"
+    directories:
+      - "/tools/bedrock-keyctl"
+      - "/modules/eks/cluster/test"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 0
