@@ -3,13 +3,17 @@
 # changed-modules.sh — map a git diff to the CI test matrix (IMPL-0016 / ADR-0018).
 #
 # Given a base ref, computes which leaf modules a change set touches and emits
-# the three CI matrix tiers as a JSON object on stdout:
+# the changed-module CI matrix tiers as a JSON object on stdout:
 #
 #   {
-#     "plan":      [ <all modules> ],                  # repo-wide  (INV-0006 1a)
+#     "changed":   [ <changed modules — the plan tier> ],
 #     "community": [ <changed ∩ has tests-localstack/> ],
 #     "pro":       [ <changed ∩ has tests-localstack-pro/> ]
 #   }
+#
+# All three are scoped to the CHANGED set: under ADR-0019 the repo-wide gate is
+# the static job (fmt/validate/tflint/terraform-docs across everything, run
+# first), so plan / apply only need to cover what changed.
 #
 # "Changed" = every leaf module with a touched file under
 # modules/<service>/<name>/**, plus fan-out (INV-0006 Q3a / ADR-0018 §2):
@@ -21,9 +25,8 @@
 #     that fixture's CONSUMERS — the modules whose tree references <name>
 #     (e.g. reference-vpc -> its remote-state consumers), computed by grep.
 #
-# The `plan` tier is always the full module inventory (the plan gate runs
-# repo-wide on every PR). `community` / `pro` are the changed set intersected
-# with the modules that actually ship that apply tier.
+# `community` / `pro` are the changed set intersected with the modules that
+# actually ship that apply tier.
 #
 # A human-readable summary is written to stderr; stdout is pure JSON so the CI
 # `detect` job can `jq` it straight into $GITHUB_OUTPUT.
@@ -95,13 +98,13 @@ intersect() {
 
 # Compact the newline-delimited lists into the CI matrix JSON object.
 emit_json() {
-  local plan="$1" community="$2" pro="$3"
+  local changed="$1" community="$2" pro="$3"
   jq -nc \
-    --arg plan "${plan}" \
+    --arg changed "${changed}" \
     --arg community "${community}" \
     --arg pro "${pro}" \
     '{
-       plan:      ($plan      | split("\n") | map(select(length > 0)) | unique),
+       changed:   ($changed   | split("\n") | map(select(length > 0)) | unique),
        community: ($community | split("\n") | map(select(length > 0)) | unique),
        pro:       ($pro       | split("\n") | map(select(length > 0)) | unique)
      }'
@@ -149,13 +152,13 @@ main() {
   # Human-readable summary to stderr.
   {
     echo "changed-modules (base: ${BASE_REF})"
-    printf '  plan (repo-wide) : %s modules\n' "$(count_lines "${all_modules}")"
-    printf '  changed          : %s modules\n' "$(count_lines "${changed}")"
+    printf '  inventory        : %s modules\n' "$(count_lines "${all_modules}")"
+    printf '  changed (plan)   : %s\n' "$(oneline "${changed}")"
     printf '  community apply  : %s\n' "$(oneline "${community}")"
     printf '  pro apply        : %s\n' "$(oneline "${pro}")"
   } >&2
 
-  emit_json "${all_modules}" "${community}" "${pro}"
+  emit_json "${changed}" "${community}" "${pro}"
 }
 
 # Count non-empty lines in a newline-delimited string.

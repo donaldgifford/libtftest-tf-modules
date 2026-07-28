@@ -307,11 +307,17 @@ golangci-lint, docz, just, etc. binaries all come from mise.
     IMPL-0010 Q7) whose apply must NOT run under the default `test-localstack`.
     Same env wiring; requires a LocalStack **Pro** container + token. Only
     `modules/rds/proxy` has a `tests-localstack-pro/` directory today.
-  - `all` — runs validate + lint + fmt + test in order.
+  - `all` — runs validate + lint + fmt + test in order (local convenience;
+    CI splits these — see `just static` below).
+- `just static` — the repo-wide static gate (ADR-0019): `terraform fmt` +
+  `validate` + `tflint` + `terraform-docs` across **every** module, failing on any
+  violation or stale `USAGE.md`. Wraps `scripts/static-check.sh`; this is what the
+  CI `static` job runs first, before any plan/apply. Regenerates `USAGE.md`
+  lock-free (deterministic `~> 6.2` constraint form).
 - `just changed [base]` — preview the CI test matrix for HEAD vs `base` (default
-  `origin/main`): which modules CI runs at the plan (repo-wide) / community / pro
-  tiers. Wraps `scripts/changed-modules.sh` (IMPL-0016 / ADR-0018) — emits the
-  `{plan, community, pro}` JSON matrix the CI `detect` job feeds to
+  `origin/main`): which **changed** modules CI runs at the plan / community / pro
+  tiers. Wraps `scripts/changed-modules.sh` (IMPL-0016 / ADR-0019) — emits the
+  `{changed, community, pro}` JSON matrix the CI `detect` job feeds to
   `strategy.matrix`, with a human summary on stderr. Self-tested by
   `scripts/changed-modules.test.sh` (`CHANGED_FILES_OVERRIDE` seam, no network).
 
@@ -324,20 +330,27 @@ Direct invocation still works (and is what the recipes call under the hood):
   `output.mode: inject` writing into `USAGE.md` between `<!-- BEGIN_TF_DOCS -->`
   markers)
 
-There is **no Makefile and no Go code** at the repo root. As of IMPL-0016,
-`.github/workflows/ci.yml` is the real **Terraform test-gating pipeline** (not the
-inherited Go-library boilerplate it used to be): a `detect` job runs
-`scripts/changed-modules.sh` and fans out to a `plan` matrix (repo-wide `just tf
-all`), a `test-localstack` matrix (changed modules, LocalStack Pro service
-container), and a `test-localstack-pro` matrix (changed RDS-quartet modules) — all
-gated by a single aggregate `ci-gate` check (all-present-tiers-must-pass; see
-ADR-0018). **Both apply tiers are gated by the repo-variable toggle
-`CI_RUN_LOCALSTACK_APPLY` and are OFF by default** (IMPL-0016 Phase 6): the
+There is **no Makefile and no Go code** at the repo root. As of IMPL-0016
+(restructured by ADR-0019), `.github/workflows/ci.yml` is the real **Terraform
+test-gating pipeline** (not the inherited Go-library boilerplate it used to be),
+a linear gated DAG: **`static` → `detect` → `plan` → apply → `ci-gate`**. The
+`static` job runs first and repo-wide — `scripts/static-check.sh` (`just static`)
+runs `terraform fmt` + `validate` + `tflint` + `terraform-docs` across **every**
+module and fails on any violation or stale `USAGE.md` (docs regenerated
+**lock-free** → deterministic `~> 6.2` constraint form; `git diff` vs HEAD). No
+test runs until it's green. Then `detect` (`scripts/changed-modules.sh`, now
+emitting `{changed, community, pro}` all scoped to the change set) feeds a `plan`
+matrix over **changed modules only** (plan-only `just tf test`), which the
+`test-localstack` (changed ∩ Community, Pro service container) and
+`test-localstack-pro` (changed ∩ RDS-quartet) apply tiers depend on — all
+aggregated by a single `ci-gate` check (all-present-tiers-must-pass; ADR-0018 §
+gate, ADR-0019 ordering). **Both apply tiers are gated by the repo-variable
+toggle `CI_RUN_LOCALSTACK_APPLY` and are OFF by default** (IMPL-0016 Phase 6): the
 LocalStack Pro `LOCALSTACK_AUTH_TOKEN` would not activate headless (a LocalStack
 subscription issue external to the repo), so the tiers skip until the variable is
 set to `'true'` (`gh variable set CI_RUN_LOCALSTACK_APPLY --body true`) — no code
-change to flip. `ci-gate` tolerates the skipped tiers; the plan gate stays
-enforced. PR auto-labeling moved to `.github/workflows/labeler.yml`;
+change to flip. `ci-gate` tolerates the skipped tiers; the static + plan gates
+stay enforced. PR auto-labeling moved to `.github/workflows/labeler.yml`;
 `release.yml` keeps only `bump-version`; `security.yml`'s `govulncheck` is scoped
 to the two real Go modules (`tools/bedrock-keyctl`, `modules/eks/cluster/test`).
 

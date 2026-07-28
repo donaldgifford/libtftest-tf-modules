@@ -129,10 +129,26 @@ _tf-all module:
     @just tf fmt {{module}}
     @just tf test {{module}}
 
-# Wraps scripts/changed-modules.sh (IMPL-0016 / ADR-0018): JSON matrix to stdout,
-# human summary to stderr. `plan` is repo-wide; `community`/`pro` cover only
-# changed modules. base defaults to origin/main.
-# Preview the CI test matrix (plan/community/pro) for HEAD vs a base ref.
+# terraform-docs freshness check for one module: regenerate USAGE.md, fail on diff.
+[private]
+_tf-docs-check module:
+    @just _log "terraform-docs (check) → modules/{{module}}"
+    cd modules/{{module}} && terraform-docs . >/dev/null && git diff --exit-code -- USAGE.md
+
+# Repo-wide static gate (ADR-0019): terraform fmt + validate + tflint +
+# terraform-docs across every module. This is what the CI `static` job runs
+# first, before any plan/apply. Regenerates USAGE.md in place and fails if any
+# module's docs were stale.
+[group('tf')]
+static:
+    @just _log "static gate → fmt + validate + tflint + terraform-docs (all modules)"
+    ./scripts/static-check.sh
+
+# Wraps scripts/changed-modules.sh (IMPL-0016 / ADR-0019): JSON matrix to stdout,
+# human summary to stderr. All three tiers (`changed`/`community`/`pro`) cover
+# only changed modules — the repo-wide gate is `just static`. base defaults to
+# origin/main.
+# Preview the CI test matrix (changed/community/pro) for HEAD vs a base ref.
 [group('tf')]
 changed base="origin/main":
     @scripts/changed-modules.sh {{base}} | jq .
