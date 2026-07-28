@@ -10,7 +10,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| aws | 6.47.0 |
+| aws | ~> 6.2 |
 
 ## Modules
 
