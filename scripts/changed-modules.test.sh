@@ -54,8 +54,8 @@ assert_eq() {
 
 # ── Case 1: single plan-only module ────────────────────────────────────────
 out="$(run 'modules/ecr/org-registry/main.tf')"
-assert_eq "single module: plan is repo-wide" \
-  "${ALL_COUNT}" "$(jq -r '.plan | length' <<<"${out}")"
+assert_eq "single module: changed = itself" \
+  '["ecr/org-registry"]' "$(jq -c '.changed' <<<"${out}")"
 assert_eq "single module: community = itself" \
   '["ecr/org-registry"]' "$(jq -c '.community' <<<"${out}")"
 assert_eq "single non-pro module: pro empty" \
@@ -70,6 +70,9 @@ assert_eq "pro module: pro = itself" \
 
 # ── Case 3: reference-vpc fan-out -> its consumers ─────────────────────────
 out="$(run 'test/fixtures/reference-vpc/main.tf')"
+assert_eq "reference-vpc fan-out: changed = 5 RDS consumers" \
+  '["rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
+  "$(jq -c '.changed' <<<"${out}")"
 assert_eq "reference-vpc fan-out: community = 5 RDS consumers" \
   '["rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
   "$(jq -c '.community' <<<"${out}")"
@@ -79,8 +82,8 @@ assert_eq "reference-vpc fan-out: pro = 4 RDS quartet" \
 
 # ── Case 4: global fan-out (mise.toml) -> all modules ──────────────────────
 out="$(run 'mise.toml')"
-assert_eq "mise.toml: plan = all" \
-  "${ALL_COUNT}" "$(jq -r '.plan | length' <<<"${out}")"
+assert_eq "mise.toml: changed = all" \
+  "${ALL_COUNT}" "$(jq -r '.changed | length' <<<"${out}")"
 assert_eq "mise.toml: community = all with tests-localstack" \
   "${LS_COUNT}" "$(jq -r '.community | length' <<<"${out}")"
 assert_eq "mise.toml: pro = all with tests-localstack-pro" \
@@ -96,15 +99,15 @@ out="$(run 'test/fixtures/terragrunt-inputs.tfvars')"
 assert_eq "terragrunt-inputs.tfvars fan-out: community = all with tests-localstack" \
   "${LS_COUNT}" "$(jq -r '.community | length' <<<"${out}")"
 
-# ── Case 7: docs-only diff -> empty apply tiers, plan still repo-wide ───────
+# ── Case 7: docs-only diff -> nothing changed, empty everywhere ─────────────
 out="$(run $'docs/impl/0016-x.md\nREADME.md')"
-assert_eq "docs-only: plan is repo-wide" \
-  "${ALL_COUNT}" "$(jq -r '.plan | length' <<<"${out}")"
+assert_eq "docs-only: changed empty" '[]' "$(jq -c '.changed' <<<"${out}")"
 assert_eq "docs-only: community empty" '[]' "$(jq -c '.community' <<<"${out}")"
 assert_eq "docs-only: pro empty" '[]' "$(jq -c '.pro' <<<"${out}")"
 
 # ── Case 8: deleted / stray paths are ignored ──────────────────────────────
 out="$(run $'modules/ghost/gone/main.tf\nsome/random/file.txt')"
+assert_eq "stray paths: changed empty" '[]' "$(jq -c '.changed' <<<"${out}")"
 assert_eq "stray paths: community empty" '[]' "$(jq -c '.community' <<<"${out}")"
 assert_eq "stray paths: pro empty" '[]' "$(jq -c '.pro' <<<"${out}")"
 

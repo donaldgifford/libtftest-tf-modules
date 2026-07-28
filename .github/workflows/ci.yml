@@ -17,15 +17,36 @@ permissions:
   contents: read
 
 jobs:
+  # ── Static gate (repo-wide, runs FIRST, gates everything) ──────────────────
+  # terraform fmt + validate + tflint + terraform-docs across EVERY module
+  # (ADR-0019). No plan/apply job runs until this passes, so nothing tests
+  # against a tree that isn't formatted, valid, lint-clean, and doc-fresh.
+  static:
+    name: Static gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: just static
+        # Authenticate tflint --init's GitHub plugin fetch (avoids the
+        # unauthenticated 60/hr 403). The shared provider plugin-cache is set
+        # inside scripts/static-check.sh.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: just static
+
   # ── Change detection ──────────────────────────────────────────────────────
-  # Runs scripts/changed-modules.sh to compute the three CI matrix tiers.
-  # `plan` is the full module inventory (repo-wide, INV-0006 1a); `community`
-  # and `pro` are the changed modules that ship each apply tier.
+  # Runs only once the static gate is green. Computes the changed-module matrix
+  # tiers (changed / community / pro) — all scoped to what the PR touched
+  # (INV-0006 Q3a fan-out; the repo-wide coverage is the static gate above).
   detect:
     name: Detect changed modules
+    needs: static
     runs-on: ubuntu-latest
     outputs:
-      plan: ${{ steps.matrix.outputs.plan }}
+      changed: ${{ steps.matrix.outputs.changed }}
       community: ${{ steps.matrix.outputs.community }}
       pro: ${{ steps.matrix.outputs.pro }}
     steps:
@@ -45,52 +66,49 @@ jobs:
         run: |
           matrix="$(scripts/changed-modules.sh "${BASE_REF}")"
           {
-            echo "plan=$(jq -c '.plan' <<<"${matrix}")"
+            echo "changed=$(jq -c '.changed' <<<"${matrix}")"
             echo "community=$(jq -c '.community' <<<"${matrix}")"
             echo "pro=$(jq -c '.pro' <<<"${matrix}")"
           } >>"${GITHUB_OUTPUT}"
 
-  # ── Plan tier (repo-wide, required on every PR) ────────────────────────────
-  # `just tf all` = validate + lint + fmt + plan-only `terraform test`.
-  # No LocalStack, no secrets.
+  # ── Plan tier (changed modules only) ───────────────────────────────────────
+  # Plan-only `terraform test` per changed module. The static gate already
+  # covered validate/lint/fmt/docs repo-wide, so this is just the plan test.
+  # Skipped when nothing changed (docs-only PR → changed == []).
   plan:
     name: Plan (${{ matrix.module }})
     needs: detect
+    if: needs.detect.outputs.changed != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJSON(needs.detect.outputs.plan) }}
+        module: ${{ fromJSON(needs.detect.outputs.changed) }}
     steps:
       - uses: actions/checkout@v6
 
       - uses: jdx/mise-action@v3
 
-      - name: just tf all ${{ matrix.module }}
-        # Authenticate `tflint --init`'s GitHub API plugin fetch. With 14 plan
-        # jobs each installing the AWS ruleset, the unauthenticated 60/hr limit
-        # trips a 403; the runner token lifts it to 5000/hr.
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: just tf all ${{ matrix.module }}
+      - name: just tf test ${{ matrix.module }}
+        run: just tf test ${{ matrix.module }}
 
   # ── Community apply tier (changed modules that ship tests-localstack/) ──────
   # Backed by the LocalStack *Pro* image: most tests-localstack/ suites (eks×4,
   # efs, rds/serverless) exercise Pro-only AWS APIs that 501 on the Community
-  # image — only network/vpc-lookup is genuinely token-free. Pro is a Community
-  # superset, so a single Pro-backed tier covers them all. Skipped on fork PRs
-  # (the auth token is not exposed to forks — INV-0006 F5 / ADR-0018 §5).
+  # image — only network/vpc-lookup is genuinely token-free. Runs only after the
+  # plan tier is green. Skipped on fork PRs (the auth token is not exposed to
+  # forks — INV-0006 F5 / ADR-0018 §5).
   #
-  # Master toggle: both apply tiers below require a working LocalStack Pro license
+  # Master toggle: both apply tiers require a working LocalStack Pro license
   # (LOCALSTACK_AUTH_TOKEN). They are OFF until the repository variable
   # CI_RUN_LOCALSTACK_APPLY == 'true' (IMPL-0016 Phase 6): the token could not be
   # activated headless, so the tiers are gated off to unblock merge on the green
-  # plan gate. Flip on — with no code change — once the token activates:
+  # static/plan gates. Flip on — with no code change — once the token activates:
   #   gh variable set CI_RUN_LOCALSTACK_APPLY --repo <owner>/<repo> --body true
   # `ci-gate` tolerates the skipped tiers; when enabled they become required again.
   test-localstack:
     name: LocalStack apply (${{ matrix.module }})
-    needs: detect
+    needs: [detect, plan]
     if: >-
       needs.detect.outputs.community != '[]'
       && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
@@ -129,12 +147,12 @@ jobs:
   # The RDS quartet's real Aurora/instance applies boot LocalStack Pro's embedded
   # Postgres. As a `services:` container there is no host bind-mount, so the
   # macOS Docker-Desktop `initdb` ownership gotcha (the named-volume workaround)
-  # cannot occur on the Linux runner (INV-0006 F4). Skipped on fork PRs.
+  # cannot occur on the Linux runner (INV-0006 F4). Runs after the plan tier;
+  # gated by the same CI_RUN_LOCALSTACK_APPLY toggle (see the community tier);
+  # skipped on fork PRs.
   test-localstack-pro:
     name: LocalStack Pro apply (${{ matrix.module }})
-    needs: detect
-    # Gated by the same CI_RUN_LOCALSTACK_APPLY toggle as the community tier
-    # (see its comment) — OFF until a headless-activating token is available.
+    needs: [detect, plan]
     if: >-
       needs.detect.outputs.pro != '[]'
       && vars.CI_RUN_LOCALSTACK_APPLY == 'true'
@@ -187,16 +205,16 @@ jobs:
   # ── Aggregate gate (the single required status check) ──────────────────────
   # A dynamic matrix cannot be enumerated in branch protection, so this one job
   # gates the merge: it fails if any needed job failed/was cancelled and passes
-  # when apply matrices are legitimately empty/skipped. `needs` is extended in
-  # Phases 3–4 as the Community / Pro apply tiers land.
+  # when apply/plan matrices are legitimately empty/skipped.
   ci-gate:
     name: CI gate
-    needs: [detect, plan, test-localstack, test-localstack-pro, readme-check]
+    needs: [static, detect, plan, test-localstack, test-localstack-pro, readme-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Verify required jobs succeeded
         env:
+          STATIC_RESULT: ${{ needs.static.result }}
           DETECT_RESULT: ${{ needs.detect.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
           TEST_LOCALSTACK_RESULT: ${{ needs.test-localstack.result }}
@@ -204,7 +222,7 @@ jobs:
           README_CHECK_RESULT: ${{ needs.readme-check.result }}
         run: |
           failed=0
-          for job in DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO README_CHECK; do
+          for job in STATIC DETECT PLAN TEST_LOCALSTACK TEST_LOCALSTACK_PRO README_CHECK; do
             varname="${job}_RESULT"
             result="${!varname}"
             if [[ "${result}" == "failure" || "${result}" == "cancelled" ]]; then

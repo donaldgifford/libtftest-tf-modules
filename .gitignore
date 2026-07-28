@@ -49,3 +49,7 @@ crash.*.log
 # Atlantis runs init from there, so a module-level lock is invisible to prod
 # and only adds PR noise / drift risk.
 **/.terraform.lock.hcl
+
+# Shared provider plugin cache used by scripts/static-check.sh (ADR-0019) so the
+# repo-wide static gate downloads each provider once, not once per module.
+.tf-plugin-cache/
