@@ -1,7 +1,7 @@
 ---
 id: IMPL-0017
 title: "RDS master secret rotation default and manage-false guardrail"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-07-29
 ---
@@ -9,7 +9,7 @@ created: 2026-07-29
 
 # IMPL 0017: RDS master secret rotation default and manage-false guardrail
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-07-29
 
@@ -23,6 +23,7 @@ created: 2026-07-29
   - [Phase 1: F5 adoption probe on LocalStack Pro](#phase-1-f5-adoption-probe-on-localstack-pro)
     - [Tasks](#tasks)
     - [Success Criteria](#success-criteria)
+    - [Result](#result)
   - [Phase 2: rds/instance — rotation surface + guardrail](#phase-2-rdsinstance--rotation-surface--guardrail)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
@@ -134,18 +135,18 @@ declaratively, and does LocalStack Pro exercise it?
 
 #### Tasks
 
-- [ ] Throwaway config (out-of-tree, like the provider-6.57.0 repro): minimal
+- [x] Throwaway config (out-of-tree, like the provider-6.57.0 repro): minimal
   `aws_db_instance` with `manage_master_user_password = true` +
   `aws_secretsmanager_secret_rotation` with
   `secret_id = aws_db_instance.this.master_user_secret[0].secret_arn`,
   `rotation_rules { automatically_after_days = 90 }`, no lambda.
-- [ ] Apply against LocalStack Pro `2026.7.0` (named volume, per the
+- [x] Apply against LocalStack Pro `2026.7.0` (named volume, per the
   `rds/*` FINDINGS caveats). Record: create/adopt result, whether a second
   `plan` is clean (no perpetual diff), destroy ordering (the rotation
   resource must not wedge the destroy).
-- [ ] If LocalStack parity is missing for `RotateSecret`-on-managed-secret,
+- [x] If LocalStack parity is missing for `RotateSecret`-on-managed-secret,
   record the exact failure and proceed per OQ 2 resolution.
-- [ ] Write the outcome into INV-0008 **F5** and flip INV-0008 →
+- [x] Write the outcome into INV-0008 **F5** and flip INV-0008 →
   **Concluded** (answer recorded either way).
 
 #### Success Criteria
@@ -153,6 +154,22 @@ declaratively, and does LocalStack Pro exercise it?
 - F5 has a definitive, reproducible answer (works / parity gap, with
   evidence), INV-0008 is Concluded, and the Phase 2–5 approach is confirmed
   or adjusted per OQ 2 before any module file changes.
+
+#### Result
+
+**Complete — parity gap, precisely bounded (2026-07-29).** The probe (provider
+`6.57.0`, LocalStack Pro `2026.7.0`) created the instance + managed secret
+fine, but the rotation resource failed: `RotateSecret` →
+`InvalidRequestException: No Lambda rotation function ARN is associated with
+this secret`. `describe-secret` shows LocalStack mints the secret with
+`OwningService: rds` but **no managed-rotation registration**
+(`RotationEnabled: null`) — the schedule-only `RotateSecret` real AWS
+supports has nothing to attach to. Destroy of the partial state clean;
+second-plan stability untestable on LocalStack (resource never creates),
+covered by the API contract + optional real-AWS spot check (OQ 2a).
+INV-0008 → Concluded. Phase 5 adjusted: apply suites opt out via
+`master_secret_rotation_days = null` + FINDINGS.md gap notes; plan suites
+own the rotation-surface coverage.
 
 ### Phase 2: rds/instance — rotation surface + guardrail
 

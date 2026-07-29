@@ -1,7 +1,7 @@
 ---
 id: INV-0008
 title: "RDS managed master secret rotation schedule and manage-false guardrails"
-status: In Progress
+status: Concluded
 author: Donald Gifford
 created: 2026-07-29
 ---
@@ -9,7 +9,7 @@ created: 2026-07-29
 
 # INV 0008: RDS managed master secret rotation schedule and manage-false guardrails
 
-**Status:** In Progress
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-07-29
 
@@ -24,7 +24,7 @@ created: 2026-07-29
   - [F2 — The proxy already fails closed on the no-auth-path combination](#f2--the-proxy-already-fails-closed-on-the-no-auth-path-combination)
   - [F3 — Rotation is a client-caching problem the fleet already absorbs](#f3--rotation-is-a-client-caching-problem-the-fleet-already-absorbs)
   - [F4 — The managed secret's rotation schedule is adjustable, but not disableable](#f4--the-managed-secrets-rotation-schedule-is-adjustable-but-not-disableable)
-  - [F5 — Terraform-managing the schedule needs a probe (pending)](#f5--terraform-managing-the-schedule-needs-a-probe-pending)
+  - [F5 — Probed 2026-07-29: LocalStack Pro cannot exercise the adoption (parity gap)](#f5--probed-2026-07-29-localstack-pro-cannot-exercise-the-adoption-parity-gap)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
 - [Open Questions](#open-questions)
@@ -151,25 +151,55 @@ Rotation cannot be disabled while `manage_master_user_password = true`; the
 only rotation-off path is `manage = false`, which per F1/F2 is the wrong
 trade (never-rotated master credential + proxy auth-path loss).
 
-### F5 — Terraform-managing the schedule needs a probe (pending)
+### F5 — Probed 2026-07-29: LocalStack Pro cannot exercise the adoption (parity gap)
 
-The declarative shape is `aws_secretsmanager_secret_rotation` with
-`secret_id = master_user_secret_arn` and `rotation_rules { schedule_expression
-= "rate(90 days)" }` and **no** `rotation_lambda_arn` (managed rotation). To
-verify before implementation (Approach step 4): provider support for adopting
-a secret the module didn't create, plan stability after adoption, LocalStack
-Pro parity for `RotateSecret` on managed secrets, and destroy behavior (the
-rotation resource must not attempt to remove managed rotation in a way the
-API rejects). Outcome lands here as F5-resolved.
+Probe (throwaway config, LocalStack Pro `2026.7.0`, provider `6.57.0`):
+minimal `aws_db_instance` with `manage_master_user_password = true` +
+`aws_secretsmanager_secret_rotation` adopting
+`master_user_secret[0].secret_arn` with `rotation_rules {
+automatically_after_days = 90 }`, `rotate_immediately = false`, no Lambda.
+
+Results:
+
+- **Instance + managed secret create fine** (embedded Postgres boot ~3m;
+  `master_user_secret[0].secret_arn` populated — provider 6.57.0 works).
+- **The rotation resource fails:** `RotateSecret` → `InvalidRequestException:
+  No Lambda rotation function ARN is associated with this secret` (after ~2m
+  of provider retries).
+- **Root cause is a LocalStack parity gap, precisely bounded:**
+  `describe-secret` on the minted secret shows `OwningService: rds` but
+  `RotationEnabled: null` and no rotation rules — LocalStack's RDS skips the
+  **managed-rotation registration** real AWS performs at secret creation, so
+  a schedule-only `RotateSecret` has nothing to attach to and LocalStack
+  demands the Lambda path. On real AWS the RDS-managed secret reports
+  managed rotation enabled, which is exactly what the schedule update
+  targets (documented API contract).
+- **Destroy of the partial state is clean** (instance destroyed, 1m20s).
+- Second-plan stability and rotation-resource destroy ordering are **not
+  testable on LocalStack** (the resource never creates); covered by the API
+  contract + the optional real-AWS spot check per IMPL-0017 OQ 2a.
+
+**Implementation consequence (IMPL-0017 Phase 5):** with the default
+`master_secret_rotation_days = 90`, the modules' LocalStack apply suites
+would fail at the rotation resource — so the apply suites pass
+`master_secret_rotation_days = null` (the documented opt-out), each
+`FINDINGS.md` records this parity gap, and the rotation surface is covered
+by the plan suites (OQ 2a).
 
 ## Conclusion
 
-**Answer:** Pending F5. Directionally: **yes** — slow the fleet default to
-90 days inside the modules, and **yes** — guard `manage = false` at plan
-time. `manage = false` remains an escape hatch (existing-instance
-migrations), never a password-management mode: the module will continue to
-ship no password input; operators who need an explicit credential read the
-managed secret or use IAM auth.
+**Answer: Yes to both** — slow the fleet default to 90 days inside the
+modules, and guard `manage = false` at plan time. F5 resolved as a
+**LocalStack parity gap** (the rotation adoption cannot be exercised on
+LocalStack Pro 2026.7.0 because its RDS skips the managed-rotation
+registration), which per IMPL-0017 OQ 2a does **not** block: plan tests own
+the rotation-surface coverage, apply suites opt out via
+`master_secret_rotation_days = null`, and the gap is recorded in each
+suite's FINDINGS.md, with an optional real-AWS spot check before the first
+production rollout. `manage = false` remains an escape hatch
+(existing-instance migrations), never a password-management mode: the
+modules continue to ship no password input; operators who need an explicit
+credential read the managed secret or use IAM auth.
 
 ## Recommendation
 

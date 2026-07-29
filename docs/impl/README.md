@@ -48,5 +48,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0014 | RDS test-fixture vpc-lookup fidelity | Completed | 2026-07-23 | Donald Gifford | [0014-rds-test-fixture-vpc-lookup-fidelity.md](0014-rds-test-fixture-vpc-lookup-fidelity.md) |
 | IMPL-0015 | Terragrunt multi-account remote-state migration | Completed | 2026-07-24 | Donald Gifford | [0015-terragrunt-multi-account-remote-state-migration.md](0015-terragrunt-multi-account-remote-state-migration.md) |
 | IMPL-0016 | CI test-gating pipeline for changed Terraform modules | In Progress | 2026-07-25 | Donald Gifford | [0016-ci-test-gating-pipeline-for-changed-terraform-modules.md](0016-ci-test-gating-pipeline-for-changed-terraform-modules.md) |
-| IMPL-0017 | RDS master secret rotation default and manage-false guardrail | Draft | 2026-07-29 | Donald Gifford | [0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md](0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md) |
+| IMPL-0017 | RDS master secret rotation default and manage-false guardrail | In Progress | 2026-07-29 | Donald Gifford | [0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md](0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md) |
 <!-- END DOCZ AUTO-GENERATED -->
