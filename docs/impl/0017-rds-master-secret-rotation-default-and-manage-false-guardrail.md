@@ -245,23 +245,38 @@ green (serverless 21/21, cluster 19/19); static gate green.
 
 #### Tasks
 
-- [ ] Per module, new `tests/secret_rotation.tftest.hcl`: default → rotation
+- [x] Per module, new `tests/secret_rotation.tftest.hcl`: default → rotation
   resource present with `automatically_after_days = 90`; explicit
   `master_secret_rotation_days = 30` → `30`; `null` → resource absent
   (count 0); `manage_master_user_password = false` (+ IAM auth true) →
   resource absent.
-- [ ] Per module, extend `tests/validation.tftest.hcl`: `manage = false` +
+- [x] Per module, extend `tests/validation.tftest.hcl`: `manage = false` +
   `iam_database_authentication_enabled = false` → `expect_failures` on the
   DB resource precondition (following the suite's existing
   precondition-failure pattern); `manage = false` + IAM auth `true` → plan
   passes; OQ-3 bounds violations → variable-validation failures.
-- [ ] `just tf test rds/instance|rds/serverless|rds/cluster` green; record
+- [x] `just tf test rds/instance|rds/serverless|rds/cluster` green; record
   the new run counts.
 
 #### Success Criteria
 
 - All three plan suites green locally and in the CI plan tier (the
   changed-module matrix picks up all three automatically — no CI edits).
+
+#### Result
+
+**Complete (2026-07-29).** Each module gained an identical 4-run
+`tests/secret_rotation.tftest.hcl` (default 90 present +
+`rotate_immediately = false`, explicit 30 tracked, `null` absent,
+`manage = false` + IAM auth absent per OQ 1a) and 4 new
+`validation.tftest.hcl` runs (`manage_false_no_auth_path_rejected` →
+`expect_failures` on the DB resource; `manage_false_with_iam_auth_passes`
+— the escape hatch plans cleanly, which also proves the `count` gate
+shields the `master_user_secret[0]` reference when no managed secret
+exists; bounds `6` and `366` → `expect_failures` on
+`var.master_secret_rotation_days`). New run counts, all green:
+**instance 34** (was 26), **serverless 29** (was 21), **cluster 27**
+(was 19) — +8 per module.
 
 ### Phase 5: Apply-tier verification
 

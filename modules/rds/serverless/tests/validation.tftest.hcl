@@ -285,3 +285,121 @@ run "enhanced_monitoring_requires_role" {
     aws_rds_cluster_instance.this,
   ]
 }
+
+run "manage_false_no_auth_path_rejected" {
+  command = plan
+
+  variables {
+    manage_master_user_password = false
+  }
+
+  override_data {
+    target = data.terraform_remote_state.vpc
+    values = {
+      outputs = {
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
+      }
+    }
+  }
+
+  expect_failures = [
+    aws_rds_cluster.this,
+  ]
+}
+
+run "manage_false_with_iam_auth_passes" {
+  command = plan
+
+  variables {
+    manage_master_user_password         = false
+    iam_database_authentication_enabled = true
+  }
+
+  override_data {
+    target = data.terraform_remote_state.vpc
+    values = {
+      outputs = {
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
+      }
+    }
+  }
+
+  assert {
+    condition     = aws_rds_cluster.this.iam_database_authentication_enabled == true
+    error_message = "manage = false with IAM auth enabled must plan cleanly (the documented migration escape hatch, INV-0008 F1)"
+  }
+}
+
+run "rotation_days_below_floor" {
+  command = plan
+
+  variables {
+    master_secret_rotation_days = 6
+  }
+
+  override_data {
+    target = data.terraform_remote_state.vpc
+    values = {
+      outputs = {
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.master_secret_rotation_days,
+  ]
+}
+
+run "rotation_days_above_ceiling" {
+  command = plan
+
+  variables {
+    master_secret_rotation_days = 366
+  }
+
+  override_data {
+    target = data.terraform_remote_state.vpc
+    values = {
+      outputs = {
+        vpc_id                 = "vpc-0123456789abcdef0"
+        private_subnet_ids     = ["subnet-aaa", "subnet-bbb", "subnet-ccc"]
+        private_eks_subnet_ids = ["subnet-eks-aaa", "subnet-eks-bbb", "subnet-eks-ccc"]
+        public_subnet_ids      = ["subnet-pub-aaa", "subnet-pub-bbb", "subnet-pub-ccc"]
+        vpc_cidr_block         = "10.0.0.0/16"
+        availability_zones     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+        nat_gateway_ids        = ["nat-0123456789abcdef0"]
+        route_table_ids        = ["rtb-public0", "rtb-private0"]
+        internet_gateway_id    = "igw-0123456789abcdef0"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.master_secret_rotation_days,
+  ]
+}
