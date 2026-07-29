@@ -50,4 +50,5 @@ docz create adr "Your ADR Title"
 | ADR-0017 | RDS Blue Green deployments are opt-in and default off | Accepted | 2026-07-09 | Donald Gifford | [0017-rds-blue-green-deployments-are-opt-in-and-default-off.md](0017-rds-blue-green-deployments-are-opt-in-and-default-off.md) |
 | ADR-0018 | Gate PRs with a repo-wide plan test and changed-module apply tiers | Accepted | 2026-07-25 | Donald Gifford | [0018-gate-prs-with-a-repo-wide-plan-test-and-changed-module-apply.md](0018-gate-prs-with-a-repo-wide-plan-test-and-changed-module-apply.md) |
 | ADR-0019 | Repo-wide static gate precedes changed-module plan and apply | Accepted | 2026-07-28 | Donald Gifford | [0019-repo-wide-static-gate-precedes-changed-module-plan-and-apply.md](0019-repo-wide-static-gate-precedes-changed-module-plan-and-apply.md) |
+| ADR-0020 | Remote-state key contract for cross-module composition | Accepted | 2026-07-29 | Donald Gifford | [0020-remote-state-key-contract-for-cross-module-composition.md](0020-remote-state-key-contract-for-cross-module-composition.md) |
 <!-- END DOCZ AUTO-GENERATED -->

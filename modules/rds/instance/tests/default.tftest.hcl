@@ -133,6 +133,13 @@ run "default_postgres" {
     condition     = output.iam_database_authentication_enabled == false
     error_message = "iam_database_authentication_enabled output must default to false (proxy V4 precondition reads this)"
   }
+
+  # ADR-0020 key-template pin: the vpc read must compose the contract key
+  # <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.vpc.config.key == "sandbox/us-east-1/vpc/libtftest-vpc/terraform.tfstate"
+    error_message = "vpc remote-state read must compose <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }
 
 run "default_mysql" {

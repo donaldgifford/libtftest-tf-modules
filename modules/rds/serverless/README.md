@@ -197,6 +197,28 @@ precondition fails the plan. Pick a stable identifier (e.g.,
 `platform-db-final-20260530`) so the snapshot is findable in the
 console / CLI later.
 
+## Remote-state key contract (ADR-0020)
+
+This module **reads** the VPC facts at:
+
+```text
+<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate
+```
+
+and its own state **must be published at** (i.e. the Terragrunt live-repo
+directory must be):
+
+```text
+<account_name>/<region>/rds/serverless/<identifier_prefix>/terraform.tfstate
+```
+
+`identifier_prefix` is load-bearing three ways: it is the cluster
+identifier, the live-repo folder name, and the `target_identifier` an
+`rds/proxy` uses to find this cluster's state. A mismatch fails the proxy
+plan with `Unable to find remote state` (the error names neither bucket nor
+key — diff against this contract). The key templates are pinned by plan
+assertions in `tests/default.tftest.hcl`; see ADR-0020 for the fleet table.
+
 ## Tests
 
 ```bash

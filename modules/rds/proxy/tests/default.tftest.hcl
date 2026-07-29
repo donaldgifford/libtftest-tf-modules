@@ -86,6 +86,13 @@ run "rds_instance_postgres" {
     condition     = one(aws_db_proxy.this.auth).secret_arn == "arn:aws:secretsmanager:us-east-1:000000000000:secret:rds-abc"
     error_message = "auth.secret_arn must be the master secret read from remote state"
   }
+
+  # ADR-0020 key-template pin: target_type = rds-instance must compose the
+  # rds/instance contract key. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.target.config.key == "sandbox/us-east-1/rds/instance/platform-db/terraform.tfstate"
+    error_message = "rds-instance target must read <account_name>/<region>/rds/instance/<target_identifier>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }
 
 run "aurora_cluster_postgres" {
@@ -115,6 +122,13 @@ run "aurora_cluster_postgres" {
     condition     = aws_security_group.proxy.vpc_id == "vpc-0123456789abcdef0"
     error_message = "proxy SG must be placed in the target VPC from remote state"
   }
+
+  # ADR-0020 key-template pin: target_type = aurora-cluster must compose the
+  # rds/cluster contract key. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.target.config.key == "sandbox/us-east-1/rds/cluster/platform-aurora/terraform.tfstate"
+    error_message = "aurora-cluster target must read <account_name>/<region>/rds/cluster/<target_identifier>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }
 
 run "serverless_postgres" {
@@ -133,6 +147,13 @@ run "serverless_postgres" {
   assert {
     condition     = aws_db_proxy.this.require_tls == true
     error_message = "require_tls must default to true"
+  }
+
+  # ADR-0020 key-template pin: target_type = serverless must compose the
+  # rds/serverless contract key. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.target.config.key == "sandbox/us-east-1/rds/serverless/platform-rds/terraform.tfstate"
+    error_message = "serverless target must read <account_name>/<region>/rds/serverless/<target_identifier>/terraform.tfstate (ADR-0020 remote-state key contract)"
   }
 }
 

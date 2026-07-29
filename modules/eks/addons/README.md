@@ -75,3 +75,17 @@ The cluster's K8s version is read from the cluster module's remote-state
 output `cluster_version` per [ADR-0001](../../../docs/adr/0001-use-data-terraform-remote-state-for-cross-module-composition.md).
 
 [Usage docs](./USAGE.md)
+
+## Remote-state key contract (ADR-0020)
+
+This module **reads** the cluster's state at:
+
+```text
+<account_name>/<region>/eks/<cluster_name>/terraform.tfstate
+```
+
+`cluster_name` must equal the `eks/cluster` stack's live-repo folder name.
+A mismatch fails this module's plan with `Unable to find remote state`
+(the error names neither bucket nor key — diff against this contract). The
+key template is pinned by a plan assertion in `tests/default.tftest.hcl`;
+see ADR-0020 for the fleet table.

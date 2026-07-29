@@ -69,3 +69,26 @@ Runtime: ~45 seconds against a warm LocalStack Pro.
 Apply-time invariants land here once the libtftest harness covers
 them (kind/k3d bridge, sneakystack lifecycle). See
 [ADR-0014](../../../docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md).
+
+## Remote-state key contract (ADR-0020)
+
+This module **reads** the VPC facts at:
+
+```text
+<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate
+```
+
+and its own state **must be published at** (i.e. the Terragrunt live-repo
+directory must be):
+
+```text
+<account_name>/<region>/eks/<cluster_name>/terraform.tfstate
+```
+
+`cluster_name` is both the live-repo folder name and the key every EKS
+consumer (`managed-node-group`, `addons`, `pod-identity-access`,
+`efs/filesystem`) composes to find this cluster's state. A mismatch fails
+the consumer plan with `Unable to find remote state` (the error names
+neither bucket nor key — diff against this contract). The key template is
+pinned by a plan assertion in `tests/default.tftest.hcl`; see ADR-0020 for
+the fleet table.

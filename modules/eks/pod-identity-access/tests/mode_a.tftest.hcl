@@ -94,4 +94,11 @@ run "plan_mode_a" {
     condition     = aws_eks_pod_identity_association.this.namespace == "kube-system" && aws_eks_pod_identity_association.this.service_account == "cluster-autoscaler"
     error_message = "Association namespace + service_account must match inputs"
   }
+
+  # ADR-0020 key-template pin: the eks read must compose the contract key
+  # <account_name>/<region>/eks/<cluster_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.eks.config.key == "sandbox/us-east-1/eks/libtftest-cluster/terraform.tfstate"
+    error_message = "eks remote-state read must compose <account_name>/<region>/eks/<cluster_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }

@@ -285,6 +285,21 @@ elsewhere, or to provision a non-default vault out-of-band and
 attach this filesystem's backup-plan selection via a separate
 plan-resource module (future IMPL).
 
+## Remote-state key contract (ADR-0020)
+
+This module **reads** two producer states:
+
+```text
+<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate
+<account_name>/<region>/eks/<cluster_name>/terraform.tfstate
+```
+
+`vpc_name` / `cluster_name` must equal the producer stacks' live-repo
+folder names. A mismatch fails this module's plan with `Unable to find
+remote state` (the error names neither bucket nor key — diff against this
+contract). Both key templates are pinned by plan assertions in
+`tests/default.tftest.hcl`; see ADR-0020 for the fleet table.
+
 ## Tests
 
 ```bash

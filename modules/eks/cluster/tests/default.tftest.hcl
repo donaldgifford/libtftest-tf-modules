@@ -145,4 +145,11 @@ run "default_plan" {
     condition     = output.cluster_version == aws_eks_cluster.this.version
     error_message = "output.cluster_version must mirror aws_eks_cluster.this.version"
   }
+
+  # ADR-0020 key-template pin: the vpc read must compose the contract key
+  # <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.vpc.config.key == "sandbox/us-east-1/vpc/stub-vpc/terraform.tfstate"
+    error_message = "vpc remote-state read must compose <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }

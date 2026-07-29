@@ -139,6 +139,25 @@ proxy. For genuinely idle clusters, consider connecting directly.
   reducing pool efficiency. Relax with
   `session_pinning_filters = ["EXCLUDE_VARIABLE_SETS"]` where safe.
 
+## Remote-state key contract (ADR-0020)
+
+This module **reads** its target's state at:
+
+```text
+<account_name>/<region>/rds/<dir>/<target_identifier>/terraform.tfstate
+```
+
+where `<dir>` comes from the `target_dir_map` in `locals.tf`:
+`rds-instance` → `instance`, `aurora-cluster` → `cluster`, `serverless` →
+`serverless`. `target_identifier` must equal the target module's
+`identifier_prefix` AND the target's live-repo folder name — it is also
+registered as the `db_instance_identifier` / `db_cluster_identifier` on the
+proxy target group. A path mismatch fails this module's plan with
+`Unable to find remote state` (the error names neither bucket nor key —
+diff against this contract). All three `target_dir_map` entries are pinned
+by plan assertions in `tests/default.tftest.hcl`; see ADR-0020 for the
+fleet table.
+
 ## Tests
 
 - **Plan-only (the gate):** `just tf test rds/proxy` — all V1–V7 validations,
