@@ -112,6 +112,9 @@ Tracked in git. As of this writing:
   managed secret without a managed-rotation registration, so the rotation
   resource cannot apply there — apply suites pass
   `master_secret_rotation_days = null`; the plan suites gate the surface.
+  Live deployments pick up the 90-day schedule on their next apply: the
+  rotation resource adopts the existing managed secret in place
+  (schedule-only — no secret replacement, no credential change).
 - **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future

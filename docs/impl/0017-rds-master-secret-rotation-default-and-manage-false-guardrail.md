@@ -1,7 +1,7 @@
 ---
 id: IMPL-0017
 title: "RDS master secret rotation default and manage-false guardrail"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-07-29
 ---
@@ -9,7 +9,7 @@ created: 2026-07-29
 
 # IMPL 0017: RDS master secret rotation default and manage-false guardrail
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-29
 
@@ -27,18 +27,23 @@ created: 2026-07-29
   - [Phase 2: rds/instance — rotation surface + guardrail](#phase-2-rdsinstance--rotation-surface--guardrail)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
+    - [Result](#result-1)
   - [Phase 3: rds/serverless + rds/cluster — same surface](#phase-3-rdsserverless--rdscluster--same-surface)
     - [Tasks](#tasks-2)
     - [Success Criteria](#success-criteria-2)
+    - [Result](#result-2)
   - [Phase 4: Plan-test coverage](#phase-4-plan-test-coverage)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+    - [Result](#result-3)
   - [Phase 5: Apply-tier verification](#phase-5-apply-tier-verification)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
+    - [Result](#result-4)
   - [Phase 6: Documentation + release](#phase-6-documentation--release)
     - [Tasks](#tasks-5)
     - [Success Criteria](#success-criteria-5)
+    - [Result](#result-5)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -321,15 +326,15 @@ if a future LocalStack release registers managed rotation.
 
 #### Tasks
 
-- [ ] CLAUDE.md: update the three modules' bullets (rotation default +
+- [x] CLAUDE.md: update the three modules' bullets (rotation default +
   guardrail, one sentence each).
-- [ ] `docz update` (restore `docs/impl/0009` TOC if mangled); IMPL-0017 →
+- [x] `docz update` (restore `docs/impl/0009` TOC if mangled); IMPL-0017 →
   Completed with per-phase Results.
-- [ ] PR across the three modules labeled **minor** (additive variable +
+- [x] PR across the three modules labeled **minor** (additive variable +
   precondition; no breaking change — existing plans with defaults gain the
   rotation resource, which is the intended behavior change and is called out
   in the PR body).
-- [ ] Post-merge: note in the PR/CLAUDE.md that live deployments pick up the
+- [x] Post-merge: note in the PR/CLAUDE.md that live deployments pick up the
   90-day schedule on their next apply (the rotation resource adopts the
   existing managed secret in place — no secret replacement, no credential
   change).
@@ -338,6 +343,20 @@ if a future LocalStack release registers managed rotation.
 
 - CI green on the PR (static + plan tiers; apply tiers per toggle state);
   docs regenerated; IMPL-0017 Completed; INV-0008 Concluded.
+
+#### Result
+
+**Complete (2026-07-29).** CLAUDE.md carries the fleet-wide surface note
+(consolidated block covering all three modules — identical surface, one
+description — plus the adopt-in-place-on-next-apply behavior note,
+satisfying the post-merge task's content up front). PR #65 retitled
+`feat(rds)`, relabeled `dont-release` → **minor**, body calling out the
+intended behavior change (defaults gain the rotation resource; schedule
+adoption in place — no secret replacement, no credential change) and the
+parity gap. `docz update` run (README indexes regenerated; the docz TOC
+mangling of code-span entries was restored in IMPL-0009/INV-0008/this
+doc). IMPL-0017 → **Completed** with per-phase Results; INV-0008
+**Concluded** since Phase 1.
 
 ## File Changes
 
