@@ -147,9 +147,22 @@ variable "iam_database_authentication_enabled" {
 }
 
 variable "manage_master_user_password" {
-  description = "When true (default), AWS provisions and rotates the master user password in Secrets Manager. The secret ARN is emitted via the master_user_secret_arn output. Opt-out is documented as an escape hatch for operators migrating from a pre-existing secret."
+  description = "When true (default), AWS provisions and rotates the master user password in Secrets Manager. The secret ARN is emitted via the master_user_secret_arn output. Opt-out is documented as an escape hatch for operators migrating from a pre-existing secret — it requires iam_database_authentication_enabled = true (enforced via a precondition; the module has no password input, so manage = false without IAM auth leaves no authentication path, per INV-0008 F1/F2)."
   type        = bool
   default     = true
+}
+
+variable "master_secret_rotation_days" {
+  description = "Rotation cadence in days for the AWS-managed master user secret, applied by adopting the managed secret into an aws_secretsmanager_secret_rotation schedule (replaces AWS's 7-day default with a quarterly cadence, per INV-0008 F4/F5). Null opts out and leaves AWS's default schedule untouched. Ignored when manage_master_user_password = false — there is no managed secret to schedule, so the rotation resource is simply omitted."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.master_secret_rotation_days == null || (var.master_secret_rotation_days >= 7 && var.master_secret_rotation_days <= 365)
+    error_message = "master_secret_rotation_days must be null or in the range [7, 365] — faster than AWS's 7-day default churns client caches for no gain, and slower than annual defeats the point of rotation (IMPL-0017 OQ 3b)."
+  }
+
+  nullable = true
 }
 
 variable "master_username" {

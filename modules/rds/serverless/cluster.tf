@@ -4,7 +4,7 @@
 # engine_mode = "provisioned" + serverlessv2_scaling_configuration
 # is the Serverless v2 incantation; engine_mode = "serverless" is
 # the deprecated v1 path. Storage and master user secret share
-# local.kms_key_arn per IMPL-0007 Q12. Three preconditions enforce
+# local.kms_key_arn per IMPL-0007 Q12. Four preconditions enforce
 # cross-variable invariants that terraform 1.1 variable.validation
 # can't express (need terraform 1.9+ for cross-var checks).
 #--------------------------------------------------------------
@@ -53,6 +53,11 @@ resource "aws_rds_cluster" "this" {
     precondition {
       condition     = var.skip_final_snapshot || var.final_snapshot_identifier != null
       error_message = "final_snapshot_identifier must be set when skip_final_snapshot = false (the default). Supply via `-var 'final_snapshot_identifier=...'` at destroy time, or set skip_final_snapshot = true to opt out of the final snapshot deliberately."
+    }
+
+    precondition {
+      condition     = var.manage_master_user_password || var.iam_database_authentication_enabled
+      error_message = "manage_master_user_password = false without iam_database_authentication_enabled = true leaves the cluster with no authentication path — this module has no password input, and the downstream rds/proxy fails closed on the same combination. Either keep the AWS-managed master secret (manage_master_user_password = true) or enable IAM auth. The manage = false escape hatch exists only for migrations from a pre-existing secret (INV-0008 F1)."
     }
   }
 }

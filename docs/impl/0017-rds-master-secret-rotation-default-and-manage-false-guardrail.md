@@ -213,19 +213,33 @@ green. Plan-test coverage of the new surface lands in Phase 4.
 
 #### Tasks
 
-- [ ] Port the Phase-2 change verbatim to `rds/serverless` (secret ARN from
+- [x] Port the Phase-2 change verbatim to `rds/serverless` (secret ARN from
   `aws_rds_cluster.this`), preconditions onto `aws_rds_cluster.this`'s
   lifecycle block.
-- [ ] Same for `rds/cluster`.
-- [ ] Confirm no surface is needed on `rds/proxy` (its precondition already
+- [x] Same for `rds/cluster`.
+- [x] Confirm no surface is needed on `rds/proxy` (its precondition already
   covers the consumer side) or `rds/read-replica` (no secret) — grep-verify
   nothing else references `manage_master_user_password`.
-- [ ] USAGE.md regeneration for both; `just static` green.
+- [x] USAGE.md regeneration for both; `just static` green.
 
 #### Success Criteria
 
 - All three modules expose the identical variable + precondition surface
   (identical names, defaults, error-message shape); static gate green.
+
+#### Result
+
+**Complete (2026-07-29).** Ported verbatim: identical
+`master_secret_rotation_days` variable (90 / null / `[7, 365]`), identical
+`secret_rotation.tf` differing only in `secret_id`
+(`aws_rds_cluster.this.master_user_secret[0].secret_arn`), and the
+`manage || iam_auth` precondition appended to each cluster's lifecycle
+block ("cluster" wording; both now carry four preconditions — header
+comments updated). Grep confirmed the only other
+`manage_master_user_password` references are `rds/proxy`'s existing
+fail-closed precondition (consumer side already covered) and a
+`manage = true` Pro fixture — `rds/read-replica` has none. Plan suites
+green (serverless 21/21, cluster 19/19); static gate green.
 
 ### Phase 4: Plan-test coverage
 

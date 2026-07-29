@@ -6,7 +6,7 @@
 # incantation — the writer's capacity comes from a concrete
 # aws_rds_cluster_instance.instance_class (instance.tf), not ACUs.
 # Storage and master user secret share local.kms_key_arn per
-# IMPL-0007 Q12. Three preconditions enforce cross-variable invariants
+# IMPL-0007 Q12. Four preconditions enforce cross-variable invariants
 # that terraform 1.1 variable.validation can't express.
 #--------------------------------------------------------------
 
@@ -52,6 +52,11 @@ resource "aws_rds_cluster" "this" {
     precondition {
       condition     = var.backtrack_window == 0 || var.engine == "aurora-mysql"
       error_message = "backtrack_window is Aurora-MySQL-only — it must be 0 for engine=${var.engine}. Aurora Backtrack (fast rewind) is not available for aurora-postgresql."
+    }
+
+    precondition {
+      condition     = var.manage_master_user_password || var.iam_database_authentication_enabled
+      error_message = "manage_master_user_password = false without iam_database_authentication_enabled = true leaves the cluster with no authentication path — this module has no password input, and the downstream rds/proxy fails closed on the same combination. Either keep the AWS-managed master secret (manage_master_user_password = true) or enable IAM auth. The manage = false escape hatch exists only for migrations from a pre-existing secret (INV-0008 F1)."
     }
   }
 }
