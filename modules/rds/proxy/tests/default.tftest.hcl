@@ -173,6 +173,18 @@ run "rds_instance_mysql" {
     condition     = aws_db_proxy_target.this.db_instance_identifier == "platform-mysql"
     error_message = "rds-instance MySQL target must set db_instance_identifier"
   }
+
+  # AWS SG group/rule descriptions accept only a-zA-Z0-9 and ._-:/()#,@[]+=&;{}!$*
+  # — real AWS rejects anything else (a unicode arrow shipped once) with a
+  # misleading "strings less than 256 characters" error, and LocalStack does
+  # NOT enforce the charset, so this plan assert is the only automated guard.
+  assert {
+    condition = alltrue([
+      can(regex("^[A-Za-z0-9 ._:/()#,@\\[\\]+=&;{}!$*-]*$", aws_security_group.proxy.description)),
+      can(regex("^[A-Za-z0-9 ._:/()#,@\\[\\]+=&;{}!$*-]*$", aws_vpc_security_group_egress_rule.to_db.description)),
+    ])
+    error_message = "SG / SG-rule descriptions must stay within the AWS-accepted charset (a-zA-Z0-9 ._-:/()#,@[]+=&;{}!$* and space) — real AWS rejects others at apply; LocalStack does not."
+  }
 }
 
 run "aurora_cluster_mysql" {
