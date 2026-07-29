@@ -175,25 +175,39 @@ own the rotation-surface coverage.
 
 #### Tasks
 
-- [ ] `variables.tf`: `master_secret_rotation_days` — `number`, default
+- [x] `variables.tf`: `master_secret_rotation_days` — `number`, default
   `90`, `nullable = true`, validation `7 <= days <= 365` (OQ 3b),
   description covering the `null` opt-out and the manage-false interplay
   (OQ 1a: rotation resource silently omitted when `manage = false`).
-- [ ] New `secret_rotation.tf`: the `aws_secretsmanager_secret_rotation`
+- [x] New `secret_rotation.tf`: the `aws_secretsmanager_secret_rotation`
   resource, `count`-gated per OQ 1 resolution, `secret_id` from
   `master_user_secret[0].secret_arn`.
-- [ ] `instance.tf`: sixth precondition —
+- [x] `instance.tf`: sixth precondition —
   `var.manage_master_user_password || var.iam_database_authentication_enabled`
   — with an error message naming the two valid paths (keep the managed
   secret / enable IAM auth) and the migration escape-hatch caveat.
-- [ ] `terraform-docs` regeneration (USAGE.md) via the static gate.
-- [ ] `just static` green (fmt + validate + tflint + docs, repo-wide).
+- [x] `terraform-docs` regeneration (USAGE.md) via the static gate.
+- [x] `just static` green (fmt + validate + tflint + docs, repo-wide).
 
 #### Success Criteria
 
 - `rds/instance` plans cleanly with defaults (rotation resource present at
   90 days), with `master_secret_rotation_days = null` (resource absent), and
   fails at plan — not apply — for `manage = false` without IAM auth.
+
+#### Result
+
+**Complete (2026-07-29).** `master_secret_rotation_days` (number, default
+`90`, `nullable`, `[7, 365]` validation), `secret_rotation.tf`
+(`aws_secretsmanager_secret_rotation.master`, `count`-gated on
+`manage && days != null`, `rotate_immediately = false`), and the sixth
+precondition (`manage || iam_auth`, naming both valid paths + the
+migration caveat) landed on `rds/instance`. `manage_master_user_password`'s
+description now documents the guardrail. One house-style catch: the
+`terraform_variable_attribute_order` tflint rule wants `nullable` **after**
+the `validation` block (the `identifier_prefix` pattern) despite its
+message wording. Existing plan suite still green (26/26); static gate
+green. Plan-test coverage of the new surface lands in Phase 4.
 
 ### Phase 3: rds/serverless + rds/cluster — same surface
 

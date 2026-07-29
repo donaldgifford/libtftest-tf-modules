@@ -79,5 +79,10 @@ resource "aws_db_instance" "this" {
       condition     = var.storage_type != "io2" || var.iops != null
       error_message = "iops must be set when storage_type = 'io2' (provisioned-IOPS storage requires an explicit IOPS value)."
     }
+
+    precondition {
+      condition     = var.manage_master_user_password || var.iam_database_authentication_enabled
+      error_message = "manage_master_user_password = false without iam_database_authentication_enabled = true leaves the instance with no authentication path — this module has no password input, and the downstream rds/proxy fails closed on the same combination. Either keep the AWS-managed master secret (manage_master_user_password = true) or enable IAM auth. The manage = false escape hatch exists only for migrations from a pre-existing secret (INV-0008 F1)."
+    }
   }
 }
