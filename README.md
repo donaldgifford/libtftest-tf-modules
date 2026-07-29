@@ -38,11 +38,11 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.17.0` | IMPL-0002 | 3 | apply | — |
 | [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.17.0` | IMPL-0004 | 4 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
-| [`rds/cluster`](modules/rds/cluster) | `unreleased` | IMPL-0012 | 6 | plan-only | ✅ |
-| [`rds/instance`](modules/rds/instance) | `unreleased` | IMPL-0011 | 7 | plan-only | ✅ |
+| [`rds/cluster`](modules/rds/cluster) | `v0.18.0` | IMPL-0012 | 6 | plan-only | ✅ |
+| [`rds/instance`](modules/rds/instance) | `v0.18.0` | IMPL-0011 | 7 | plan-only | ✅ |
 | [`rds/proxy`](modules/rds/proxy) | `v0.17.0` | IMPL-0010 | 5 | plan-only | ✅ |
 | [`rds/read-replica`](modules/rds/read-replica) | `v0.17.0` | IMPL-0013 | 3 | plan-only | ✅ |
-| [`rds/serverless`](modules/rds/serverless) | `unreleased` | IMPL-0007 | 7 | apply | — |
+| [`rds/serverless`](modules/rds/serverless) | `v0.18.0` | IMPL-0007 | 7 | apply | — |
 
 <!-- END_MODULE_TABLE -->
 
