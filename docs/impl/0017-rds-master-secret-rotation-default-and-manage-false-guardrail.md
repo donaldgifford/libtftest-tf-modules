@@ -159,8 +159,9 @@ declaratively, and does LocalStack Pro exercise it?
 #### Tasks
 
 - [ ] `variables.tf`: `master_secret_rotation_days` — `number`, default
-  `90`, `nullable = true`, validation per OQ 3, description covering the
-  `null` opt-out and the manage-false interplay (OQ 1).
+  `90`, `nullable = true`, validation `7 <= days <= 365` (OQ 3b),
+  description covering the `null` opt-out and the manage-false interplay
+  (OQ 1a: rotation resource silently omitted when `manage = false`).
 - [ ] New `secret_rotation.tf`: the `aws_secretsmanager_secret_rotation`
   resource, `count`-gated per OQ 1 resolution, `secret_id` from
   `master_user_secret[0].secret_arn`.
@@ -304,7 +305,17 @@ automatically, and the static gate covers fmt/validate/lint/docs.
 
 ## Open Questions
 
+> **Resolved 2026-07-29: 1a, 2a, 3b.** The rotation resource is silently
+> omitted when `manage_master_user_password = false` (count guard, no
+> two-keyed escape hatch); a LocalStack parity gap does not block — plan
+> tests gate and the gap lands in FINDINGS.md; and the validation bounds are
+> the **opinionated `7–365`** (3b — no faster than AWS's own 7-day default,
+> no slower than yearly; a deliberate policy constraint, chosen over the raw
+> 1–1000 API bounds).
+
 ### 1. What happens when `manage_master_user_password = false` while `master_secret_rotation_days` is set?
+
+**Resolved: a.**
 
 With the default at `90`, every `manage = false` migration would carry a
 non-null rotation value unless the operator also nulls it — so the two
@@ -324,6 +335,8 @@ variables' interplay needs a deliberate rule.
 
 ### 2. What is the fallback if LocalStack Pro cannot exercise managed-secret rotation adoption?
 
+**Resolved: a.**
+
 - **a. (Recommended) Implement anyway; plan tests gate; document the parity
   gap.** The rotation resource's plan shape is fully assertable without an
   apply; the gap is recorded in each suite's `FINDINGS.md` per the RFC-0001
@@ -339,7 +352,12 @@ variables' interplay needs a deliberate rule.
 
 ### 3. What are the validation bounds for `master_secret_rotation_days`?
 
-- **a. (Recommended) `1–1000`** — mirror the Secrets Manager API bounds for
+**Resolved: b — `7–365`.** Policy is deliberately encoded in the constraint
+as well as the default: the fleet does not rotate faster than AWS's own
+7-day default nor slower than yearly. A cadence outside that band is a
+policy conversation (edit the module), not a variable override.
+
+- a. `1–1000` — mirror the Secrets Manager API bounds for
   `AutomaticallyAfterDays` and keep *policy* in the default (90), not the
   constraint. Operators who deliberately want weekly (7) or annual-ish (365)
   cadences stay unblocked; the API remains the arbiter of validity.
