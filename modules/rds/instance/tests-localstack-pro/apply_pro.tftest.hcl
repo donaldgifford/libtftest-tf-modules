@@ -86,6 +86,14 @@ variables {
   deletion_protection = false
   skip_final_snapshot = true
 
+  # LocalStack Pro (2026.7.0) mints the AWS-managed master secret without a
+  # managed-rotation registration, so aws_secretsmanager_secret_rotation
+  # fails there with "No Lambda rotation function ARN is associated with
+  # this secret" (IMPL-0017 Phase 1 parity gap). Opt out via the documented
+  # null path; the plan suite (tests/secret_rotation.tftest.hcl) gates the
+  # rotation surface. See FINDINGS.md.
+  master_secret_rotation_days = null
+
   tags = {
     Environment = "test"
     ManagedBy   = "libtftest"

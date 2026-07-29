@@ -284,14 +284,14 @@ Contingent on the Phase-1 parity result (OQ 2).
 
 #### Tasks
 
-- [ ] If parity holds: add a rotation assertion to the existing apply runs —
+- [x] If parity holds: add a rotation assertion to the existing apply runs —
   `rds/instance` + `rds/cluster` in `tests-localstack-pro/`, `rds/serverless`
   in `tests-localstack/` — asserting the rotation resource applied and
   `rotation_rules[0].automatically_after_days == 90`.
-- [ ] Run the three apply suites locally against LocalStack Pro `2026.7.0`
+- [x] Run the three apply suites locally against LocalStack Pro `2026.7.0`
   (named volume; `just tf test-localstack-pro rds/instance`, `… rds/cluster`,
   `just tf test-localstack rds/serverless`).
-- [ ] Update each suite's `FINDINGS.md` with the rotation outcome (pass, or
+- [x] Update each suite's `FINDINGS.md` with the rotation outcome (pass, or
   the documented parity gap per OQ 2a's fallback).
 
 #### Success Criteria
@@ -299,6 +299,23 @@ Contingent on the Phase-1 parity result (OQ 2).
 - Apply suites pass with the rotation assertions (or the parity gap is
   documented in FINDINGS.md and the assertions are plan-covered instead) —
   no silent coverage loss either way.
+
+#### Result
+
+**Complete via the OQ 2a fallback branch (2026-07-29).** Parity does not
+hold (Phase 1), so the conditional rotation assertions are vacuous —
+instead each apply suite's top-level `variables` block passes
+`master_secret_rotation_days = null` (the documented opt-out) with an
+in-file comment naming the gap, and the plan suites keep the rotation
+surface gated. All three apply suites re-run and green against LocalStack
+Pro **2026.7.0** (named volume, version confirmed via
+`/_localstack/health`): `rds/serverless` `test-localstack` **3/3**,
+`rds/instance` `test-localstack-pro` **3/3**, `rds/cluster`
+`test-localstack-pro` **3/3**. Each module's `tests-localstack/FINDINGS.md`
+gained an "IMPL-0017 — managed master secret rotation: LocalStack parity
+gap" section recording the failure text, the fallback, and the
+re-enable path (drop the null override + add the apply-time assertion)
+if a future LocalStack release registers managed rotation.
 
 ### Phase 6: Documentation + release
 
