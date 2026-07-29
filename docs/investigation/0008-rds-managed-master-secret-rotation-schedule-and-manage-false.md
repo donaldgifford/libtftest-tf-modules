@@ -175,19 +175,32 @@ managed secret or use IAM auth.
 
 1. **90-day rotation default, module-owned** (pending F5): each secret-owning
    module (`instance`, `serverless`, `cluster`) gains an
-   `aws_secretsmanager_secret_rotation` adopting its managed master secret
-   with a `rate(90 days)` default schedule, surfaced per OQ 1. No change to
-   `proxy` (consumer) or `read-replica` (no secret).
-2. **Plan-time guardrail on `manage = false`** per OQ 2: the broken
-   fresh-create combination fails at plan with an actionable message instead
-   of at the RDS API.
+   `aws_secretsmanager_secret_rotation` adopting its managed master secret,
+   surfaced as `master_secret_rotation_days` (number, default `90`, `null` =
+   emit no rotation resource — OQ 1a). No change to `proxy` (consumer) or
+   `read-replica` (no secret).
+2. **Plan-time guardrail on `manage = false`** (OQ 2a): a precondition on the
+   DB resource — `manage_master_user_password ||
+   var.iam_database_authentication_enabled` — so the broken fresh-create
+   combination fails at plan with an actionable message instead of at the
+   RDS API.
 3. Implementation follows as a small IMPL (or single PR) after the OQs are
    answered and F5 is probed; plan tests cover the new validation and the
    rotation resource's presence/absence per configuration.
 
 ## Open Questions
 
+> **Resolved 2026-07-29: 1a, 2a, 3a.** The rotation surface is
+> `master_secret_rotation_days` (number, default `90`, `null` = no rotation
+> resource); the guardrail is a plan-time precondition
+> (`manage_master_user_password || var.iam_database_authentication_enabled` —
+> variable name verified identical across all three modules); both changes
+> land on `rds/instance` + `rds/serverless` + `rds/cluster` in one PR.
+> Implementation proceeds once F5 is probed.
+
 ### 1. What variable surface controls the rotation schedule?
+
+**Resolved: a.**
 
 - **a. (Recommended)** `master_secret_rotation_days` (`number`, default
   `90`, `null` = leave AWS's default schedule untouched / emit no rotation
@@ -205,6 +218,8 @@ managed secret or use IAM auth.
 
 ### 2. What shape does the `manage = false` guardrail take?
 
+**Resolved: a.**
+
 - **a. (Recommended)** Plan-time precondition on the DB resource:
   `manage_master_user_password || var.iam_database_authentication_enabled`,
   with an error message spelling out the two valid paths (keep the managed
@@ -221,6 +236,8 @@ managed secret or use IAM auth.
 - Other: (your call)
 
 ### 3. Which modules take the change?
+
+**Resolved: a.**
 
 - **a. (Recommended)** All three secret-owning modules (`rds/instance`,
   `rds/serverless`, `rds/cluster`) take both the rotation default and the
