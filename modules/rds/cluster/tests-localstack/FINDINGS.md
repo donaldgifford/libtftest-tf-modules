@@ -160,3 +160,22 @@ need not pre-create the IAM role. The six Terragrunt-provided globals
 `remote_state_bucket_region`/`deploy_role_name`) come from the shared
 `test/fixtures/terragrunt-inputs.tfvars`, passed via `-var-file` by the recipes;
 the setup run seeds its stub state at the matching account-scoped key.
+
+## IMPL-0017 — managed master secret rotation: LocalStack parity gap
+
+The module's `aws_secretsmanager_secret_rotation` (the 90-day default via
+`master_secret_rotation_days`) **cannot apply on LocalStack Pro**: 2026.7.0
+mints the RDS-managed master secret with `OwningService: rds` but no
+managed-rotation registration (`RotationEnabled: null`), so the schedule-only
+`RotateSecret` call real AWS supports fails with
+`InvalidRequestException: No Lambda rotation function ARN is associated with
+this secret` (probed out-of-tree, IMPL-0017 Phase 1).
+
+Per OQ 2a this suite passes `master_secret_rotation_days = null` (the
+documented opt-out) so the apply exercises everything else; the rotation
+surface is gated by the plan suite (`tests/secret_rotation.tftest.hcl` — count
+gate, 90-day default, `rotate_immediately = false`). Re-verified with this
+suite passing 3/3 against LocalStack Pro 2026.7.0 (named volume). If a future
+LocalStack release registers managed rotation on the RDS secret, drop the
+null override and add an apply-time assertion on
+`rotation_rules[0].automatically_after_days`.

@@ -97,7 +97,24 @@ Tracked in git. As of this writing:
   bind mount (the `lstk` default) — Docker Desktop's file-sharing ignores
   `chown`, so LocalStack's embedded Postgres `initdb` fails on data-dir
   ownership. Run LocalStack Pro directly with a named volume for these tests
-  (see the module's `tests-localstack/FINDINGS.md`).
+  (see the module's `tests-localstack/FINDINGS.md`). **Master-secret rotation
+  + manage-false guardrail (INV-0008 / IMPL-0017):** the three secret-owning
+  modules (`instance`, `serverless`, `cluster`) share an identical surface —
+  `master_secret_rotation_days` (number, default 90, `null` = leave AWS's
+  7-day default alone, validation 7–365) driving a count-gated
+  `aws_secretsmanager_secret_rotation` in each module's `secret_rotation.tf`
+  that adopts the AWS-managed master secret (`rotate_immediately = false`,
+  no lambda; omitted when `manage_master_user_password = false`), plus a
+  precondition on the DB resource (`manage || iam_auth`) so the
+  no-auth-path combination (`manage = false` without IAM auth — no password
+  input exists by design) fails at plan, mirroring `rds/proxy`'s fail-closed
+  consumer precondition. LocalStack Pro 2026.7.0 parity gap: it mints the
+  managed secret without a managed-rotation registration, so the rotation
+  resource cannot apply there — apply suites pass
+  `master_secret_rotation_days = null`; the plan suites gate the surface.
+  Live deployments pick up the 90-day schedule on their next apply: the
+  rotation resource adopts the existing managed secret in place
+  (schedule-only — no secret replacement, no credential change).
 - **`modules/efs/`** — `filesystem` (IMPL-0008, implemented — the AWS-API
   companion to the EKS addons module's already-installed `aws-efs-csi-driver`
   per DESIGN-0008). The `filesystem/` sub-directory leaves room for future
