@@ -38,6 +38,11 @@ resource "aws_vpc_security_group_egress_rule" "to_db" {
   from_port                    = local.port
   to_port                      = local.port
   ip_protocol                  = "tcp"
-  description                  = "Egress to the target DB security group on the engine port (proxy → DB, DESIGN-0010 Q3)"
-  tags                         = var.tags
+  # NB: SG rule descriptions accept ONLY a-zA-Z0-9 and ._-:/()#,@[]+=&;{}!$*
+  # — real AWS rejects anything else (e.g. a unicode arrow) with a misleading
+  # "strings less than 256 characters" InvalidParameterValue; LocalStack does
+  # not enforce the charset, so only a real deploy catches it. Keep this and
+  # every SG/SG-rule description plain ASCII from that set.
+  description = "Egress to the target DB security group on the engine port (proxy to DB, DESIGN-0010 Q3)"
+  tags        = var.tags
 }
