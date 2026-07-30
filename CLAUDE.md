@@ -231,9 +231,23 @@ Tracked in git. As of this writing:
   FINDINGS.md` records the account-scoped-read + assume_role-on-LocalStack note.
 
 The design and decision rationale for the fleet lives in `docs/adr/`
-(ADR-0001..0016), `docs/rfc/` (RFC-0001..0003), `docs/design/`
-(DESIGN-0001..0017), and `docs/investigation/` (INV-0001..0007). Phase-based
-implementation tracking lives in `docs/impl/` (IMPL-0001..0015).
+(ADR-0001..0020), `docs/rfc/` (RFC-0001..0003), `docs/design/`
+(DESIGN-0001..0017), and `docs/investigation/` (INV-0001..0008). Phase-based
+implementation tracking lives in `docs/impl/` (IMPL-0001..0017).
+
+**Remote-state key contract (ADR-0020):** every cross-module read composes
+the account-scoped key `<account_name>/<region>/<shape>/<name>/terraform.
+tfstate` (`shape` ∈ vpc / eks / rds/{instance,cluster,serverless}) — but the
+producer's actual key comes from the Terragrunt live repo's folder layout,
+which this repo cannot see. `<name>` is triple-coupled (producer
+identifier == live-repo folder == consumer input, e.g. `identifier_prefix`
+== `target_identifier` for `rds/proxy`). Each consumer's plan suite pins its
+composed `config.key` with an ADR-0020 assertion (the `target_dir_map` in
+`rds/proxy` is pinned for all three target types); each affected module's
+README carries a "Remote-state key contract" section. A wrong path fails the
+consumer plan loudly but vaguely (`Unable to find remote state` — no
+bucket/key in the error). The live-repo folder-naming leg is deliberately
+unenforced here (belongs in the live repo).
 
 ### In-tree Go tooling (`tools/`)
 

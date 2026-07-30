@@ -120,4 +120,18 @@ run "default_shape" {
     condition     = length(aws_kms_alias.this) == 0
     error_message = "BYO KMS must plan zero module-managed aws_kms_alias resources"
   }
+
+  # ADR-0020 key-template pin: the vpc read must compose the contract key
+  # <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.vpc.config.key == "sandbox/us-east-1/vpc/libtftest-vpc/terraform.tfstate"
+    error_message = "vpc remote-state read must compose <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
+
+  # ADR-0020 key-template pin: the eks read must compose the contract key
+  # <account_name>/<region>/eks/<cluster_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.eks.config.key == "sandbox/us-east-1/eks/libtftest-eks/terraform.tfstate"
+    error_message = "eks remote-state read must compose <account_name>/<region>/eks/<cluster_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }

@@ -130,6 +130,22 @@ positional index. Removing a middle key does **not** renumber or replace the
 survivors — only the removed reader is destroyed. Keep keys stable across
 applies.
 
+## Remote-state key contract (ADR-0020)
+
+This module **reads** the source cluster's state at:
+
+```text
+<account_name>/<region>/rds/cluster/<cluster_identifier>/terraform.tfstate
+```
+
+`cluster_identifier` must equal the `rds/cluster` module's
+`identifier_prefix` AND that cluster's live-repo folder name. A path
+mismatch fails this module's plan with `Unable to find remote state` (the
+error names neither bucket nor key — diff against this contract; the
+stale-state precondition only fires when the state exists but is
+incomplete). The key template is pinned by a plan assertion in
+`tests/default.tftest.hcl`; see ADR-0020 for the fleet table.
+
 ## Tests
 
 ```bash

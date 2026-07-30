@@ -151,4 +151,11 @@ run "default_plan" {
     condition     = length(aws_iam_role.efs_csi) == 0 && length(aws_eks_addon.efs_csi_driver) == 0
     error_message = "EFS CSI resources must be empty when var.efs_csi_enabled = false"
   }
+
+  # ADR-0020 key-template pin: the eks read must compose the contract key
+  # <account_name>/<region>/eks/<cluster_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.eks.config.key == "sandbox/us-east-1/eks/libtftest-cluster/terraform.tfstate"
+    error_message = "eks remote-state read must compose <account_name>/<region>/eks/<cluster_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }

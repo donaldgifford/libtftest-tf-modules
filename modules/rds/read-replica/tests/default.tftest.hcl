@@ -89,6 +89,13 @@ run "single_reader" {
     condition     = aws_rds_cluster_instance.replica["primary"].instance_class == "db.r6g.large"
     error_message = "Reader instance_class must come from the replicas entry"
   }
+
+  # ADR-0020 key-template pin: the rds_cluster read must compose the contract key
+  # <account_name>/<region>/rds/cluster/<cluster_identifier>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.rds_cluster.config.key == "sandbox/us-east-1/rds/cluster/platform-rds/terraform.tfstate"
+    error_message = "rds_cluster remote-state read must compose <account_name>/<region>/rds/cluster/<cluster_identifier>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }
 
 run "three_readers" {

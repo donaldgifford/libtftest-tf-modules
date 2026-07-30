@@ -104,6 +104,23 @@ The RDS / EKS / EFS modules then resolve `vpc_id` + `private_subnet_ids`
 from that key with **no change on their side** — they already read
 `data.terraform_remote_state.vpc` at exactly this key.
 
+## Remote-state key contract (ADR-0020)
+
+This module owns no reads, but its state is the **producer side** of the
+fleet's VPC contract — it **must be published at** (i.e. the Terragrunt
+live-repo directory must be):
+
+```text
+<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate
+```
+
+Every VPC consumer (`eks/cluster`, `eks/managed-node-group`,
+`rds/{serverless,cluster,instance}`, `efs/filesystem`) composes exactly
+this key from its own `vpc_name` input. A folder-name mismatch fails the
+consumer plan with `Unable to find remote state` (the error names neither
+bucket nor key — diff against this contract). See ADR-0020 for the fleet
+table.
+
 ## Tests
 
 ```bash

@@ -112,3 +112,17 @@ Terraform module does not enforce this — it is an operational property of
 the consumer's Terragrunt configuration.
 
 [Usage docs](./USAGE.md)
+
+## Remote-state key contract (ADR-0020)
+
+This module **reads** the cluster's state at:
+
+```text
+<account_name>/<region>/eks/<cluster_name>/terraform.tfstate
+```
+
+`cluster_name` must equal the `eks/cluster` stack's live-repo folder name.
+A mismatch fails this module's plan with `Unable to find remote state`
+(the error names neither bucket nor key — diff against this contract). The
+key template is pinned by a plan assertion in `tests/mode_a.tftest.hcl`;
+see ADR-0020 for the fleet table.

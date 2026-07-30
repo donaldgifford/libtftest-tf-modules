@@ -157,4 +157,18 @@ run "default_plan" {
     condition     = aws_eks_node_group.this.capacity_type == "ON_DEMAND"
     error_message = "capacity_type default must be ON_DEMAND per ADR-0009"
   }
+
+  # ADR-0020 key-template pin: the eks read must compose the contract key
+  # <account_name>/<region>/eks/<cluster_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.eks.config.key == "sandbox/us-east-1/eks/libtftest-cluster/terraform.tfstate"
+    error_message = "eks remote-state read must compose <account_name>/<region>/eks/<cluster_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
+
+  # ADR-0020 key-template pin: the vpc read must compose the contract key
+  # <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate. The producer's live-repo directory must match.
+  assert {
+    condition     = data.terraform_remote_state.vpc.config.key == "sandbox/us-east-1/vpc/libtftest-vpc/terraform.tfstate"
+    error_message = "vpc remote-state read must compose <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
 }

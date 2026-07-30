@@ -241,3 +241,18 @@ module "node_group" {
 The `containerd_pull_through_mirror` block is separately opt-in per
 IMPL-0005 Q8 — independent from the IAM gate so callers can attach the
 policy without redirecting runtime traffic (e.g., during validation).
+
+## Remote-state key contract (ADR-0020)
+
+This module **reads** two producer states:
+
+```text
+<account_name>/<region>/eks/<cluster_name>/terraform.tfstate
+<account_name>/<region>/vpc/<vpc_name>/terraform.tfstate
+```
+
+`cluster_name` / `vpc_name` must equal the producer stacks' live-repo
+folder names. A mismatch fails this module's plan with `Unable to find
+remote state` (the error names neither bucket nor key — diff against this
+contract). Both key templates are pinned by plan assertions in
+`tests/default.tftest.hcl`; see ADR-0020 for the fleet table.
