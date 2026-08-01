@@ -340,6 +340,12 @@ configuration). General bucket stacks key as
 `access-logs` the one reserved stack name. ADR-0020's table gains both
 rows; the consumer plan suites pin the composed access-logs key.
 
+A **non-default log sink** needs no key-shape support: it is just another
+stack of the same `access-logs-bucket` module deployed at its own
+`s3/<stack-name>` with overridden vars, and any consumer that wants it
+points there via the OQ-3 `target_bucket` override instead of the default
+lookup. The reserved path only defines what "zero configuration" means.
+
 - a) `s3/<type>/<name>` mirroring `rds/<type>/<name>` — e.g.
   `<account>/<region>/s3/access-logs/default/terraform.tfstate`.
 - **b) (Chosen, as written above)** Flat `s3/<name>` with `access-logs` as
