@@ -21,6 +21,7 @@ Design docs, plans, and implementation docs can reference investigations by ID
 | INV-0006 | CI test gating on changed terraform modules with LocalStack | Open | 2026-07-24 | Donald Gifford | [0006-ci-test-gating-on-changed-terraform-modules-with-localstack.md](0006-ci-test-gating-on-changed-terraform-modules-with-localstack.md) |
 | INV-0007 | Open Renovate and Dependabot PR and security-alert triage | Open | 2026-07-24 | Donald Gifford | [0007-open-renovate-and-dependabot-pr-and-security-alert-triage.md](0007-open-renovate-and-dependabot-pr-and-security-alert-triage.md) |
 | INV-0008 | RDS managed master secret rotation schedule and manage-false guardrails | Concluded | 2026-07-29 | Donald Gifford | [0008-rds-managed-master-secret-rotation-schedule-and-manage-false.md](0008-rds-managed-master-secret-rotation-schedule-and-manage-false.md) |
+| INV-0009 | S3 module family layout and security baseline | Open | 2026-08-01 | Donald Gifford | [0009-s3-module-family-layout-and-security-baseline.md](0009-s3-module-family-layout-and-security-baseline.md) |
 <!-- END DOCZ AUTO-GENERATED -->
 <!-- BEGIN DOCZ AUTO-GENERATED -->
 <!-- END DOCZ AUTO-GENERATED -->
