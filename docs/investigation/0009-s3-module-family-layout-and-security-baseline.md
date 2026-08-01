@@ -1,7 +1,7 @@
 ---
 id: INV-0009
 title: "S3 module family layout and security baseline"
-status: Open
+status: In Progress
 author: Donald Gifford
 created: 2026-08-01
 ---
@@ -9,7 +9,7 @@ created: 2026-08-01
 
 # INV 0009: S3 module family layout and security baseline
 
-**Status:** Open
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-08-01
 
@@ -258,50 +258,105 @@ each FINDINGS.md like the IMPL-0017 parity note.
 
 ## Conclusion
 
-**Answer:** pending OQ resolutions. The desk findings all point one way:
-purpose modules with a contract-tested duplicated core, a tri-state
-access-logging contract on a new ADR-0020 `s3` shape, and a
-mostly-Community test tier. The two LocalStack fidelity probes are the only
-unknowns and neither blocks design.
+**Answer (OQs resolved 2026-08-01):** purpose modules over a shared
+**internal core** at `modules/s3/internal/core`, consumed by relative path
+so the core rides each purpose module's tag with no independent version to
+drift (OQ 1 = c, conditional on the core never gaining a versioned source).
+The family ships the F2 baseline (SSE-KMS `aws/s3` default with CMK
+override, versioning off by default, HTTPS-only + TLS ≥ 1.2 deny, opt-in
+VPCE-only policy), the F4 tri-state access-logging contract defaulting to a
+remote-state lookup of the reserved flat key
+`<account_name>/<region>/s3/access-logs/terraform.tfstate` with a
+sending-bucket-name log prefix, and composed naming
+`<name>-<account_id>-<region>` plus an opt-in 5-char random shard prefix.
+Initial scope is three modules — `access-logs-bucket` + `bucket`, then
+`events-bucket`; `cloudfront-origin-bucket` and `presigned-transfer-bucket`
+stay cataloged but deferred. The two LocalStack fidelity probes ride the
+first apply suite and block nothing at design time.
 
 ## Recommendation
 
-Resolve the OQs, then split the work docz-style: one DESIGN doc for the
-family (baseline + contracts + catalog), then per-module IMPLs starting
-with the OQ-8 order. ADR-0020 gains the `s3` shape row, and each new module
-ships its key assertions + README contract section from the first commit.
+Write one DESIGN doc for the family scoped to the internal core + the three
+in-scope modules (baseline + contracts + catalog), then per-module IMPLs in
+the OQ-8 order (`access-logs-bucket` + `bucket`, then `events-bucket`),
+with the F6 probes riding the first apply suite. ADR-0020 gains the `s3`
+shape row (general `s3/<stack-name>`, reserved `s3/access-logs`), and each
+new module ships its key assertions + README contract section from the
+first commit. The deferred modules get their own build-order call when
+picked up.
 
 ## Open Questions
 
+> **Resolved 2026-08-01:** 1 = **c** (internal core, version-drift concern
+> answered structurally below), 2 = flat reserved path per the operator's
+> live layout, 3 = **a modified** (prefix defaults to the sending bucket's
+> name), 4 = **a**, 5 = **deferred** (module deferred), 6 = **a**,
+> 7 = **a + opt-in shard prefix**, 8 = **a modified**
+> (`cloudfront-origin-bucket` and `presigned-transfer-bucket` deferred —
+> they stay cataloged in F5 with build order TBD when picked up).
+
 ### 1. Which architecture does the family use?
 
-- **a) (Recommended)** Purpose modules with a deliberately duplicated
-  security core, pinned by an identical `security_baseline.tftest.hcl` per
-  module (F1; the fleet's fork-and-diverge precedent).
+**Resolved (c).** The no-nesting rule is bent one level for `modules/s3/`
+only, because the version-mismatch pain that motivates the rule cannot
+occur here: the purpose modules consume the core via **relative path**
+(`source = "../internal/core"`), which Terraform resolves inside the same
+cloned ref of this repo. The live repo pins
+`//modules/s3/<purpose>?ref=<tag>`, and the core rides that identical tag —
+there is no independent core version to bump, so core/consumer drift is
+structurally impossible. Renovate keeps its existing job (ref bumps in the
+live repo); no extra sync tooling is needed. **Condition:** the core must
+never gain a versioned source (registry / git-ref); if it ever does, this
+resolution is void and (a)'s duplicated-core shape applies. The per-module
+`security_baseline.tftest.hcl` stays regardless — it pins each purpose
+module's *composed result*, guarding against a core change silently
+altering a sibling's baseline.
+
+- a) Purpose modules with a deliberately duplicated security core, pinned
+  by an identical `security_baseline.tftest.hcl` per module (F1; the
+  fleet's fork-and-diverge precedent).
 - b) Single module with a `bucket_type` discriminator + nullable per-type
   config objects (the union-in-disguise; F1 row 2).
-- c) Thin purpose modules over one internal `s3/internal/core` module —
-  bends the no-nesting rule one level; revisit if the family grows past ~8
-  siblings and copy-paste drift bites despite the contract tests.
+- **c) (Chosen)** Thin purpose modules over one internal
+  `s3/internal/core` module — one-level nesting, relative-path source.
 - d) One wide wrapper module.
 
 ### 2. What is the ADR-0020 state-key shape for s3?
 
-- **a) (Recommended)** `s3/<type>/<name>` mirroring the `rds/<type>/<name>`
-  precedent — e.g.
-  `<account>/<region>/s3/access-logs/default/terraform.tfstate`, with
-  `default` as the conventional singleton name the F4 lookup composes (a
-  second access-logs bucket for a special case is just another `<name>`).
-  Live-repo folder = key, per ADR-0020.
-- b) Flat `s3/<name>` with `access-logs` as a reserved name — one segment
-  shorter but collapses the type namespace and makes the reserved-name rule
-  implicit.
+**Resolved (flat, reserved well-known path — the operator's written live
+layout is authoritative).** The access-logs singleton lives at
+`live/<account>/<region>/s3/access-logs/terragrunt.hcl`, so the F4 lookup
+composes exactly:
+
+```text
+<account_name>/<region>/s3/access-logs/terraform.tfstate
+```
+
+(no extra `<name>` segment — this supersedes the `default` sub-segment
+sketched in (a); the opinionated fixed path is deliberate, so every bucket
+stack under `live/<account>/<region>/s3/` gets logging by default with zero
+configuration). General bucket stacks key as
+`<account_name>/<region>/s3/<stack-name>/terraform.tfstate`, with
+`access-logs` the one reserved stack name. ADR-0020's table gains both
+rows; the consumer plan suites pin the composed access-logs key.
+
+- a) `s3/<type>/<name>` mirroring `rds/<type>/<name>` — e.g.
+  `<account>/<region>/s3/access-logs/default/terraform.tfstate`.
+- **b) (Chosen, as written above)** Flat `s3/<name>` with `access-logs` as
+  a reserved name.
 
 ### 3. What variable shape does the consumer-side access-logging contract take?
 
-- **a) (Recommended)** The single tri-state object of F4 (`enabled` /
-  `target_bucket` / `prefix`, default = enabled + lookup) — one variable,
-  three states, count-gated remote-state read.
+**Resolved (a, modified).** The single tri-state object stands, with the
+defaults pinned as: `enabled` — default **true**, disableable;
+`target_bucket` — default **null = remote-state lookup** at the OQ-2 key,
+overridable with an explicit bucket name (no remote-state read when
+overridden); `prefix` — default **the sending bucket's composed name**
+(the OQ-7 result, e.g. `<shard->-<name>-<account_id>-<region>/`, trailing
+slash) so the access-logs bucket self-organizes by source, overridable.
+
+- **a) (Chosen, with the defaults above)** The single tri-state object of
+  F4 — one variable, three states, count-gated remote-state read.
 - b) Two flat variables (`access_logging_enabled` bool +
   `access_logs_bucket_override` string) — same semantics, noisier surface.
 - c) Always-on with override, no disable — strictest, but breaks
@@ -310,7 +365,9 @@ ships its key assertions + README contract section from the first commit.
 
 ### 4. What is the default encryption mode?
 
-- **a) (Recommended)** SSE-KMS with the AWS-managed `aws/s3` key +
+**Resolved (a).**
+
+- **a) (Chosen)** SSE-KMS with the AWS-managed `aws/s3` key +
   `bucket_key_enabled = true`, CMK override via `kms_key_arn` (the stated
   requirement; mirrors the RDS BYO-KMS pattern). Access-logs bucket exempt
   (F3: SSE-S3 forced).
@@ -319,7 +376,11 @@ ships its key assertions + README contract section from the first commit.
 
 ### 5. How much CloudFront does the origin-bucket module own?
 
-- **a) (Recommended)** Bucket side only: the module accepts
+**Deferred (2026-08-01).** The `cloudfront-origin-bucket` module itself is
+deferred (with `presigned-transfer-bucket`); both stay cataloged in F5 and
+this OQ is decided when the module is picked up.
+
+- a) Bucket side only: the module accepts
   `cloudfront_distribution_arns` and emits the OAC-ready policy; the
   distribution itself is a future `modules/cloudfront/` concern (keeps the
   service-dir boundary, keeps this module plan-testable for the policy
@@ -330,7 +391,9 @@ ships its key assertions + README contract section from the first commit.
 
 ### 6. What shape does the VPCE-only policy restriction take?
 
-- **a) (Recommended)** Opt-in explicit list: `allowed_vpc_endpoint_ids`
+**Resolved (a).**
+
+- **a) (Chosen)** Opt-in explicit list: `allowed_vpc_endpoint_ids`
   (default `[]` = no restriction); non-empty adds a
   deny-unless-`aws:SourceVpce`-in-list statement. No coupling to
   `vpc-lookup` remote state (an S3 gateway endpoint id is not part of that
@@ -344,22 +407,38 @@ ships its key assertions + README contract section from the first commit.
 
 ### 7. What bucket-naming convention guarantees global uniqueness?
 
-- **a) (Recommended)** `<name>-<account_id>-<region>` composed by the
-  module (S3 names are a global namespace; the account+region suffix makes
-  fleet collisions structurally impossible and encodes provenance), with a
-  `name_override` escape hatch for externally-dictated names. 63-char limit
-  enforced by validation (name up to 37 chars after the 26-char suffix).
+**Resolved (a, plus an opt-in shard prefix).** Default composed name
+`<name>-<account_id>-<region>` with the `name_override` escape hatch, and
+an explicit opt-in (`shard_prefix_enabled`, default false) that prepends a
+5-character `random_string` (lowercase alphanumeric, kept stable via the
+resource's lifecycle) for key-distribution/sharding purposes:
+`<shard-prefix>-<name>-<account_id>-<region>`. The `random` provider joins
+the family's `required_providers` (a first for the fleet's modules); the
+63-char validation accounts for the extra 6 characters when the shard
+prefix is enabled.
+
+- **a) (Chosen, with the shard-prefix addition)**
+  `<name>-<account_id>-<region>` composed by the module (S3 names are a
+  global namespace; the account+region suffix makes fleet collisions
+  structurally impossible and encodes provenance), with a `name_override`
+  escape hatch for externally-dictated names. 63-char limit enforced by
+  validation.
 - b) Caller-supplied verbatim name only — simplest, but every consumer
   reinvents uniqueness and collisions surface as apply-time
   `BucketAlreadyExists`.
 
 ### 8. What is the build order?
 
-- **a) (Recommended)** `access-logs-bucket` + `bucket` first (producer of
-  the F4 contract + the reference baseline implementation the others fork),
-  then `events-bucket`, then `cloudfront-origin-bucket`, then
-  `presigned-transfer-bucket` — each as its own IMPL, with the F6 probes
-  riding the first apply suite.
+**Resolved (a, modified).** `access-logs-bucket` + `bucket` first
+(producer of the F4 contract + the reference consumer of the core), then
+`events-bucket`. `cloudfront-origin-bucket` and
+`presigned-transfer-bucket` are **deferred** — they remain in the F5
+catalog, but their build order and OQ-5 scope are TBD when they are picked
+up. The F6 probes ride the first apply suite.
+
+- **a) (Chosen, trimmed to three modules)** `access-logs-bucket` +
+  `bucket` first, then `events-bucket` — each as its own IMPL, with the F6
+  probes riding the first apply suite.
 - b) All five in one IMPL — one review, but a large blast radius and the
   probe learnings cannot feed the later modules.
 
