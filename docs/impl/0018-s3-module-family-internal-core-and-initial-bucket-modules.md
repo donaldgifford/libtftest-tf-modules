@@ -138,7 +138,7 @@ suite, and the two CI corrections.
       lifecycle (`abort_incomplete_multipart_days` default 7 +
       `extra_lifecycle_rules`); preconditions: composed-name
       length/charset, `kms_key_arn` requires kms mode
-- [ ] 1.5 policy.tf: composed policy document — fixed
+- [x] 1.5 policy.tf: composed policy document — fixed
       `DenyInsecureTransport` + `DenyOldTls` sids, opt-in VPCE deny from
       `allowed_vpc_endpoint_ids`, `internal_policy_statements` merge
       (OQ 2a: typed object list — required `sid`, optional

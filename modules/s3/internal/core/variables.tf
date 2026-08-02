@@ -106,3 +106,48 @@ variable "tags" {
   default     = {}
   nullable    = false
 }
+
+#--------------------------------------------------------------
+# Bucket policy inputs (DESIGN-0019 F2 + OQ 4b)
+#--------------------------------------------------------------
+
+variable "allowed_vpc_endpoint_ids" {
+  description = "Opt-in VPCE-only restriction (INV-0009 OQ 6): non-empty adds a deny-unless-aws:SourceVpce-in-list statement (reserved sid DenyOutsideVpce). CAUTION: locks out console and any non-VPCE access path — including the deployer role unless the deploy path rides a listed endpoint. Default [] = no restriction."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "internal_policy_statements" {
+  description = "Purpose-module statement injection (DESIGN-0019 OQ 4b — additive-only; carries any operator additional_policy_statements the purpose module passes through). Statements append after the baseline denies and can never shadow them: the reserved sids (DenyInsecureTransport, DenyOldTls, DenyOutsideVpce) are rejected at plan. resource_suffixes are relative to the bucket ARN (\"\" = the bucket, \"/*\" = objects) — an input cannot reference this module's own bucket_arn output."
+  type = list(object({
+    sid               = string
+    effect            = optional(string, "Allow")
+    principals        = optional(map(list(string)), {})
+    actions           = list(string)
+    resource_suffixes = optional(list(string), ["", "/*"])
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for s in var.internal_policy_statements :
+      !contains(["DenyInsecureTransport", "DenyOldTls", "DenyOutsideVpce"], s.sid)
+    ])
+    error_message = "internal_policy_statements must not reuse the reserved baseline sids (DenyInsecureTransport, DenyOldTls, DenyOutsideVpce) — the merge is additive-only; injected statements can never shadow or replace the baseline."
+  }
+
+  validation {
+    condition = alltrue([
+      for s in var.internal_policy_statements : can(regex("^[A-Za-z0-9]+$", s.sid))
+    ])
+    error_message = "Every injected statement needs an alphanumeric Sid (the IAM policy Sid charset) — the sid is how plan suites and the reserved-sid guard identify statements."
+  }
+
+  nullable = false
+}
