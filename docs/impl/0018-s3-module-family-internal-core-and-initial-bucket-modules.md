@@ -130,7 +130,7 @@ suite, and the two CI corrections.
       `name_override`, count-gated `random_string` (5 lowercase alnum)
       behind `shard_prefix_enabled`, composed-name local; destructive
       shard-toggle note in README
-- [ ] 1.4 bucket.tf: `aws_s3_bucket` (+ `force_destroy`, tags),
+- [x] 1.4 bucket.tf: `aws_s3_bucket` (+ `force_destroy`, tags),
       public-access block (all four on, no variables), ownership controls
       (BucketOwnerEnforced, no variable), versioning (`versioning_enabled`
       default false), SSE configuration from the `encryption` object (kms

@@ -38,3 +38,71 @@ variable "region" {
   type        = string
   nullable    = false
 }
+
+#--------------------------------------------------------------
+# Security baseline knobs (DESIGN-0019 F2 — fixed controls have no
+# variable at all: PAB, BucketOwnerEnforced, the TLS policy denies)
+#--------------------------------------------------------------
+
+variable "encryption" {
+  description = "Server-side encryption. mode \"kms\" (default) = SSE-KMS with the AWS-managed aws/s3 key + bucket key, or a CMK via kms_key_arn (required for cross-account consumers — the aws/s3 key cannot be policy-edited). mode \"s3\" = SSE-S3/AES256 (the access-logs sink only — log delivery does not write to KMS targets). kms_key_arn with mode \"s3\" fails at plan."
+  type = object({
+    mode        = optional(string, "kms")
+    kms_key_arn = optional(string)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["kms", "s3"], var.encryption.mode)
+    error_message = "encryption.mode must be \"kms\" or \"s3\"."
+  }
+
+  nullable = false
+}
+
+variable "versioning_enabled" {
+  description = "Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2; cost + per-stack opt-in durability, noted against the CIS default-on nudge)."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
+variable "force_destroy" {
+  description = "Allow destroy to delete a non-empty bucket. Off by default — the baseline treats data loss as opt-in; test fixtures set it true for teardown."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
+variable "abort_incomplete_multipart_days" {
+  description = "Days after initiation before an incomplete multipart upload is aborted (baseline hygiene rule — abandoned MPUs accrue invisible storage cost)."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.abort_incomplete_multipart_days >= 1
+    error_message = "abort_incomplete_multipart_days must be at least 1."
+  }
+
+  nullable = false
+}
+
+variable "extra_lifecycle_rules" {
+  description = "Additional lifecycle rules appended after the baseline MPU-abort rule (e.g. the access-logs sink's retention expiration; a staging-prefix expiry). prefix null = whole bucket."
+  type = list(object({
+    id                                 = string
+    enabled                            = optional(bool, true)
+    prefix                             = optional(string)
+    expiration_days                    = optional(number)
+    noncurrent_version_expiration_days = optional(number)
+  }))
+  default  = []
+  nullable = false
+}
+
+variable "tags" {
+  description = "Tags applied to every taggable resource in the module."
+  type        = map(string)
+  default     = {}
+  nullable    = false
+}

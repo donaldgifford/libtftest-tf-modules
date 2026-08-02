@@ -11,6 +11,7 @@
 
 | Name | Version |
 | ---- | ------- |
+| aws | 6.57.1 |
 | random | 3.9.0 |
 
 ## Modules
@@ -21,17 +22,29 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
+| [aws_s3_bucket.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
+| [aws_s3_bucket_lifecycle_configuration.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_lifecycle_configuration) | resource |
+| [aws_s3_bucket_ownership_controls.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_ownership_controls) | resource |
+| [aws_s3_bucket_public_access_block.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
+| [aws_s3_bucket_versioning.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_versioning) | resource |
 | [random_string.shard_prefix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| abort\_incomplete\_multipart\_days | Days after initiation before an incomplete multipart upload is aborted (baseline hygiene rule — abandoned MPUs accrue invisible storage cost). | `number` | `7` | no |
 | account\_id | 12-digit AWS account ID, composed into the bucket name for global uniqueness + provenance. Terragrunt-injected in production; from the shared var-file in tests. | `string` | n/a | yes |
+| encryption | Server-side encryption. mode "kms" (default) = SSE-KMS with the AWS-managed aws/s3 key + bucket key, or a CMK via kms\_key\_arn (required for cross-account consumers — the aws/s3 key cannot be policy-edited). mode "s3" = SSE-S3/AES256 (the access-logs sink only — log delivery does not write to KMS targets). kms\_key\_arn with mode "s3" fails at plan. | ```object({ mode = optional(string, "kms") kms_key_arn = optional(string) })``` | `{}` | no |
+| extra\_lifecycle\_rules | Additional lifecycle rules appended after the baseline MPU-abort rule (e.g. the access-logs sink's retention expiration; a staging-prefix expiry). prefix null = whole bucket. | ```list(object({ id = string enabled = optional(bool, true) prefix = optional(string) expiration_days = optional(number) noncurrent_version_expiration_days = optional(number) }))``` | `[]` | no |
+| force\_destroy | Allow destroy to delete a non-empty bucket. Off by default — the baseline treats data loss as opt-in; test fixtures set it true for teardown. | `bool` | `false` | no |
 | name | Logical bucket name. Composed into the real bucket name as <name>-<account\_id>-<region> (plus the optional shard prefix). Lowercase alphanumeric + hyphens, 3-37 chars, must start/end alphanumeric — the length cap leaves room for the composed suffix within S3's 63-char limit. | `string` | n/a | yes |
 | name\_override | Escape hatch: use this exact bucket name verbatim, skipping <name>-<account\_id>-<region> composition (externally-dictated names). The composed-name length/charset precondition still applies to the override. | `string` | `null` | no |
 | region | AWS region, composed into the bucket name for global uniqueness + provenance. Terragrunt-injected in production; from the shared var-file in tests. | `string` | n/a | yes |
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random lowercase-alphanumeric prefix to the composed bucket name (<shard>-<name>-<account\_id>-<region>) for key-distribution/sharding. Toggling this after creation renames and therefore REPLACES the bucket. | `bool` | `false` | no |
+| tags | Tags applied to every taggable resource in the module. | `map(string)` | `{}` | no |
+| versioning\_enabled | Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2; cost + per-stack opt-in durability, noted against the CIS default-on nudge). | `bool` | `false` | no |
 
 ## Outputs
 
