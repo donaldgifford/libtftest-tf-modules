@@ -181,7 +181,7 @@ The per-region log sink; producer of the reserved-key contract.
 
 #### Tasks
 
-- [ ] 2.1 Module: core call with SSE-S3 pinned
+- [x] 2.1 Module: core call with SSE-S3 pinned
       (`encryption = { mode = "s3" }`), versioning pinned off, **no**
       access_logging surface; log-delivery grant via
       `internal_policy_statements` (`logging.s3.amazonaws.com`,
@@ -189,7 +189,7 @@ The per-region log sink; producer of the reserved-key contract.
       DESIGN-0019 OQ 2a); retention via `extra_lifecycle_rules`
       (`log_retention_days` default 90, null disables — OQ 1a); `name`
       defaults to `"access-logs"` (OQ 3a)
-- [ ] 2.2 variables.tf (name-composition globals `account_id` +
+- [x] 2.2 variables.tf (name-composition globals `account_id` +
       `region`, retention, shard/name_override/force_destroy/tags
       pass-throughs) and outputs.tf (contract `bucket_name` + additive
       `bucket_arn` / `bucket_id`, `security_baseline` re-export)
