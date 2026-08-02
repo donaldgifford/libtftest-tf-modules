@@ -117,7 +117,7 @@ suite, and the two CI corrections.
 
 #### Tasks
 
-- [ ] 1.1 justfile: hoist `tf_test_varfile` to an absolute path
+- [x] 1.1 justfile: hoist `tf_test_varfile` to an absolute path
       (`justfile_directory() + "/test/fixtures/terragrunt-inputs.tfvars"`)
       so depth-4 module dirs resolve the shared var-file; verify an
       existing module still passes (`just tf test network/vpc-lookup`)
