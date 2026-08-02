@@ -24,7 +24,9 @@ Every baseline resource of a family bucket (DESIGN-0019 F2 baseline):
 - The `aws_s3_bucket` with composed global-unique naming
   (`<name>-<account_id>-<region>`), a `name_override` escape hatch, and
   an opt-in 5-character random shard prefix
-  (`<shard>-<name>-<account_id>-<region>`).
+  (`<shard>-<name>-<account_id>-<region>`). **Destructive toggle:**
+  flipping `shard_prefix_enabled` after creation renames and therefore
+  replaces the bucket; the prefix itself is stable across applies.
 - Block Public Access (all four flags, fixed on).
 - Ownership controls: `BucketOwnerEnforced` (fixed — ACLs disabled).
 - Encryption: SSE-KMS with the AWS-managed `aws/s3` key +

@@ -126,7 +126,7 @@ suite, and the two CI corrections.
       `.tflint.hcl` + `.terraform-docs.yml` copied from
       `network/vpc-lookup`, README (not independently consumable; nesting
       exemption + never-versioned condition), generated USAGE.md
-- [ ] 1.3 naming.tf: `name` validation (lowercase alnum + hyphens, 3-37),
+- [x] 1.3 naming.tf: `name` validation (lowercase alnum + hyphens, 3-37),
       `name_override`, count-gated `random_string` (5 lowercase alnum)
       behind `shard_prefix_enabled`, composed-name local; destructive
       shard-toggle note in README
