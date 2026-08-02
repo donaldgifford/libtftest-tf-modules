@@ -147,7 +147,7 @@ suite, and the two CI corrections.
 - [x] 1.6 logging.tf: `logging` object input, count-gated
       `aws_s3_bucket_logging`, null-prefix defaulting to
       `<composed-name>/`, self-logging precondition
-- [ ] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,
+- [x] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,
       `bucket_policy_json`, `logging_target` + `logging_prefix`,
       attribute-derived `security_baseline` object (DESIGN-0019 shape)
 - [ ] 1.8 Core plan suites (`tests/`): baseline defaults, encryption
