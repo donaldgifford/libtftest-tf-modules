@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0019
 title: "S3 module family internal core and initial bucket modules"
-status: Draft
+status: Approved
 author: Donald Gifford
 created: 2026-08-02
 ---
@@ -9,7 +9,7 @@ created: 2026-08-02
 
 # DESIGN 0019: S3 module family internal core and initial bucket modules
 
-**Status:** Draft
+**Status:** Approved
 **Author:** Donald Gifford
 **Date:** 2026-08-02
 
@@ -187,7 +187,7 @@ operators):
 | `abort_incomplete_multipart_days` | number | 7 | The hygiene lifecycle rule |
 | `extra_lifecycle_rules` | list(object) | [] | Typed minimal shape (id, prefix, expiration_days, ...); used by access-logs retention |
 | `allowed_vpc_endpoint_ids` | list(string) | [] | Non-empty adds the VPCE-only deny (INV-0009 OQ 6) |
-| `internal_policy_statements` | list(object) | [] | Purpose-module-internal statement injection (access-logs delivery grant; future OAC). **Not** re-exposed by `s3/bucket` (OQ 4 below) |
+| `internal_policy_statements` | list(object) | [] | Purpose-module statement injection: the module's own statements (access-logs delivery grant; future OAC) plus the pass-through target for the consumer-facing `additional_policy_statements` (OQ 4 — additive-only; reserved-sid validation) |
 | `logging` | object({ target_bucket = string, prefix = optional(string) }) or null | null | Pre-resolved by the caller (the remote-state read lives in the purpose module — see Module: bucket); null prefix defaults to `<composed-name>/` inside the core |
 | `tags` | map(string) | {} | |
 
@@ -237,8 +237,14 @@ statement; README carries the locks-out-console-and-deployer caveat).
 
 The policy document is composed in the core from: the two fixed denies +
 the optional VPCE deny + `internal_policy_statements` (purpose-module
-injections). One `aws_s3_bucket_policy` resource; statements carry stable
-`sid`s so plan suites can assert on them by name via `jsondecode`.
+injections, which include any operator-supplied
+`additional_policy_statements` passed through by the consumer modules —
+OQ 4). One `aws_s3_bucket_policy` resource; statements carry stable
+`sid`s so plan suites can assert on them by name via `jsondecode`. The
+merge is **additive-only**: baseline statements always render regardless
+of what is injected, and a core validation rejects injected statements
+carrying a reserved baseline sid, so nothing an operator adds can shadow
+or replace the baseline.
 
 ### The security-baseline output surface
 
@@ -337,7 +343,10 @@ shard prefix is unknown until apply).
 
 Everything else is pass-through to the core: `versioning_enabled`,
 `kms_key_arn`, `force_destroy`, `allowed_vpc_endpoint_ids`,
-`shard_prefix_enabled`, `name_override`, MPU days, tags.
+`shard_prefix_enabled`, `name_override`, MPU days, tags — plus
+`additional_policy_statements` (OQ 4: appended additively into the
+core-composed policy; the baseline denies always render and reserved
+baseline sids are rejected).
 
 **Bootstrapping order:** in a fresh account+region, the reserved
 `s3/access-logs` stack applies first; until then any bucket stack on the
@@ -348,8 +357,8 @@ key, per ADR-0020 practice). A deliberately log-less stack sets
 
 ### Module: events-bucket
 
-`bucket`'s surface (tri-state included) plus the notification type
-surface. `aws_s3_bucket_notification` is a **per-bucket singleton** — all
+`bucket`'s surface (tri-state and `additional_policy_statements`
+included) plus the notification type surface. `aws_s3_bucket_notification` is a **per-bucket singleton** — all
 destinations live in one resource in the purpose module's root (so plan
 suites can assert on it directly). Destination variables per OQ 5 below;
 a precondition requires at least one destination (an events bucket with
@@ -415,7 +424,9 @@ Four layers, cheapest first:
      (`override_data` stub, config remains assertable), disabled and
      override paths assert the data source composes zero instances;
    - `validation.tftest.hcl`: tri-state combinations, naming bounds,
-     events-bucket destination precondition.
+     events-bucket destination precondition, and the OQ-4 guarantees —
+     an additive statement renders alongside the untouched baseline sids,
+     and a reserved-sid statement fails via `expect_failures`.
 3. **Community apply suites** (`tests-localstack/`, token-free Community
    image, `SERVICES=s3,sts` + `sqs,sns,events` for events-bucket):
    - access-logs-bucket: standalone real apply.
@@ -427,7 +438,8 @@ Four layers, cheapest first:
    - events-bucket: fixture SQS queue + queue policy (+ EventBridge);
      runs **F6 probe 2** (do notifications fire fast enough to assert?).
    - Probe outcomes land in each FINDINGS.md (IMPL-0017 parity-note
-     precedent); fallback depth per OQ 6.
+     precedent); a negative probe falls back to config-surface depth
+     (OQ 6a).
 4. **Static gate:** fmt / validate / tflint / terraform-docs across the
    four new directories, automatically.
 
@@ -467,8 +479,10 @@ Success criteria:
 Tasks:
 
 - [ ] Module over the core: SSE-S3 pinned, versioning pinned off, no
-      access_logging surface, log-delivery grant statement (per OQ 2),
-      retention lifecycle default (per OQ 1), name default (per OQ 3)
+      access_logging surface, log-delivery grant statement (OQ 2a:
+      `aws:SourceAccount`-only), retention lifecycle default (OQ 1a:
+      90-day expiration, `log_retention_days`, null disables), name
+      default (OQ 3a: `"access-logs"`)
 - [ ] Contract outputs: `bucket_name` + additive `bucket_arn`, `bucket_id`
 - [ ] Plan suites: shared `security_baseline.tftest.hcl` (first
       instance), default shape (grant sid + AES256 + retention),
@@ -492,9 +506,13 @@ Tasks:
 - [ ] Module over the core: six Terragrunt globals, tri-state
       `access_logging`, count-gated remote-state read with `assume_role`,
       resolved logging into the core; pass-through baseline knobs
+- [ ] `additional_policy_statements` pass-through (OQ 4b: additive-only
+      merge into `internal_policy_statements`, reserved-baseline-sid
+      validation in the core)
 - [ ] Plan suites: shared baseline file; ADR-0020 `config.key` assertion
       (enabled path) + zero-instance assertions (disabled + override
-      paths); tri-state and naming validations
+      paths); tri-state and naming validations; OQ-4 assertions (additive
+      statement renders beside intact baseline sids; reserved sid fails)
 - [ ] Community apply: composing fixture (real access-logs-bucket module
       + reserved-key state seed), default-lookup apply, **F6 probe 1**,
       FINDINGS.md
@@ -514,7 +532,8 @@ Success criteria:
 Tasks:
 
 - [ ] Module over the core: bucket surface + notification singleton +
-      destination variables (per OQ 5) + at-least-one-destination
+      destination variables (OQ 5a: typed `sns_topics` / `sqs_queues`
+      lists + `eventbridge_enabled` bool) + at-least-one-destination
       precondition
 - [ ] Plan suites: shared baseline file; notification shape; ADR-0020
       assertions (same three paths); destination precondition
@@ -555,9 +574,17 @@ Success criteria:
 Numbering continues INV-0009's convention: option (a) is the
 recommendation; pick a letter or write in an alternative.
 
+> **Resolved 2026-08-02 (operator review):** 1 = **a**, 2 = **a**,
+> 3 = **a**, 4 = **b modified** (additive-only — the core baseline stays
+> fixed; operator statements add, never remove), 5 = **a**, 6 = **a**.
+> The OQ-4 resolution is folded back into the Detailed Design (policy
+> composition, bucket surface, Testing Strategy, Phase 3 tasks).
+
 ### 1. What retention default does the access-logs bucket ship?
 
-- a) **(Recommended)** Expiration after 90 days, configurable
+**Resolved (a).**
+
+- a) **(Chosen)** Expiration after 90 days, configurable
   (`log_retention_days`, null disables) — INV-0009 F3's sketch; logs are
   operational exhaust, not records; unbounded growth is the real
   foot-gun.
@@ -570,7 +597,9 @@ recommendation; pick a letter or write in an alternative.
 
 ### 2. How is the log-delivery policy grant conditioned?
 
-- a) **(Recommended)** `aws:SourceAccount` only — any bucket in the
+**Resolved (a).**
+
+- a) **(Chosen)** `aws:SourceAccount` only — any bucket in the
   account can point at the sink with zero per-source policy edits, which
   is exactly the zero-configuration default the tri-state promises.
   Cross-account delivery stays impossible.
@@ -581,7 +610,9 @@ recommendation; pick a letter or write in an alternative.
 
 ### 3. Does the access-logs bucket default its own name?
 
-- a) **(Recommended)** `name` defaults to `"access-logs"` — the singleton
+**Resolved (a).**
+
+- a) **(Chosen)** `name` defaults to `"access-logs"` — the singleton
   becomes literally zero-configuration
   (bucket `access-logs-<account_id>-<region>`), matching the reserved
   stack path; overridable for non-default sinks.
@@ -590,19 +621,32 @@ recommendation; pick a letter or write in an alternative.
 
 ### 4. Does the general-purpose bucket expose custom policy statements?
 
-- a) **(Recommended)** No — `internal_policy_statements` stays
+**Resolved (b, modified — additive-only).** The consumer modules
+(`bucket`, `events-bucket`) expose `additional_policy_statements`, but
+the merge is strictly **additive**: the core's fixed baseline denies and
+the purpose module's internal statements always render, operator
+statements can only add alongside them, and a validation rejects the
+reserved baseline sids so an additive statement can never shadow or
+replace one. The core default remains authoritative — this is an
+escape hatch for extra grants (cross-account reads, service principals),
+not a way to loosen the baseline.
+
+- a) No — `internal_policy_statements` stays
   core-internal (purpose modules only). A raw statement passthrough on
   `s3/bucket` re-opens the wide-wrapper door and un-audits the policy
   surface; a recurring statement need is a new purpose module (the
   family's founding premise).
-- b) Expose `additional_policy_statements` on `s3/bucket` as a documented
+- b) **(Chosen, additive-only)** Expose `additional_policy_statements`
+  on `s3/bucket` as a documented
   escape hatch — pragmatic for one-off cross-account read grants without
-  a module release, at the cost of the family's "not a foot-gun"
-  guarantee.
+  a module release; the additive-only merge + reserved-sid validation
+  keeps the "not a foot-gun" guarantee intact.
 
 ### 5. What shape does the events-bucket destination surface take?
 
-- a) **(Recommended)** Three typed inputs mirroring the provider's
+**Resolved (a).**
+
+- a) **(Chosen)** Three typed inputs mirroring the provider's
   blocks: `sns_topics` + `sqs_queues` as
   `list(object({ arn, events, filter_prefix, filter_suffix }))` and
   `eventbridge_enabled` bool (EventBridge is all-events by design — no
@@ -615,7 +659,9 @@ recommendation; pick a letter or write in an alternative.
 
 ### 6. What happens if the LocalStack fidelity probes come back negative?
 
-- a) **(Recommended)** Ship anyway at config-surface depth: apply suites
+**Resolved (a).**
+
+- a) **(Chosen)** Ship anyway at config-surface depth: apply suites
   assert the logging/notification **configuration** round-trips, skip
   delivery/firing assertions, and FINDINGS.md records the parity gap
   (exactly IMPL-0017's LocalStack-rotation precedent). Delivery is AWS's
