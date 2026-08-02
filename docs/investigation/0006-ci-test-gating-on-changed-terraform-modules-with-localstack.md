@@ -1,7 +1,7 @@
 ---
 id: INV-0006
 title: "CI test gating on changed terraform modules with LocalStack"
-status: Open
+status: Concluded
 author: Donald Gifford
 created: 2026-07-24
 ---
@@ -9,7 +9,7 @@ created: 2026-07-24
 
 # INV 0006: CI test gating on changed terraform modules with LocalStack
 
-**Status:** Open
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-07-24
 
@@ -150,6 +150,11 @@ a runner in one step, so CI and local `just tf` stay byte-identical. No
 per-tool `setup-*` actions needed.
 
 ## Conclusion
+
+> **Concluded 2026-08-02:** delivered by ADR-0018 / ADR-0019 + IMPL-0016
+> (Completed — see its Phase-6 closure note for what remains behind the
+> `CI_RUN_LOCALSTACK_APPLY` toggle and the operator-owned branch-protection
+> flip).
 
 **Answer: The pipeline should be rebuilt around `terraform test` + `just tf`,
 gated by a `paths-filter` → matrix over changed `modules/<service>/<name>/`, with
