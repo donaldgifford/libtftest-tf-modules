@@ -59,9 +59,10 @@ reference consumer), and `s3/events-bucket` (object-event notifications) —
 each shipping the F2 security baseline, the F4 tri-state access-logging
 contract, and full plan/apply test coverage from the first commit.
 
-Per operator direction, phase tracking lives **in this document** (tasks +
-success criteria per phase below) instead of per-module IMPL docs; this
-supersedes INV-0009's per-module-IMPL recommendation.
+Phase tracking: the phases below are the design-level map; **execution
+tracking lives in IMPL-0018** (one IMPL for the whole family — still not
+per-module, superseding INV-0009's per-module-IMPL recommendation), which
+mirrors these five phases with finer-grained tasks.
 
 ## Goals and Non-Goals
 
@@ -396,9 +397,11 @@ the data source on the disabled/override paths.
   included, for its own plan suite). Covered by new
   `changed-modules.test.sh` cases via the existing
   `CHANGED_FILES_OVERRIDE` seam.
-- **justfile:** `just tf <action> s3/internal/core` and the three purpose
-  paths work unchanged (the recipes take any path under `modules/`);
-  verified as a Phase 1 task, no recipe edit expected.
+- **justfile:** one edit needed (found during IMPL-0018 research) — the
+  shared `tf_test_varfile` is a relative path with three parent segments,
+  which breaks for the depth-4 core directory; Phase 1 hoists it to an
+  absolute path built from the justfile's own directory. The recipes
+  otherwise take any path under `modules/` unchanged.
 - **Tiers:** all three purpose modules ship `tests-localstack/`
   (Community, like `network/vpc-lookup`); the family adds **no** Pro
   tier. The core ships `tests/` only (plan; it is not independently
