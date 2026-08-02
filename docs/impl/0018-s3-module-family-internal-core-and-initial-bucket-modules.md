@@ -160,7 +160,7 @@ suite, and the two CI corrections.
       `modules/<service>/internal/**` adds every leaf module under
       `modules/<service>/`) + changed-modules.test.sh cases via the
       `CHANGED_FILES_OVERRIDE` seam
-- [ ] 1.10 CLAUDE.md: start the `modules/s3/` section (core + family
+- [x] 1.10 CLAUDE.md: start the `modules/s3/` section (core + family
       shape); commit
 
 #### Success Criteria

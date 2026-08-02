@@ -156,6 +156,39 @@ Tracked in git. As of this writing:
   run and passing 3/3 against token-free `localstack/localstack:4.4`
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
+- **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
+  IMPL-0018, in progress). Architecture: thin purpose modules over one shared
+  **internal core** at `modules/s3/internal/core` (IMPL-0018 Phase 1,
+  implemented), consumed ONLY via the relative path
+  `source = "../internal/core"` so the core rides each purpose module's tag —
+  **the core must never gain a versioned source** (registry/git-ref; the
+  DESIGN-0019 nesting-exemption condition, grep-enforced in Phase 5). The core
+  owns the F2 baseline: composed naming `<name>-<account_id>-<region>` (+
+  opt-in 5-char `random_string` shard prefix — `random ~> 3.7`, a fleet first;
+  toggling it replaces the bucket), fixed PAB + BucketOwnerEnforced, SSE-KMS
+  `aws/s3` + bucket key default (CMK override; `mode = "s3"` AES256 for the
+  access-logs sink), versioning off default, MPU-abort 7d + typed
+  `extra_lifecycle_rules`, composed policy (fixed `DenyInsecureTransport` +
+  `DenyOldTls` reserved sids, opt-in `DenyOutsideVpce`, additive-only typed
+  `internal_policy_statements` with reserved-sid validation and
+  `resource_suffixes` relative to the bucket ARN), caller-resolved `logging`
+  object (null prefix → `<composed-name>/`, self-logging precondition), and
+  the attribute-derived `security_baseline` output (the purpose modules' only
+  test window — child-module resources aren't assertable in `terraform test`;
+  `kms_key_arn` is a documented input-echo exception since the attribute is
+  Optional+Computed → unknown at plan). **Plan-knowability invariant:** policy
+  composition uses the deterministic `local.bucket_arn`
+  (`arn:aws:s3:::<name>`), NOT the resource's unknown-at-plan `arn` attribute.
+  Core plan suite: 19 runs green. CI plumbing shipped with Phase 1: the
+  justfile `tf_test_varfile` is now `justfile_directory()`-absolute (the old
+  three-`../` relative path broke at the core's depth-4 dir), and
+  `scripts/changed-modules.sh` gained the internal-module fan-out (a diff
+  under `modules/<service>/internal/**` re-tests every leaf module of that
+  service; self-test 25/25). Purpose modules land next: `access-logs-bucket`
+  (Phase 2 — reserved ADR-0020 key `<account_name>/<region>/s3/access-logs/`),
+  `bucket` (Phase 3 — tri-state `access_logging`, first count-gated
+  remote-state read), `events-bucket` (Phase 4);
+  `cloudfront-origin-bucket` + `presigned-transfer-bucket` deferred.
 
 ### Shared test fixtures (`test/fixtures/`)
 

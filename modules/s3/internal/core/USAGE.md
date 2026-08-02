@@ -11,8 +11,8 @@
 
 | Name | Version |
 | ---- | ------- |
-| aws | 6.57.1 |
-| random | 3.9.0 |
+| aws | ~> 6.2 |
+| random | ~> 3.7 |
 
 ## Modules
 
