@@ -144,7 +144,7 @@ suite, and the two CI corrections.
       (OQ 2a: typed object list — required `sid`, optional
       effect/principals/conditions) with the reserved-baseline-sid
       validation; one `aws_s3_bucket_policy`
-- [ ] 1.6 logging.tf: `logging` object input, count-gated
+- [x] 1.6 logging.tf: `logging` object input, count-gated
       `aws_s3_bucket_logging`, null-prefix defaulting to
       `<composed-name>/`, self-logging precondition
 - [ ] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,

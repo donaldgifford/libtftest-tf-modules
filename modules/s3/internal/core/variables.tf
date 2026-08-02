@@ -108,6 +108,19 @@ variable "tags" {
 }
 
 #--------------------------------------------------------------
+# Server-access-logging (DESIGN-0019 F4, resolved by the caller)
+#--------------------------------------------------------------
+
+variable "logging" {
+  description = "Pre-resolved server-access-logging wiring, or null for no logging. The tri-state (lookup / override / disabled) lives in the purpose modules — they pass the resolved target here. prefix null defaults to \"<this bucket's final composed name>/\" (resolved in the core; the shard prefix is unknown until apply)."
+  type = object({
+    target_bucket = string
+    prefix        = optional(string)
+  })
+  default = null
+}
+
+#--------------------------------------------------------------
 # Bucket policy inputs (DESIGN-0019 F2 + OQ 4b)
 #--------------------------------------------------------------
 
