@@ -156,7 +156,7 @@ suite, and the two CI corrections.
       default, validation.tftest.hcl `expect_failures` (name charset +
       bounds, composed length, kms-key-on-s3-mode, reserved sid,
       self-logging)
-- [ ] 1.9 changed-modules.sh: internal fan-out rule (diff under
+- [x] 1.9 changed-modules.sh: internal fan-out rule (diff under
       `modules/<service>/internal/**` adds every leaf module under
       `modules/<service>/`) + changed-modules.test.sh cases via the
       `CHANGED_FILES_OVERRIDE` seam

@@ -115,6 +115,33 @@ assert_eq "stray paths: pro empty" '[]' "$(jq -c '.pro' <<<"${out}")"
 out="$(run '')"
 assert_eq "empty diff: community empty" '[]' "$(jq -c '.community' <<<"${out}")"
 
+# ── Case 10: internal-module fan-out -> the whole service (IMPL-0018) ──────
+# Expected set is derived live (every s3/ leaf module) so the case tracks the
+# tree as purpose modules land instead of hard-coding today's membership.
+s3_expected="$(find "${REPO_ROOT}/modules/s3" -name '*.tf' \
+  -not -path '*/tests*/*' -not -path '*/fixtures/*' -print0 \
+  | xargs -0 -n1 dirname | sort -u \
+  | sed "s#^${REPO_ROOT}/modules/##" | jq -Rnc '[inputs]')"
+out="$(run 'modules/s3/internal/core/policy.tf')"
+assert_eq "internal fan-out: changed = every s3 leaf module" \
+  "${s3_expected}" "$(jq -c '.changed' <<<"${out}")"
+assert_eq "internal fan-out: the core itself is included" \
+  'true' "$(jq -c 'any(.changed[]; . == "s3/internal/core")' <<<"${out}")"
+
+# ── Case 11: internal + unrelated module -> union ──────────────────────────
+out="$(run $'modules/s3/internal/core/bucket.tf\nmodules/ecr/org-registry/main.tf')"
+assert_eq "internal + direct: union includes the unrelated module" \
+  'true' "$(jq -c 'any(.changed[]; . == "ecr/org-registry")' <<<"${out}")"
+assert_eq "internal + direct: union includes the s3 members" \
+  'true' "$(jq -c 'any(.changed[]; . == "s3/internal/core")' <<<"${out}")"
+
+# ── Case 12: an internal file does NOT map via the depth-2 direct rule ─────
+# (modules/s3/internal/core/x.tf would slug to "s3/internal", which is not a
+# module — the fan-out rule, not the direct rule, must carry it.)
+out="$(run 'modules/s3/internal/core/versions.tf')"
+assert_eq "internal file: no stray s3/internal slug" \
+  'false' "$(jq -c 'any(.changed[]; . == "s3/internal")' <<<"${out}")"
+
 printf '\n%s passed, %s failed (%s modules; %s localstack; %s pro)\n' \
   "${PASS}" "${FAIL}" "${ALL_COUNT}" "${LS_COUNT}" "${PRO_COUNT}"
 [[ "${FAIL}" -eq 0 ]]
