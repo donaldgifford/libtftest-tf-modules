@@ -141,8 +141,9 @@ suite, and the two CI corrections.
 - [ ] 1.5 policy.tf: composed policy document — fixed
       `DenyInsecureTransport` + `DenyOldTls` sids, opt-in VPCE deny from
       `allowed_vpc_endpoint_ids`, `internal_policy_statements` merge
-      (type per OQ 2 below) with the reserved-baseline-sid validation;
-      one `aws_s3_bucket_policy`
+      (OQ 2a: typed object list — required `sid`, optional
+      effect/principals/conditions) with the reserved-baseline-sid
+      validation; one `aws_s3_bucket_policy`
 - [ ] 1.6 logging.tf: `logging` object input, count-gated
       `aws_s3_bucket_logging`, null-prefix defaulting to
       `<composed-name>/`, self-logging precondition
@@ -197,7 +198,7 @@ The per-region log sink; producer of the reserved-key contract.
       retention rule, composed default name
       `access-logs-<account_id>-<region>`), validation.tftest.hcl
 - [ ] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
-      (image pin per OQ 5)
+      (OQ 5a: token-free `localstack/localstack:4.4`, minimal SERVICES)
 - [ ] 2.5 README with the ADR-0020 producer contract section (reserved
       key, non-default-sink pattern); USAGE.md
 - [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
@@ -239,8 +240,8 @@ read.
       **real** access-logs-bucket module + seeding the reserved-key state
       object into the shared `remote_state_bucket` (proxy / read-replica
       composing-fixture precedent); apply with the default lookup;
-      **F6 probe 1** (log-delivery materialization, per OQ 4) →
-      FINDINGS.md
+      **F6 probe 1** (log-delivery materialization; OQ 4a: manual probe
+      first, then bake only the assertable depth) → FINDINGS.md
 - [ ] 3.5 README consumer contract section; USAGE.md
 - [ ] 3.6 ADR-0020: consumer row + the conditional-read note
 - [ ] 3.7 CLAUDE.md; root README regen; commit
@@ -270,8 +271,8 @@ read.
       shape assertions; ADR-0020 three-path assertions; validation
       (no-destination `expect_failures`)
 - [ ] 4.3 Community apply: SQS queue + queue-policy fixture
-      (+ EventBridge enabled run); **F6 probe 2** (notification firing,
-      per OQ 4) → FINDINGS.md
+      (+ EventBridge enabled run); **F6 probe 2** (notification firing;
+      OQ 4a: manual probe first) → FINDINGS.md
 - [ ] 4.4 README (contract section + destination-policy ownership note);
       USAGE.md; CLAUDE.md; root README regen; commit
 
@@ -290,7 +291,7 @@ read.
 - [ ] 5.1 Static-gate guards: versioned-core-source grep (the core is
       consumed only via the relative path — no registry/git-ref source
       anywhere under `modules/s3/`) + baseline-suite identity check
-      (per OQ 3)
+      (OQ 3a: `diff -q` across the three copies)
 - [ ] 5.2 Full pass from a clean tree: `just static`; all four plan
       suites; all three Community applies
 - [ ] 5.3 Fidelity greps: reserved-key literal consistent across module
@@ -339,8 +340,9 @@ The four layers from DESIGN-0019's Testing Strategy, mapped to commands:
    shared baseline suite + ADR-0020 three-path assertions + type
    surface. These are the CI gate tier.
 3. **Community apply suites** — `just tf test-localstack s3/<module>`
-   against a token-free Community image (OQ 5); composing fixture for
-   `bucket`; probes 1 and 2 with FINDINGS.md outcomes.
+   against the token-free `localstack/localstack:4.4` Community image
+   (OQ 5a); composing fixture for `bucket`; probes 1 and 2 with
+   FINDINGS.md outcomes.
 4. **Static gate** — `just static` (core auto-discovered; Phase-5 guards
    added).
 
@@ -371,9 +373,17 @@ validation block.
 Option (a) is the recommendation; pick a letter or write in an
 alternative.
 
+> **Resolved 2026-08-02 (operator review):** 1 = **a**, 2 = **a**,
+> 3 = **a**, 4 = **a**, 5 = **a for now** — hold the token-free 4.4
+> Community pin; newer LocalStack releases have no token-free edition,
+> so the tier's eventual replacement (hobby-account token or floci
+> testcontainers) is deliberately punted — see the OQ-5 resolution.
+
 ### 1. What is the PR and release cadence across the five phases?
 
-- a) **(Recommended)** One PR per phase, five total: `dont-release` for
+**Resolved (a).**
+
+- a) **(Chosen)** One PR per phase, five total: `dont-release` for
   Phase 1 (CI plumbing + a non-consumable internal module — nothing for
   the live repo to pin) and Phase 5 (guards + docs), `minor` for Phases
   2, 3, 4 (each ships a consumable module, so each gets a tag the live
@@ -391,7 +401,9 @@ alternative.
 Applies to the core's `internal_policy_statements` and the consumer
 modules' `additional_policy_statements` (same type).
 
-- a) **(Recommended)** A typed object list with optionals:
+**Resolved (a).**
+
+- a) **(Chosen)** A typed object list with optionals:
   `sid` (string, required — the reserved-sid validation needs it),
   `effect` (optional, default "Allow"), `principals`
   (optional map(list(string)), e.g. Service/AWS keys), `actions` +
@@ -408,7 +420,9 @@ modules' `additional_policy_statements` (same type).
 
 ### 3. How is the shared baseline test suite kept identical across modules?
 
-- a) **(Recommended)** Plain per-module copies + an identity check in the
+**Resolved (a).**
+
+- a) **(Chosen)** Plain per-module copies + an identity check in the
   Phase-5 static-gate guard (`diff -q` across the three
   security_baseline.tftest.hcl files; any divergence fails CI). Copies
   keep `terraform test` completely standard; the guard makes drift
@@ -423,7 +437,9 @@ modules' `additional_policy_statements` (same type).
 
 ### 4. How are the two LocalStack fidelity probes executed?
 
-- a) **(Recommended)** Manual probe first, suite second: before writing
+**Resolved (a).**
+
+- a) **(Chosen)** Manual probe first, suite second: before writing
   each apply suite's deep assertions, run a throwaway
   terraform-plus-aws-CLI session against the pinned Community image (put
   an object, wait briefly, list the sink / poll the queue), record the
@@ -437,7 +453,21 @@ modules' `additional_policy_statements` (same type).
 
 ### 5. Which LocalStack image do the s3 Community apply suites pin?
 
-- a) **(Recommended)** The token-free Community image, current 4.x at
+**Resolved (a, held at the token-free 4.4 pin — the tier's future is
+punted).** The suites pin the token-free Community
+`localstack/localstack:4.4` (the vpc-lookup precedent). Operator note
+recorded for later: LocalStack's newer releases no longer ship a
+token-free Community edition, so this pin is a holding position, not a
+destination. The eventual options are a "hobby" LocalStack account with
+its own auth token (the closest equivalent of the old Community tier on
+new images), or — more likely — replacing the Community-tier LocalStack
+dependency outright with
+[floci testcontainers for Go](https://floci.io/floci/testcontainers/go/).
+That migration is fleet-wide (vpc-lookup and the EKS/EFS Community
+suites ride the same tier), owns its own future INV, and is out of scope
+here; nothing in this IMPL may take a dependency that assumes a token.
+
+- a) **(Chosen, 4.4 pin held)** The token-free Community image, current 4.x at
   implementation time (the `network/vpc-lookup` precedent — its
   FINDINGS.md pins `localstack/localstack:4.4` with a minimal SERVICES
   list). Keeps the cheap tier genuinely tokenless for CI and
