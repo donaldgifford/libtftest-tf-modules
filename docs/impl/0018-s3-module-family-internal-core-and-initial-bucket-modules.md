@@ -205,8 +205,13 @@ The per-region log sink; producer of the reserved-key contract.
       (tflint-ignored as unused): without it terraform test cannot bind
       the test-file provider block and every plan run fails on real
       credential resolution.
-- [ ] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
-      (OQ 5a: token-free `localstack/localstack:4.4`, minimal SERVICES)
+- [x] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
+      (OQ 5a: token-free `localstack/localstack:4.4`, `SERVICES=s3,sts`)
+      — real apply of the full chain (bucket/PAB/ownership/SSE/
+      versioning/lifecycle/policy), no fixture (pure producer), **run
+      and passing 1/1**; grant with Service principal + SourceAccount
+      condition accepted verbatim; `s3_use_path_style = true` required;
+      teardown clean without force_destroy
 - [ ] 2.5 README with the ADR-0020 producer contract section (reserved
       key, non-default-sink pattern); USAGE.md
 - [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
