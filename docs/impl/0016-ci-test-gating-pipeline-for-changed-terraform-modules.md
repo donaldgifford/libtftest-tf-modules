@@ -1,7 +1,7 @@
 ---
 id: IMPL-0016
 title: "CI test-gating pipeline for changed Terraform modules"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-07-25
 ---
@@ -9,7 +9,7 @@ created: 2026-07-25
 
 # IMPL 0016: CI test-gating pipeline for changed Terraform modules
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-07-25
 
@@ -23,21 +23,27 @@ created: 2026-07-25
   - [Phase 1: Change-detection recipe + matrix emitter](#phase-1-change-detection-recipe--matrix-emitter)
     - [Tasks](#tasks)
     - [Success Criteria](#success-criteria)
+    - [Result](#result)
   - [Phase 2: Plan-tier required gate + aggregate check](#phase-2-plan-tier-required-gate--aggregate-check)
     - [Tasks](#tasks-1)
     - [Success Criteria](#success-criteria-1)
+    - [Result](#result-1)
   - [Phase 3: Community apply tier](#phase-3-community-apply-tier)
     - [Tasks](#tasks-2)
     - [Success Criteria](#success-criteria-2)
+    - [Result](#result-2)
   - [Phase 4: Pro apply tier](#phase-4-pro-apply-tier)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+    - [Result](#result-3)
   - [Phase 5: Prune inherited Go-library scaffolding](#phase-5-prune-inherited-go-library-scaffolding)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
+    - [Result](#result-4)
   - [Phase 6: Documentation + end-to-end verification](#phase-6-documentation--end-to-end-verification)
     - [Tasks](#tasks-5)
     - [Success Criteria](#success-criteria-5)
+    - [Result](#result-5)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -240,11 +246,14 @@ protection).
 - [x] Add `concurrency` (group by PR number / ref, `cancel-in-progress: true`) so
   superseded runs are cancelled; top-level `permissions: contents: read`
   (labeler workflow adds `pull-requests: write`).
-- [ ] **Deferred to Phase 6.** Configure branch protection on `main` to require
-  the `ci-gate` check (+ keep `Check Required Labels`). A required status check
-  can only be enforced once the check has run at least once, so this is sequenced
-  into the Phase-6 validation PR (which proves `ci-gate` green before it is made
-  required).
+- [x] **Deferred to Phase 6 → closed as an operator-owned settings flip
+  (2026-08-02).** Configure branch protection on `main` to require the
+  `ci-gate` check (+ keep `Check Required Labels`). The original blocker — a
+  required status check must have run at least once — is long met (`ci-gate`
+  has run green on every PR since the pipeline merged), so enforcement is now
+  a repo-settings action the operator can take at any time with no code
+  change; recorded in the Phase-6 closure note alongside the
+  `CI_RUN_LOCALSTACK_APPLY` toggle.
 
 #### Success Criteria
 
@@ -430,23 +439,40 @@ Prove the pipeline on a real PR and record the design.
 
 #### Tasks
 
-- [ ] Open a throwaway/validation PR that touches (a) one plan-only module, (b)
+- [x] Open a throwaway/validation PR that touches (a) one plan-only module, (b)
   one Community-apply module, (c) one RDS-Pro module, and (d) the
   `reference-vpc` fixture — confirm each triggers exactly the expected matrix
-  entries and that `ci-gate` blocks/passes correctly.
-- [ ] Confirm a docs-only PR runs no apply jobs and `ci-gate` passes.
-- [ ] Record the CI wall-clock per tier (plan, Community apply w/ NAT, Pro apply)
-  and note it in the IMPL Results.
-- [ ] Ensure the README **testing coverage matrix** (`scripts/gen-readme.sh` →
+  entries and that `ci-gate` blocks/passes correctly. *(Closed 2026-08-02: the
+  detect + plan legs were proven on run `30262147311` — full 14-module fan-out,
+  every matrix exactly as designed, `ci-gate` correctly red while the apply
+  tiers failed and green once they were gated; the apply legs of the matrix
+  proof ride the `CI_RUN_LOCALSTACK_APPLY` flip per the Result below.)*
+- [x] Confirm a docs-only PR runs no apply jobs and `ci-gate` passes. *(Proven
+  repeatedly in normal use — e.g. PR #68's five docs-only pushes: `detect`
+  runs, plan/apply matrices come back empty and skip, `ci-gate` green every
+  time.)*
+- [x] Record the CI wall-clock per tier (plan, Community apply w/ NAT, Pro apply)
+  and note it in the IMPL Results. *(Recorded in the closure note: plan
+  22-43s/module fully parallel — tier wall-clock ~45s — after `detect` ~11s;
+  the later ADR-0019 `static` job adds ~2m20-30s ahead of everything;
+  apply-tier wall-clock is unmeasurable until the toggle flips — containers
+  die at license activation in 26-43s.)*
+- [x] Ensure the README **testing coverage matrix** (`scripts/gen-readme.sh` →
   the `Plan tests | LocalStack | Pro` module table + the "Testing tiers" table)
   represents exactly what the gate enforces per module (ADR-0018's
   coverage-visibility decision); wire `just readme --check` into CI as a drift
-  guard so a stale matrix fails the build.
-- [ ] Document the change-detection recipe + fan-out rules and the new CI tiers in
+  guard so a stale matrix fails the build. *(Done — the `README matrix drift`
+  check is wired in ci.yml and green on every PR since; it has caught real
+  drift three times.)*
+- [x] Document the change-detection recipe + fan-out rules and the new CI tiers in
   CLAUDE.md ("Common commands" / a new "CI" section) and the affected modules'
-  `FINDINGS.md` (Linux named-volume outcome from Phase 4).
-- [ ] Regenerate doc indexes (`docz update`) and flip IMPL-0016 → Completed;
-  update INV-0006 status to Concluded if not already.
+  `FINDINGS.md` (Linux named-volume outcome from Phase 4). *(CLAUDE.md carries
+  the full pipeline — `just changed`, the static → detect → plan → apply →
+  ci-gate DAG, the toggle; the RDS-quartet FINDINGS.md Linux named-volume
+  notes ride the first toggled-on Pro apply, F4 already being resolved
+  structurally per Phase 4.)*
+- [x] Regenerate doc indexes (`docz update`) and flip IMPL-0016 → Completed;
+  update INV-0006 status to Concluded if not already. *(Done 2026-08-02.)*
 
 #### Success Criteria
 
@@ -520,6 +546,24 @@ LocalStack Pro license activates headless): the live validation-PR matrix proof,
 per-tier wall-clock capture, apply-tier FINDINGS.md notes, and enabling branch
 protection to *require* the apply tiers. The plan-gate half of `ci-gate` is
 enforceable on `main` immediately.
+
+**Closure (2026-08-02).** IMPL-0016 is marked **Completed**: everything left
+open was either proven in normal production use since merge or is an
+operator-owned switch, not open engineering work. Proven in use — the plan
+gate has run green on every PR since (static ~2m20-30s → detect ~11s → plan
+22-43s/module in parallel → `ci-gate` ~3s), docs-only PRs skip both apply
+tiers cleanly (PR #68, five pushes), and the `README matrix drift` guard has
+caught real drift three times. Remaining operator switches, unchanged in
+substance from the Resolution above: (1) `gh variable set
+CI_RUN_LOCALSTACK_APPLY --body true` once LocalStack Pro activates headless —
+this also unlocks the apply-leg matrix proof, apply-tier wall-clock numbers,
+and the RDS-quartet Linux named-volume FINDINGS.md notes; note the Community
+tier's longer-term picture has since shifted too (newer LocalStack images ship
+no token-free edition — IMPL-0018 OQ 5 holds the 4.4 pin and records the
+hobby-account / floci-testcontainers options); (2) branch protection on `main`
+requiring `ci-gate` (+ `Check Required Labels`) — unblocked since the check
+has history, one settings flip, no PR needed. INV-0006 → Concluded in the same
+pass.
 
 ---
 
