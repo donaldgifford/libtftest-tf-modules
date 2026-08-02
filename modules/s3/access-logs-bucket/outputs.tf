@@ -31,3 +31,8 @@ output "bucket_policy_json" {
   description = "The composed bucket policy (baseline denies + the log-delivery grant) — re-exported so the plan suites can assert the grant's shape."
   value       = module.core.bucket_policy_json
 }
+
+output "lifecycle_rule_ids" {
+  description = "Lifecycle rule ids (MPU-abort baseline + the expire-access-logs retention rule when log_retention_days is set) — re-exported so the plan suite can pin the retention wiring."
+  value       = module.core.lifecycle_rule_ids
+}

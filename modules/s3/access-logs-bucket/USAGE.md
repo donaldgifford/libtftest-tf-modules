@@ -4,6 +4,7 @@
 | Name | Version |
 | ---- | ------- |
 | terraform | >= 1.1 |
+| aws | ~> 6.2 |
 
 ## Providers
 
@@ -40,5 +41,6 @@ No resources.
 | bucket\_id | The sink's bucket ID (additive contract output). |
 | bucket\_name | The sink's bucket name — THE contract output every family bucket's default access-logging lookup consumes (ADR-0020 key <account\_name>/<region>/s3/access-logs/terraform.tfstate). |
 | bucket\_policy\_json | The composed bucket policy (baseline denies + the log-delivery grant) — re-exported so the plan suites can assert the grant's shape. |
+| lifecycle\_rule\_ids | Lifecycle rule ids (MPU-abort baseline + the expire-access-logs retention rule when log\_retention\_days is set) — re-exported so the plan suite can pin the retention wiring. |
 | security\_baseline | The composed security baseline, re-exported verbatim from the internal core — pinned by this module's security\_baseline.tftest.hcl (F3 variant: AES256). |
 <!-- END_TF_DOCS -->

@@ -193,10 +193,18 @@ The per-region log sink; producer of the reserved-key contract.
       `region`, retention, shard/name_override/force_destroy/tags
       pass-throughs) and outputs.tf (contract `bucket_name` + additive
       `bucket_arn` / `bucket_id`, `security_baseline` re-export)
-- [ ] 2.3 Plan suites: `security_baseline.tftest.hcl` (the canonical
-      first copy), default.tftest.hcl (AES256, grant sid + condition,
-      retention rule, composed default name
-      `access-logs-<account_id>-<region>`), validation.tftest.hcl
+- [x] 2.3 Plan suites: `security_baseline.tftest.hcl` (landed as the
+      documented F3 VARIANT — AES256/no-KMS, so the byte-identical
+      diff-guard pair is bucket/events-bucket), default.tftest.hcl
+      (grant sid + Service principal + SourceAccount condition +
+      objects-only Resource, retention wiring via the new
+      `lifecycle_rule_ids` core output, composed default name
+      `access-logs-<account_id>-<region>`, non-default-sink name run),
+      validation.tftest.hcl (retention 0, name charset) — 6/6 green.
+      Root `versions.tf` gained the aws `~> 6.2` requirement
+      (tflint-ignored as unused): without it terraform test cannot bind
+      the test-file provider block and every plan run fails on real
+      credential resolution.
 - [ ] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
       (OQ 5a: token-free `localstack/localstack:4.4`, minimal SERVICES)
 - [ ] 2.5 README with the ADR-0020 producer contract section (reserved

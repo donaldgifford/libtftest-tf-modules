@@ -60,6 +60,7 @@ No modules.
 | bucket\_id | The bucket's ID (its name, as the provider returns it). |
 | bucket\_name | The bucket's final name — composed <shard->-<name>-<account\_id>-<region> or the name\_override verbatim. |
 | bucket\_policy\_json | The composed bucket policy document (baseline denies + opt-in VPCE + injected statements) — assertable via jsondecode in plan suites. |
+| lifecycle\_rule\_ids | Ids of every lifecycle rule on the bucket, in order (the baseline MPU-abort rule first, then extra\_lifecycle\_rules) — lets purpose-module plan suites pin their rule wiring without reaching into child resources. |
 | logging\_prefix | Resolved server-access-logging prefix (caller value or the '<composed-name>/' default), or null when logging is off. |
 | logging\_target | Resolved server-access-logging target bucket, or null when logging is off. |
 | security\_baseline | The composed security baseline, derived from actual resource attributes — re-exported verbatim by every purpose module and pinned by the shared security\_baseline.tftest.hcl (DESIGN-0019). |
