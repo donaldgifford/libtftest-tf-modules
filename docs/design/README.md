@@ -49,4 +49,5 @@ docz create design "Your Design Title"
 | DESIGN-0015 | Rewire EKS cluster to the private EKS subnet tier | Draft | 2026-07-15 | Donald Gifford | [0015-rewire-eks-cluster-to-the-private-eks-subnet-tier.md](0015-rewire-eks-cluster-to-the-private-eks-subnet-tier.md) |
 | DESIGN-0016 | RDS test fixtures mirror the vpc-lookup remote-state contract | Implemented | 2026-07-23 | Donald Gifford | [0016-rds-test-fixtures-mirror-the-vpc-lookup-remote-state-contract.md](0016-rds-test-fixtures-mirror-the-vpc-lookup-remote-state-contract.md) |
 | DESIGN-0017 | EFS test fixture mirrors the vpc-lookup remote-state contract | Draft | 2026-07-23 | Donald Gifford | [0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md](0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md) |
+| DESIGN-0019 | S3 module family internal core and initial bucket modules | Draft | 2026-08-02 | Donald Gifford | [0019-s3-module-family-internal-core-and-initial-bucket-modules.md](0019-s3-module-family-internal-core-and-initial-bucket-modules.md) |
 <!-- END DOCZ AUTO-GENERATED -->
