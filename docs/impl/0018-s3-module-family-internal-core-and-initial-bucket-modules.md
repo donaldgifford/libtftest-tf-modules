@@ -121,7 +121,7 @@ suite, and the two CI corrections.
       (`justfile_directory() + "/test/fixtures/terragrunt-inputs.tfvars"`)
       so depth-4 module dirs resolve the shared var-file; verify an
       existing module still passes (`just tf test network/vpc-lookup`)
-- [ ] 1.2 Scaffold `modules/s3/internal/core`: versions.tf
+- [x] 1.2 Scaffold `modules/s3/internal/core`: versions.tf
       (`required_version = ">= 1.1"`, aws `~> 6.2`, random `~> 3.7`),
       `.tflint.hcl` + `.terraform-docs.yml` copied from
       `network/vpc-lookup`, README (not independently consumable; nesting
