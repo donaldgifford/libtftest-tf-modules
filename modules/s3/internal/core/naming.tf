@@ -37,4 +37,13 @@ locals {
 
   # The name the bucket actually gets: override verbatim, else composed.
   bucket_name = coalesce(var.name_override, local.composed_name)
+
+  # Plan-knowable ARN for policy composition. aws_s3_bucket.this.arn is
+  # unknown until apply, which would defer data.aws_iam_policy_document
+  # and make the composed json (and every sid assertion in the plan
+  # suites, plus security_baseline's policy-derived fields) unknowable
+  # at plan. S3 bucket ARNs are deterministic (arn:aws:s3:::<name>);
+  # the fleet is aws-partition-only, like the role_arn compositions in
+  # every remote-state read.
+  bucket_arn = "arn:aws:s3:::${local.bucket_name}"
 }

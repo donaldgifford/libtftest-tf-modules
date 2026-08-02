@@ -150,7 +150,7 @@ suite, and the two CI corrections.
 - [x] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,
       `bucket_policy_json`, `logging_target` + `logging_prefix`,
       attribute-derived `security_baseline` object (DESIGN-0019 shape)
-- [ ] 1.8 Core plan suites (`tests/`): baseline defaults, encryption
+- [x] 1.8 Core plan suites (`tests/`): baseline defaults, encryption
       modes (kms default / CMK / s3), naming + shard + override, policy
       sid composition via jsondecode, logging tri-state wiring + prefix
       default, validation.tftest.hcl `expect_failures` (name charset +

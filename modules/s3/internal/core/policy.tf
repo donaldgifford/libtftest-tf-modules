@@ -13,7 +13,10 @@
 # Injected statements name resources as SUFFIXES of the bucket ARN
 # ("" = the bucket, "/*" = objects) because an input literally
 # referencing this module's own bucket_arn output would be a
-# module-boundary cycle.
+# module-boundary cycle. All resources use the plan-knowable
+# local.bucket_arn (naming.tf), NOT aws_s3_bucket.this.arn — the real
+# attribute is unknown until apply and would defer this whole document
+# out of the plan suites' reach.
 #--------------------------------------------------------------
 
 data "aws_iam_policy_document" "bucket" {
@@ -21,7 +24,7 @@ data "aws_iam_policy_document" "bucket" {
     sid       = "DenyInsecureTransport"
     effect    = "Deny"
     actions   = ["s3:*"]
-    resources = [aws_s3_bucket.this.arn, "${aws_s3_bucket.this.arn}/*"]
+    resources = [local.bucket_arn, "${local.bucket_arn}/*"]
 
     principals {
       type        = "*"
@@ -39,7 +42,7 @@ data "aws_iam_policy_document" "bucket" {
     sid       = "DenyOldTls"
     effect    = "Deny"
     actions   = ["s3:*"]
-    resources = [aws_s3_bucket.this.arn, "${aws_s3_bucket.this.arn}/*"]
+    resources = [local.bucket_arn, "${local.bucket_arn}/*"]
 
     principals {
       type        = "*"
@@ -60,7 +63,7 @@ data "aws_iam_policy_document" "bucket" {
       sid       = "DenyOutsideVpce"
       effect    = "Deny"
       actions   = ["s3:*"]
-      resources = [aws_s3_bucket.this.arn, "${aws_s3_bucket.this.arn}/*"]
+      resources = [local.bucket_arn, "${local.bucket_arn}/*"]
 
       principals {
         type        = "*"
@@ -82,7 +85,7 @@ data "aws_iam_policy_document" "bucket" {
       sid       = statement.value.sid
       effect    = statement.value.effect
       actions   = statement.value.actions
-      resources = [for s in statement.value.resource_suffixes : "${aws_s3_bucket.this.arn}${s}"]
+      resources = [for s in statement.value.resource_suffixes : "${local.bucket_arn}${s}"]
 
       dynamic "principals" {
         for_each = statement.value.principals

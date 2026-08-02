@@ -60,10 +60,14 @@ output "security_baseline" {
     restrict_public_buckets = aws_s3_bucket_public_access_block.this.restrict_public_buckets
     object_ownership        = one(aws_s3_bucket_ownership_controls.this.rule).object_ownership
     sse_algorithm           = local.sse_default.sse_algorithm
-    kms_key_arn             = local.sse_default.kms_master_key_id
-    bucket_key_enabled      = local.sse_rule.bucket_key_enabled
-    versioning_status       = one(aws_s3_bucket_versioning.this.versioning_configuration).status
-    mpu_abort_days          = one(local.mpu_abort_rule.abort_incomplete_multipart_upload).days_after_initiation
+    # Deliberate input-echo exception: kms_master_key_id is
+    # Optional+Computed, so when unset it is UNKNOWN at plan (not null)
+    # and would break every plan-suite null assertion. sse_algorithm +
+    # bucket_key_enabled stay attribute-derived and pin the mode.
+    kms_key_arn        = var.encryption.kms_key_arn
+    bucket_key_enabled = local.sse_rule.bucket_key_enabled
+    versioning_status  = one(aws_s3_bucket_versioning.this.versioning_configuration).status
+    mpu_abort_days     = one(local.mpu_abort_rule.abort_incomplete_multipart_upload).days_after_initiation
     tls_deny_sids_present = alltrue([
       contains(local.policy_sids, "DenyInsecureTransport"),
       contains(local.policy_sids, "DenyOldTls"),
