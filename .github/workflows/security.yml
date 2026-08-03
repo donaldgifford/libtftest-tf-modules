@@ -18,6 +18,12 @@ permissions:
 # continue-on-error keeps a known-CVE finding from failing the workflow; the
 # findings themselves are triaged in INV-0007. Note: tools/bedrock-keyctl is
 # slated to move to its own repo, at which point its entry here is dropped.
+#
+# The scan had never actually run: the matrix set go-version-file but not
+# work-dir, so govulncheck executed at the repo root (no go.mod) and exited 1
+# with a zero-byte SARIF, which then hard-failed the upload step and the job.
+# Fixed 2026-08-03 — see the inline notes on work-dir, the integration build
+# tag, and the upload guard.
 jobs:
   check-for-vulnerabilities:
     name: govulncheck (${{ matrix.gomod }})
@@ -28,20 +34,44 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gomod:
-          - tools/bedrock-keyctl
-          - modules/eks/cluster/test
+        include:
+          - gomod: tools/bedrock-keyctl
+            # Ordinary package tree; the default ./... is enough.
+            packages: ./...
+          - gomod: modules/eks/cluster/test
+            # This module is ONLY //go:build integration test files, so a
+            # bare ./... matches no packages ("no packages matched the
+            # provided patterns") and govulncheck exits 1 with empty output.
+            # The action passes go-package through unquoted, so the tag flag
+            # can ride along with the pattern.
+            packages: -tags integration ./...
     steps:
       - uses: donaldgifford/govulncheck-action@v1
+        id: scan
         continue-on-error: true
         with:
+          # work-dir is what actually scopes the scan. go-version-file only
+          # feeds actions/setup-go (which toolchain to install) — without
+          # work-dir the action runs `govulncheck -C .` at the repo root,
+          # which has no go.mod, and fails before writing any SARIF.
+          work-dir: ${{ matrix.gomod }}
           go-version-file: ${{ matrix.gomod }}/go.mod
-          go-package: ./...
+          go-package: ${{ matrix.packages }}
           output-format: sarif
           output-file: govulncheck.sarif
 
+      # The action writes the SARIF with `> file`, so a failed scan still
+      # leaves a zero-byte file that upload-sarif rejects ("Unexpected end
+      # of JSON input") — and that step failing takes the whole job down,
+      # defeating the continue-on-error above. Only upload real output.
       - name: Upload SARIF file
+        if: hashFiles('govulncheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: govulncheck.sarif
           category: govulncheck-${{ matrix.gomod }}
+
+      - name: Report scan outcome
+        if: steps.scan.outcome != 'success'
+        run: |-
+          echo "::warning::govulncheck did not exit cleanly for ${{ matrix.gomod }} (informational, non-gating)"
