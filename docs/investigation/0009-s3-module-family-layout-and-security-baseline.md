@@ -1,7 +1,7 @@
 ---
 id: INV-0009
 title: "S3 module family layout and security baseline"
-status: In Progress
+status: Concluded
 author: Donald Gifford
 created: 2026-08-01
 ---
@@ -9,7 +9,7 @@ created: 2026-08-01
 
 # INV 0009: S3 module family layout and security baseline
 
-**Status:** In Progress
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-08-01
 
@@ -25,7 +25,7 @@ created: 2026-08-01
   - [F3 — The access-logs bucket is a forced exception to its own baseline](#f3--the-access-logs-bucket-is-a-forced-exception-to-its-own-baseline)
   - [F4 — The access-logging consumption contract is a tri-state](#f4--the-access-logging-consumption-contract-is-a-tri-state)
   - [F5 — The initial module catalog](#f5--the-initial-module-catalog)
-  - [F6 — LocalStack tiers: almost everything is Community (probe pending)](#f6--localstack-tiers-almost-everything-is-community-probe-pending)
+  - [F6 — LocalStack tiers: almost everything is Community (probes RESOLVED)](#f6--localstack-tiers-almost-everything-is-community-probes-resolved)
 - [Conclusion](#conclusion)
 - [Recommendation](#recommendation)
 - [Open Questions](#open-questions)
@@ -238,7 +238,7 @@ a second run asserts the disabled path composes no read.
 All five duplicate the F2 core; all except `access-logs-bucket` carry the F4
 tri-state.
 
-### F6 — LocalStack tiers: almost everything is Community (probe pending)
+### F6 — LocalStack tiers: almost everything is Community (probes RESOLVED)
 
 S3, SQS, SNS, and EventBridge are LocalStack Community; CloudFront is
 Pro-only. So four of five modules get real Community applies (the cheap
@@ -255,6 +255,35 @@ unknown to close before IMPL): on the pinned Community image —
 Either way the config surface applies cleanly (plan suites gate it); the
 probe only decides how deep the apply-tier assertions can go, recorded in
 each FINDINGS.md like the IMPL-0017 parity note.
+
+**Probe results (IMPL-0018, 2026-08-02/03, `localstack/localstack:4.4`).**
+Both probes were run manually against the pinned image, and the answer to
+each question is the opposite of the other:
+
+1. **Log delivery — NEGATIVE.** LocalStack stores and round-trips the
+   `PutBucketLogging` configuration faithfully, but never materializes
+   delivered log objects: after 10 requests against a source bucket whose
+   sink carried the exact `AllowS3ServerAccessLogDelivery` policy, the
+   sink was still empty at 60 s and ~150 s, with no container-log
+   activity. Real AWS is also best-effort with hours of latency, so
+   delivery is untestable in a suite either way.
+2. **Notification firing — POSITIVE.** An `s3:ObjectCreated:*` → SQS
+   configuration delivered both the `s3:TestEvent` handshake and a full
+   `ObjectCreated:Put` record (correct `configurationId`, bucket, key,
+   size, eTag) within seconds.
+
+**Consequence — the apply tiers assert the configuration surface in both
+cases, but for different reasons.** For logging the *emulator* is the
+limiter; for notifications the *harness* is (`terraform test` has no way
+to receive an SQS message — there is no data source that reads a queue,
+and pulling in the `external` provider would add a dependency to modules
+that need none). A third, unplanned probe found LocalStack does **not**
+enforce destination policies: registering a notification to a
+policy-less queue succeeds, where real S3 returns `InvalidArgument`. So
+the events-bucket apply *demonstrates* the required queue-policy shape
+(in its fixture) without *verifying* it — the README section is the
+contract. All three findings are recorded in the respective
+`tests-localstack/FINDINGS.md` files.
 
 ## Conclusion
 

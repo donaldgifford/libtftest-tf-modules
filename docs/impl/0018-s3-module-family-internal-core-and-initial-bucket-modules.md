@@ -1,7 +1,7 @@
 ---
 id: IMPL-0018
 title: "S3 module family internal core and initial bucket modules"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-02
 ---
@@ -9,7 +9,7 @@ created: 2026-08-02
 
 # IMPL 0018: S3 module family internal core and initial bucket modules
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-02
 
@@ -377,7 +377,7 @@ read.
 
 - [x] 5.1 Static-gate guards in `scripts/static-check.sh` (new section
       5, so `just static` and the CI `static` job both carry them):
-      (a) any `source = ` line under `modules/s3/` pointing at the core
+      (a) any `source =` line under `modules/s3/` pointing at the core
       must be exactly `"../internal/core"` — a registry name or git ref
       fails; (b) `diff -q` of `events-bucket`'s
       `security_baseline.tftest.hcl` against `bucket`'s. The identity
@@ -398,9 +398,14 @@ read.
       keys; the reserved-key literal is consistent across module code,
       tests, fixtures, READMEs, ADR-0020, DESIGN-0019 and INV-0009; all
       three core consumers use `source = "../internal/core"` verbatim
-- [ ] 5.4 docz closure: INV-0009 → Concluded (probe outcomes recorded in
-      its F6), DESIGN-0019 → Implemented, this IMPL → Completed;
-      `docz update` (restore any TOC mangling); root README regen; commit
+- [x] 5.4 docz closure: INV-0009 → **Concluded** with both probe
+      outcomes written into its F6 (plus the third, unplanned finding
+      that LocalStack does not enforce destination policies),
+      DESIGN-0019 → **Implemented**, this IMPL → **Completed**;
+      `docz update` per type (the known TOC mangling hit impl/0009,
+      impl/0017 and inv/0008 — reverted; the DESIGN-0018 row for the
+      still-untracked file removed from the index again); root README
+      regen; commit
 
 #### Success Criteria
 
