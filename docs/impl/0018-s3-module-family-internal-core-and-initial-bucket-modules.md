@@ -272,12 +272,22 @@ read.
       function (use `toset(a) == toset(b)`). The reserved-sid guard is
       mirrored onto the root variable because `expect_failures` cannot
       target a child module's validation.
-- [ ] 3.4 Community apply: `fixtures/access-logs` instantiating the
-      **real** access-logs-bucket module + seeding the reserved-key state
-      object into the shared `remote_state_bucket` (proxy / read-replica
-      composing-fixture precedent); apply with the default lookup;
-      **F6 probe 1** (log-delivery materialization; OQ 4a: manual probe
-      first, then bake only the assertable depth) → FINDINGS.md
+- [x] 3.4 Community apply (3 runs, **run and passing**):
+      `fixtures/access-logs` instantiates the **real**
+      access-logs-bucket module + seeds the reserved-key state object
+      (composing-fixture precedent; no `reference-vpc` — S3-only suite
+      skips the ~1-2 min NAT). Default-lookup run resolves
+      `logging_target` to the sink the fixture actually created, so the
+      account-scoped + `assume_role` read is proven end to end
+      (LocalStack STS mints creds for the role ARN; global
+      `AWS_ENDPOINT_URL` routes both STS and S3); override run creates
+      zero data-source instances on a real apply.
+      **F6 probe 1 → NEGATIVE:** LocalStack 4.4 round-trips the logging
+      *configuration* faithfully but never materializes delivered log
+      objects (10 requests, sink empty at 60 s and ~150 s, no container
+      log activity). Per DESIGN-0019 OQ 6a the suite asserts the
+      config surface only — no vacuous delivery test. Recorded in
+      FINDINGS.md
 - [ ] 3.5 README consumer contract section; USAGE.md
 - [ ] 3.6 ADR-0020: consumer row + the conditional-read note
 - [ ] 3.7 CLAUDE.md; root README regen; commit
