@@ -315,16 +315,29 @@ read.
 
 #### Tasks
 
-- [ ] 4.1 Module: bucket surface (tri-state +
-      `additional_policy_statements` included) + notification.tf —
-      the singleton `aws_s3_bucket_notification` in the module root,
-      typed `sns_topics` / `sqs_queues`
-      lists (arn, events, filter_prefix, filter_suffix) +
-      `eventbridge_enabled` bool (DESIGN-0019 OQ 5a),
-      at-least-one-destination precondition
-- [ ] 4.2 Plan suites: `security_baseline.tftest.hcl` copy; notification
-      shape assertions; ADR-0020 three-path assertions; validation
-      (no-destination `expect_failures`)
+- [x] 4.1 Module: the full `s3/bucket` surface (tri-state +
+      `additional_policy_statements`) + notification.tf — the singleton
+      `aws_s3_bucket_notification` in the module root, typed
+      `sqs_queues` / `sns_topics` lists (id, arn, events,
+      filter_prefix, filter_suffix; unique-id + non-empty-events
+      validations) + `eventbridge_enabled` (OQ 5a), and the
+      at-least-one-destination precondition. Four notification outputs
+      (`notification_id`, `eventbridge_enabled`, and the two id=>arn
+      maps) give the suites an attribute-derived window. This is the
+      one purpose module whose root aws requirement is genuinely used,
+      so no tflint-ignore
+- [x] 4.2 Plan suites (13 runs green): `security_baseline.tftest.hcl`
+      **byte-identical** to `s3/bucket`'s (verified `diff -q`) — the
+      destination the precondition needs rides in the file-level
+      `variables` block as `eventbridge_enabled = true`, which
+      `s3/bucket` silently ignores. **Gotcha confirmed by probe:** a
+      test-file `variables` block tolerates variables the module under
+      test does not declare, exactly like `-var-file`; that is what
+      makes byte-identity possible. Plus the three ADR-0020 tri-state
+      runs, four notification-shape runs (single SQS, all three kinds
+      at once, per-entry filters, EventBridge-only), and validation
+      (no-destination against the resource, duplicate ids, empty event
+      list, inherited guards)
 - [ ] 4.3 Community apply: SQS queue + queue-policy fixture
       (+ EventBridge enabled run); **F6 probe 2** (notification firing;
       OQ 4a: manual probe first) → FINDINGS.md
