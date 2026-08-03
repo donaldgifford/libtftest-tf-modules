@@ -41,6 +41,11 @@ output "bucket_policy_json" {
   value       = data.aws_iam_policy_document.bucket.json
 }
 
+output "lifecycle_rule_ids" {
+  description = "Ids of every lifecycle rule on the bucket, in order (the baseline MPU-abort rule first, then extra_lifecycle_rules) — lets purpose-module plan suites pin their rule wiring without reaching into child resources."
+  value       = [for r in aws_s3_bucket_lifecycle_configuration.this.rule : r.id]
+}
+
 output "logging_target" {
   description = "Resolved server-access-logging target bucket, or null when logging is off."
   value       = try(aws_s3_bucket_logging.this[0].target_bucket, null)

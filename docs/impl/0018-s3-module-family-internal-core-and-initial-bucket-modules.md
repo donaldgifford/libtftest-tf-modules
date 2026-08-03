@@ -1,7 +1,7 @@
 ---
 id: IMPL-0018
 title: "S3 module family internal core and initial bucket modules"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-02
 ---
@@ -9,7 +9,7 @@ created: 2026-08-02
 
 # IMPL 0018: S3 module family internal core and initial bucket modules
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-02
 
@@ -181,7 +181,7 @@ The per-region log sink; producer of the reserved-key contract.
 
 #### Tasks
 
-- [ ] 2.1 Module: core call with SSE-S3 pinned
+- [x] 2.1 Module: core call with SSE-S3 pinned
       (`encryption = { mode = "s3" }`), versioning pinned off, **no**
       access_logging surface; log-delivery grant via
       `internal_policy_statements` (`logging.s3.amazonaws.com`,
@@ -189,21 +189,43 @@ The per-region log sink; producer of the reserved-key contract.
       DESIGN-0019 OQ 2a); retention via `extra_lifecycle_rules`
       (`log_retention_days` default 90, null disables — OQ 1a); `name`
       defaults to `"access-logs"` (OQ 3a)
-- [ ] 2.2 variables.tf (name-composition globals `account_id` +
+- [x] 2.2 variables.tf (name-composition globals `account_id` +
       `region`, retention, shard/name_override/force_destroy/tags
       pass-throughs) and outputs.tf (contract `bucket_name` + additive
       `bucket_arn` / `bucket_id`, `security_baseline` re-export)
-- [ ] 2.3 Plan suites: `security_baseline.tftest.hcl` (the canonical
-      first copy), default.tftest.hcl (AES256, grant sid + condition,
-      retention rule, composed default name
-      `access-logs-<account_id>-<region>`), validation.tftest.hcl
-- [ ] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
-      (OQ 5a: token-free `localstack/localstack:4.4`, minimal SERVICES)
-- [ ] 2.5 README with the ADR-0020 producer contract section (reserved
-      key, non-default-sink pattern); USAGE.md
-- [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
-- [ ] 2.7 CLAUDE.md; root README module table regen (`just readme`);
-      commit
+- [x] 2.3 Plan suites: `security_baseline.tftest.hcl` (landed as the
+      documented F3 VARIANT — AES256/no-KMS, so the byte-identical
+      diff-guard pair is bucket/events-bucket), default.tftest.hcl
+      (grant sid + Service principal + SourceAccount condition +
+      objects-only Resource, retention wiring via the new
+      `lifecycle_rule_ids` core output, composed default name
+      `access-logs-<account_id>-<region>`, non-default-sink name run),
+      validation.tftest.hcl (retention 0, name charset) — 6/6 green.
+      Root `versions.tf` gained the aws `~> 6.2` requirement
+      (tflint-ignored as unused): without it terraform test cannot bind
+      the test-file provider block and every plan run fails on real
+      credential resolution.
+- [x] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
+      (OQ 5a: token-free `localstack/localstack:4.4`, `SERVICES=s3,sts`)
+      — real apply of the full chain (bucket/PAB/ownership/SSE/
+      versioning/lifecycle/policy), no fixture (pure producer), **run
+      and passing 1/1**; grant with Service principal + SourceAccount
+      condition accepted verbatim; `s3_use_path_style = true` required;
+      teardown clean without force_destroy
+- [x] 2.5 README with the ADR-0020 producer contract section (flat
+      reserved key `<account_name>/<region>/s3/access-logs/
+      terraform.tfstate`, no `<name>` segment; non-default-sink =
+      another live-repo folder + consumer `access_logging.target_bucket`
+      override); USAGE.md already regenerated in 2.3
+- [x] 2.6 ADR-0020: `s3` added to the `<shape>` list (with the flat-key
+      exception), `s3/bucket` consumer row (marked Phase 3, the 13th
+      read), and a "reserved stack name" section — the live-repo folder
+      `s3/access-logs` IS the contract; non-default sinks opt out via
+      the consumer `target_bucket` override
+- [x] 2.7 CLAUDE.md (s3 bullet: Phase 2 implemented — sink posture,
+      flat reserved key, F3 baseline variant, wrapper-module
+      required_providers gotcha, test results); root README module
+      table regen (`just readme` — both s3 modules picked up); commit
 
 #### Success Criteria
 
@@ -220,31 +242,64 @@ read.
 
 #### Tasks
 
-- [ ] 3.1 Module: six Terragrunt globals; tri-state `access_logging`;
-      remote_state.tf — count-gated read of the reserved key with
-      `assume_role` + `region = remote_state_bucket_region`; resolved
-      logging into the core; baseline pass-throughs (`versioning_enabled`,
-      `kms_key_arn`, `force_destroy`, `allowed_vpc_endpoint_ids`,
-      `shard_prefix_enabled`, `name_override`, MPU days, tags)
-- [ ] 3.2 `additional_policy_statements` pass-through into the core's
+- [x] 3.1 Module: six Terragrunt globals; tri-state `access_logging`
+      (validation: target_bucket/prefix require enabled — contradictory
+      combos fail at plan, not silently ignore); count-gated read of the
+      flat reserved key in main.tf with `assume_role` +
+      `use_path_style = true` (rds/instance pattern); resolution via
+      `one(...[*].outputs.bucket_name)` (null on both no-read paths) +
+      `coalesce(override, lookup)`; all baseline pass-throughs.
+      `logging_target`/`logging_prefix` re-exported as the tri-state
+      test window. tflint gotcha: multi-line conditional needs
+      parentheses (`terraform_conditional_parentheses`)
+- [x] 3.2 `additional_policy_statements` pass-through into the core's
       `internal_policy_statements` (DESIGN-0019 OQ 4b: additive-only;
-      the core's reserved-sid validation is the guard)
-- [ ] 3.3 Plan suites: `security_baseline.tftest.hcl` copy;
-      default.tftest.hcl — override_data stub + ADR-0020 assertion
-      (`config.key == "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`
-      on the enabled path), zero-instance assertions on the disabled and
-      override paths, additive statement rendering beside intact baseline
-      sids; validation.tftest.hcl (tri-state combinations, reserved-sid
-      `expect_failures`)
-- [ ] 3.4 Community apply: `fixtures/access-logs` instantiating the
-      **real** access-logs-bucket module + seeding the reserved-key state
-      object into the shared `remote_state_bucket` (proxy / read-replica
-      composing-fixture precedent); apply with the default lookup;
-      **F6 probe 1** (log-delivery materialization; OQ 4a: manual probe
-      first, then bake only the assertable depth) → FINDINGS.md
-- [ ] 3.5 README consumer contract section; USAGE.md
-- [ ] 3.6 ADR-0020: consumer row + the conditional-read note
-- [ ] 3.7 CLAUDE.md; root README regen; commit
+      the core's reserved-sid validation is the guard) — same typed
+      object list as the core, landed with 3.1 (one module surface)
+- [x] 3.3 Plan suites (9 runs green): `security_baseline.tftest.hcl` —
+      the family's CANONICAL copy (events-bucket's must stay
+      byte-identical for the Phase-5 diff guard); default.tftest.hcl —
+      override_data stub + the ADR-0020 assertion (`config.key ==
+      "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`),
+      `length(data...) == 0` on both no-read paths, resolved
+      target/prefix per path, additive statement beside intact baseline
+      sids + resource_suffixes expansion; validation.tftest.hcl
+      (disabled+target, disabled+prefix, reserved sid, name charset).
+      Two `terraform test` gotchas: a variable-validation failure does
+      NOT short-circuit data-source evaluation (an `expect_failures`
+      run on the default tri-state still attempts a real S3 read —
+      disable logging in those runs), and there is no `setequal()`
+      function (use `toset(a) == toset(b)`). The reserved-sid guard is
+      mirrored onto the root variable because `expect_failures` cannot
+      target a child module's validation.
+- [x] 3.4 Community apply (3 runs, **run and passing**):
+      `fixtures/access-logs` instantiates the **real**
+      access-logs-bucket module + seeds the reserved-key state object
+      (composing-fixture precedent; no `reference-vpc` — S3-only suite
+      skips the ~1-2 min NAT). Default-lookup run resolves
+      `logging_target` to the sink the fixture actually created, so the
+      account-scoped + `assume_role` read is proven end to end
+      (LocalStack STS mints creds for the role ARN; global
+      `AWS_ENDPOINT_URL` routes both STS and S3); override run creates
+      zero data-source instances on a real apply.
+      **F6 probe 1 → NEGATIVE:** LocalStack 4.4 round-trips the logging
+      *configuration* faithfully but never materializes delivered log
+      objects (10 requests, sink empty at 60 s and ~150 s, no container
+      log activity). Per DESIGN-0019 OQ 6a the suite asserts the
+      config surface only — no vacuous delivery test. Recorded in
+      FINDINGS.md
+- [x] 3.5 README: the tri-state table, the ADR-0020 consumer contract
+      (flat reserved key, count-gating, bootstrapping order), the
+      additive-statements section, and the test-split table; USAGE.md
+      regenerated lock-free
+- [x] 3.6 ADR-0020: `s3/bucket` consumer row (flat key, count-gated) +
+      a **conditional-read** subsection — the first optional read in the
+      fleet; the key contract binds only the default path, and the
+      pattern generalizes to any compose-by-default/override-explicitly
+      consumer
+- [x] 3.7 CLAUDE.md (Phase 3 implemented: tri-state, count-gated read,
+      the root-mirrored reserved-sid guard, both terraform test gotchas,
+      the negative F6 probe); root README regen (17 modules); commit
 
 #### Success Criteria
 
@@ -260,21 +315,53 @@ read.
 
 #### Tasks
 
-- [ ] 4.1 Module: bucket surface (tri-state +
-      `additional_policy_statements` included) + notification.tf —
-      the singleton `aws_s3_bucket_notification` in the module root,
-      typed `sns_topics` / `sqs_queues`
-      lists (arn, events, filter_prefix, filter_suffix) +
-      `eventbridge_enabled` bool (DESIGN-0019 OQ 5a),
-      at-least-one-destination precondition
-- [ ] 4.2 Plan suites: `security_baseline.tftest.hcl` copy; notification
-      shape assertions; ADR-0020 three-path assertions; validation
-      (no-destination `expect_failures`)
-- [ ] 4.3 Community apply: SQS queue + queue-policy fixture
-      (+ EventBridge enabled run); **F6 probe 2** (notification firing;
-      OQ 4a: manual probe first) → FINDINGS.md
-- [ ] 4.4 README (contract section + destination-policy ownership note);
-      USAGE.md; CLAUDE.md; root README regen; commit
+- [x] 4.1 Module: the full `s3/bucket` surface (tri-state +
+      `additional_policy_statements`) + notification.tf — the singleton
+      `aws_s3_bucket_notification` in the module root, typed
+      `sqs_queues` / `sns_topics` lists (id, arn, events,
+      filter_prefix, filter_suffix; unique-id + non-empty-events
+      validations) + `eventbridge_enabled` (OQ 5a), and the
+      at-least-one-destination precondition. Four notification outputs
+      (`notification_id`, `eventbridge_enabled`, and the two id=>arn
+      maps) give the suites an attribute-derived window. This is the
+      one purpose module whose root aws requirement is genuinely used,
+      so no tflint-ignore
+- [x] 4.2 Plan suites (13 runs green): `security_baseline.tftest.hcl`
+      **byte-identical** to `s3/bucket`'s (verified `diff -q`) — the
+      destination the precondition needs rides in the file-level
+      `variables` block as `eventbridge_enabled = true`, which
+      `s3/bucket` silently ignores. **Gotcha confirmed by probe:** a
+      test-file `variables` block tolerates variables the module under
+      test does not declare, exactly like `-var-file`; that is what
+      makes byte-identity possible. Plus the three ADR-0020 tri-state
+      runs, four notification-shape runs (single SQS, all three kinds
+      at once, per-entry filters, EventBridge-only), and validation
+      (no-destination against the resource, duplicate ids, empty event
+      list, inherited guards)
+- [x] 4.3 Community apply (3 runs, **run and passing**):
+      `fixtures/destinations` = state bucket + the real access-logs
+      sink at the reserved key + an SQS queue **with its queue policy**
+      (owned by the destination stack — the fixture is the worked
+      example) + an SNS topic; runs cover SQS-with-default-tri-state
+      and all-three-kinds-with-logging-off.
+      **F6 probe 2 → POSITIVE:** LocalStack delivers both the
+      `s3:TestEvent` handshake and a full `ObjectCreated:Put` record
+      within seconds. Baked depth stays the configuration surface
+      anyway — `terraform test` has no way to receive an SQS message
+      (no data source; the `external` provider would be a new
+      dependency), so here the *harness* is the limiter, not the
+      emulator (the inverse of probe 1). **Second finding:** LocalStack
+      does NOT enforce the destination policy (registering a
+      notification to a policy-less queue succeeds, where real S3
+      returns InvalidArgument) — so the apply does not verify the
+      fixture's queue policy; the README section is the contract.
+      Both recorded in FINDINGS.md
+- [x] 4.4 README (destinations + the singleton rationale, the
+      destination-policy ownership note with the required queue-policy
+      shape and the real-S3-rejects/LocalStack-doesn't caveat, test
+      table; the shared surface defers to `s3/bucket`'s README);
+      USAGE.md lock-free; CLAUDE.md; root README regen (18 modules);
+      commit
 
 #### Success Criteria
 
@@ -288,17 +375,37 @@ read.
 
 #### Tasks
 
-- [ ] 5.1 Static-gate guards: versioned-core-source grep (the core is
-      consumed only via the relative path — no registry/git-ref source
-      anywhere under `modules/s3/`) + baseline-suite identity check
-      (OQ 3a: `diff -q` across the three copies)
-- [ ] 5.2 Full pass from a clean tree: `just static`; all four plan
-      suites; all three Community applies
-- [ ] 5.3 Fidelity greps: reserved-key literal consistent across module
-      code, tests, ADR-0020, and READMEs; no un-prefixed fixture keys
-- [ ] 5.4 docz closure: INV-0009 → Concluded (probe outcomes recorded in
-      its F6), DESIGN-0019 → Implemented, this IMPL → Completed;
-      `docz update` (restore any TOC mangling); root README regen; commit
+- [x] 5.1 Static-gate guards in `scripts/static-check.sh` (new section
+      5, so `just static` and the CI `static` job both carry them):
+      (a) any `source =` line under `modules/s3/` pointing at the core
+      must be exactly `"../internal/core"` — a registry name or git ref
+      fails; (b) `diff -q` of `events-bucket`'s
+      `security_baseline.tftest.hcl` against `bucket`'s. The identity
+      set is the **pair**, not three copies — `access-logs-bucket` is
+      the documented F3 variant (SSE-S3, no tri-state) and is
+      deliberately excluded. Both guards verified by deliberate
+      violation (versioned source → caught with the offending line;
+      appended comment → caught with the diff), then reverted
+- [x] 5.2 Full pass from a clean tree, all in one run:
+      `just static` exit 0 (18 modules, now including the two new
+      guards); plan suites **47/47** — core 19, access-logs-bucket 6,
+      bucket 9, events-bucket 13; Community applies **7/7** —
+      access-logs-bucket 1, bucket 3, events-bucket 3
+- [x] 5.3 Fidelity greps clean: all six `terraform.tfstate` key
+      literals under `modules/s3/` are account-scoped
+      (`${var.account_name}/…` in module + fixture code,
+      `sandbox/…` in the two plan assertions) with zero un-prefixed
+      keys; the reserved-key literal is consistent across module code,
+      tests, fixtures, READMEs, ADR-0020, DESIGN-0019 and INV-0009; all
+      three core consumers use `source = "../internal/core"` verbatim
+- [x] 5.4 docz closure: INV-0009 → **Concluded** with both probe
+      outcomes written into its F6 (plus the third, unplanned finding
+      that LocalStack does not enforce destination policies),
+      DESIGN-0019 → **Implemented**, this IMPL → **Completed**;
+      `docz update` per type (the known TOC mangling hit impl/0009,
+      impl/0017 and inv/0008 — reverted; the DESIGN-0018 row for the
+      still-untracked file removed from the index again); root README
+      regen; commit
 
 #### Success Criteria
 

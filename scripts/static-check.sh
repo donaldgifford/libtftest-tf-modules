@@ -103,8 +103,42 @@ while IFS= read -r m; do
   fi
 done < <(list_modules)
 
+# ── 5. s3 family guards (DESIGN-0019 / IMPL-0018 Phase 5) ──────────────────
+# Two invariants no other tool can see:
+#
+#   a) The internal core is consumed ONLY via the relative path
+#      `source = "../internal/core"`. It is exempt from the
+#      no-nested-modules rule precisely BECAUSE it rides each purpose
+#      module's tag — a versioned source (registry name or git ref) would
+#      break that and let a purpose module pin a stale core.
+#   b) The shared security-baseline suite is byte-identical across the
+#      modules that carry the full F2 baseline. access-logs-bucket is the
+#      documented F3 variant (SSE-S3, no tri-state) and is deliberately
+#      excluded.
+log "s3 family guards (core source form + baseline-suite identity)"
+
+# (a) any `source =` pointing at the core must be exactly the relative path.
+bad_core_source="$(grep -rn --include='*.tf' -E '^[[:space:]]*source[[:space:]]*=.*internal/core' \
+  "${REPO_ROOT}/modules/s3" | grep -v '"\.\./internal/core"' || true)"
+if [[ -n "${bad_core_source}" ]]; then
+  echo "::error::the s3 internal core must be consumed only via source = \"../internal/core\" (never a registry name or git ref — DESIGN-0019 nesting exemption). Offending lines:"
+  printf '%s\n' "${bad_core_source}" >&2
+  fail=1
+fi
+
+# (b) baseline-suite identity across the full-baseline modules.
+baseline_ref="${REPO_ROOT}/modules/s3/bucket/tests/security_baseline.tftest.hcl"
+for m in events-bucket; do
+  other="${REPO_ROOT}/modules/s3/${m}/tests/security_baseline.tftest.hcl"
+  if ! diff -q "${baseline_ref}" "${other}" >/dev/null 2>&1; then
+    echo "::error::modules/s3/${m}/tests/security_baseline.tftest.hcl must stay byte-identical to s3/bucket's copy (DESIGN-0019 OQ 3a). Diff:"
+    diff "${baseline_ref}" "${other}" >&2 || true
+    fail=1
+  fi
+done
+
 if [[ "${fail}" -ne 0 ]]; then
   echo "::error::static gate failed — fix the errors above before plan/apply runs"
   exit 1
 fi
-echo "static gate passed: fmt + validate + tflint + terraform-docs clean across all modules"
+echo "static gate passed: fmt + validate + tflint + terraform-docs + s3 guards clean across all modules"

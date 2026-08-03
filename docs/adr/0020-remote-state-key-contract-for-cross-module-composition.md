@@ -79,8 +79,10 @@ Every cross-module state read/publish uses the account-scoped key
 - `<account_name>` — the Terragrunt account name (e.g. `platform-dev`).
 - `<region>` — the deployment region of the producer stack.
 - `<shape>` — the producer's service path segment(s): `vpc`, `eks`,
-  `rds/instance`, `rds/cluster`, `rds/serverless`.
+  `rds/instance`, `rds/cluster`, `rds/serverless`, `s3`.
 - `<name>` — the producer instance's stable identifier (see coupling below).
+  Exception: the `s3/access-logs` key is **flat** — no `<name>` segment
+  (see the reserved-stack-name note below).
 
 In the live repo this means the producer stack's directory **must** be
 `<account_name>/<region>/<shape>/<name>/` — the folder path IS the key.
@@ -101,11 +103,22 @@ consumer read at plan time.
 | `rds/proxy` | target | `<acct>/<region>/rds/<dir>/<target_identifier>/…` — `dir` = `target_dir_map[target_type]`: `rds-instance`→`instance`, `aurora-cluster`→`cluster`, `serverless`→`serverless` | `rds/instance` \| `rds/cluster` \| `rds/serverless` |
 | `rds/read-replica` | cluster | `<acct>/<region>/rds/cluster/<cluster_identifier>/…` | `rds/cluster` |
 | `efs/filesystem` | vpc + eks | `<acct>/<region>/vpc/<vpc_name>/…`, `<acct>/<region>/eks/<cluster_name>/…` | `network/vpc-lookup`, `eks/cluster` |
+| `s3/bucket` | access-logs sink | `<acct>/<region>/s3/access-logs/…` — **flat, no `<name>` segment**; **count-gated** — the read exists only on the default tri-state path | `s3/access-logs-bucket` |
 
-All 12 reads carry the cross-account `assume_role`
+All 13 reads carry the cross-account `assume_role`
 (`arn:aws:iam::<account_id>:role/<deploy_role_name>`,
 `session_name = "Deploy-Tf"`) and `region = <remote_state_bucket_region>`
 per IMPL-0015.
+
+**The conditional read.** `s3/bucket` is the first consumer whose read
+is *optional*: `count = enabled && target_bucket == null ? 1 : 0`. The
+two non-default tri-state paths (an explicit sink, or logging off)
+create no data source at all, so those stacks neither require the
+producer to exist nor pay the bootstrapping ordering. This is the
+pattern for any future "compose by default, override explicitly"
+consumer — the key contract binds only the default path, and the
+`config.key` plan assertion runs against the enabled path with an
+`override_data` stub.
 
 ### The identifier coupling
 
@@ -121,6 +134,19 @@ per IMPL-0015.
   EKS consumer's `cluster_name`.
 - **VPC:** the `vpc_name` used by `network/vpc-lookup`'s state placement ==
   every VPC consumer's `vpc_name`.
+
+### The reserved stack name (`s3/access-logs`)
+
+The access-logs sink inverts the coupling: instead of a `<name>` the
+consumer must echo, the **live-repo folder name itself is fixed**. The
+`s3/access-logs-bucket` producer must be deployed at
+`<account_name>/<region>/s3/access-logs/` — the family `bucket` module's
+default access-logging lookup composes exactly that flat key, with no
+name input to get wrong. `access-logs` is therefore a reserved stack
+name: one sink per account/region at that path. Non-default sinks
+opt out of the contract entirely — deploy the module at any other
+folder and point consumers at it via their explicit
+`access_logging.target_bucket` override (no remote-state read).
 
 ### Enforcement — what is checked where
 

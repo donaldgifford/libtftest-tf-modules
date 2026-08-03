@@ -184,11 +184,78 @@ Tracked in git. As of this writing:
   three-`../` relative path broke at the core's depth-4 dir), and
   `scripts/changed-modules.sh` gained the internal-module fan-out (a diff
   under `modules/<service>/internal/**` re-tests every leaf module of that
-  service; self-test 25/25). Purpose modules land next: `access-logs-bucket`
-  (Phase 2 — reserved ADR-0020 key `<account_name>/<region>/s3/access-logs/`),
-  `bucket` (Phase 3 — tri-state `access_logging`, first count-gated
-  remote-state read), `events-bucket` (Phase 4);
-  `cloudfront-origin-bucket` + `presigned-transfer-bucket` deferred.
+  service; self-test 25/25). `access-logs-bucket` (Phase 2, implemented) is
+  the first purpose module: the fleet's server-access-log sink singleton —
+  SSE-S3 pinned (log delivery can't write to SSE-KMS targets), the
+  `AllowS3ServerAccessLogDelivery` grant (Service principal +
+  `aws:SourceAccount` condition, objects-only), `log_retention_days`
+  default 90 (`null` = keep forever) via the core's `extra_lifecycle_rules`,
+  published at the **flat reserved ADR-0020 key**
+  `<account_name>/<region>/s3/access-logs/terraform.tfstate` (no `<name>`
+  segment — `access-logs` is a reserved stack name; non-default sinks =
+  another live-repo folder + consumer `target_bucket` override, no key
+  contract). Its `security_baseline.tftest.hcl` is the family baseline
+  suite's documented **F3 variant** (AES256/no-KMS); the byte-identical
+  diff-guard pair (Phase 5) is `bucket`/`events-bucket`. **Wrapper-module
+  gotcha (Phase 2):** a purpose module with no direct aws resource MUST
+  still declare aws in root `required_providers` (tflint-ignored as
+  unused) — without it `terraform test` can't bind the test-file
+  `provider "aws"` block and every plan run fails resolving real
+  credentials. The core grew a `lifecycle_rule_ids` output so purpose
+  suites can pin rule wiring at plan. Tests: plan `tests/` (6 runs, the
+  gate) + a real Community apply in `tests-localstack/` (1 run, token-free
+  `localstack/localstack:4.4`, `SERVICES=s3,sts`, `s3_use_path_style` —
+  run and passing). `bucket` (Phase 3, implemented) is the
+  general-purpose bucket and the family's reference consumer: the F4
+  `access_logging` tri-state (default `{}` = look the sink up at the flat
+  reserved key / explicit `target_bucket` / `enabled = false`) driving the
+  fleet's **first count-gated remote-state read** — the two non-default
+  paths create no data source at all, so they neither need the producer
+  nor pay the bootstrapping order (ADR-0020 now records this
+  conditional-read pattern). Resolution is
+  `coalesce(override, one(data...[*].outputs.bucket_name))`; the core
+  resolves a null prefix to `<composed-name>/`. Adds
+  `additional_policy_statements` (OQ 4b additive pass-through; the
+  reserved-sid guard is **mirrored onto the root variable** because
+  `expect_failures` cannot target a child module's validation). Tests:
+  plan `tests/` (9 runs — all three paths, the ADR-0020 key assertion via
+  `override_data`, additive merge) + Community apply (3 runs, **run and
+  passing**) whose `fixtures/access-logs` applies the **real** sink
+  module and seeds the reserved key, proving the account-scoped +
+  `assume_role` read end to end without any VPC. **F6 probe 1 →
+  NEGATIVE:** LocalStack 4.4 round-trips the `PutBucketLogging` config
+  but never materializes delivered log objects, so per DESIGN-0019 OQ 6a
+  the suites assert the config surface only (`logging_target` /
+  `logging_prefix`), never delivery. **`terraform test` gotchas found
+  here:** a variable-validation failure does NOT short-circuit
+  data-source evaluation (an `expect_failures` run on the default
+  tri-state still attempts a real S3 read — disable logging in those
+  runs), and there is no `setequal()` function (use
+  `toset(a) == toset(b)`). `events-bucket` (Phase 4, implemented) is
+  `bucket` plus notification.tf: one `aws_s3_bucket_notification` (a
+  **per-bucket singleton** — the API replaces the whole configuration on
+  every write, so all destinations live in that single root resource
+  where plan suites can assert them), typed `sqs_queues`/`sns_topics`
+  lists (unique ids, non-empty events, per-entry prefix/suffix filters)
+  + `eventbridge_enabled`, and an at-least-one-destination precondition
+  (no "notifications off" mode — use `bucket` for that). Destination
+  resource policies belong to the **destination** stacks; the apply
+  fixture is the worked example. Tests: plan 13 runs + Community apply
+  3 runs (**run and passing**, `SERVICES=s3,sts,sqs,sns,events`). Its
+  `security_baseline.tftest.hcl` is byte-identical to `bucket`'s — the
+  destination its precondition needs rides in the file-level
+  `variables` block, exploiting a confirmed `terraform test` behavior:
+  **a test-file `variables` block silently ignores variables the module
+  under test doesn't declare, exactly like `-var-file`**. **F6 probe 2 →
+  POSITIVE** (LocalStack delivers the `s3:TestEvent` handshake + a full
+  `ObjectCreated:Put` record), but the baked depth stays the config
+  surface because `terraform test` cannot receive an SQS message — here
+  the harness is the limiter, not the emulator (inverse of probe 1). A
+  second probe found LocalStack does **not** enforce destination
+  policies (real S3 returns `InvalidArgument` for a policy-less queue),
+  so the apply demonstrates the queue-policy shape without verifying it.
+  Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
+  deferred.
 
 ### Shared test fixtures (`test/fixtures/`)
 
