@@ -184,11 +184,31 @@ Tracked in git. As of this writing:
   three-`../` relative path broke at the core's depth-4 dir), and
   `scripts/changed-modules.sh` gained the internal-module fan-out (a diff
   under `modules/<service>/internal/**` re-tests every leaf module of that
-  service; self-test 25/25). Purpose modules land next: `access-logs-bucket`
-  (Phase 2 — reserved ADR-0020 key `<account_name>/<region>/s3/access-logs/`),
-  `bucket` (Phase 3 — tri-state `access_logging`, first count-gated
-  remote-state read), `events-bucket` (Phase 4);
-  `cloudfront-origin-bucket` + `presigned-transfer-bucket` deferred.
+  service; self-test 25/25). `access-logs-bucket` (Phase 2, implemented) is
+  the first purpose module: the fleet's server-access-log sink singleton —
+  SSE-S3 pinned (log delivery can't write to SSE-KMS targets), the
+  `AllowS3ServerAccessLogDelivery` grant (Service principal +
+  `aws:SourceAccount` condition, objects-only), `log_retention_days`
+  default 90 (`null` = keep forever) via the core's `extra_lifecycle_rules`,
+  published at the **flat reserved ADR-0020 key**
+  `<account_name>/<region>/s3/access-logs/terraform.tfstate` (no `<name>`
+  segment — `access-logs` is a reserved stack name; non-default sinks =
+  another live-repo folder + consumer `target_bucket` override, no key
+  contract). Its `security_baseline.tftest.hcl` is the family baseline
+  suite's documented **F3 variant** (AES256/no-KMS); the byte-identical
+  diff-guard pair (Phase 5) is `bucket`/`events-bucket`. **Wrapper-module
+  gotcha (Phase 2):** a purpose module with no direct aws resource MUST
+  still declare aws in root `required_providers` (tflint-ignored as
+  unused) — without it `terraform test` can't bind the test-file
+  `provider "aws"` block and every plan run fails resolving real
+  credentials. The core grew a `lifecycle_rule_ids` output so purpose
+  suites can pin rule wiring at plan. Tests: plan `tests/` (6 runs, the
+  gate) + a real Community apply in `tests-localstack/` (1 run, token-free
+  `localstack/localstack:4.4`, `SERVICES=s3,sts`, `s3_use_path_style` —
+  run and passing). Remaining: `bucket` (Phase 3 — tri-state
+  `access_logging`, first count-gated remote-state read), `events-bucket`
+  (Phase 4); `cloudfront-origin-bucket` + `presigned-transfer-bucket`
+  deferred.
 
 ### Shared test fixtures (`test/fixtures/`)
 

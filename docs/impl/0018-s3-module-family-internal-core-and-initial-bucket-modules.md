@@ -222,8 +222,10 @@ The per-region log sink; producer of the reserved-key contract.
       read), and a "reserved stack name" section — the live-repo folder
       `s3/access-logs` IS the contract; non-default sinks opt out via
       the consumer `target_bucket` override
-- [ ] 2.7 CLAUDE.md; root README module table regen (`just readme`);
-      commit
+- [x] 2.7 CLAUDE.md (s3 bullet: Phase 2 implemented — sink posture,
+      flat reserved key, F3 baseline variant, wrapper-module
+      required_providers gotcha, test results); root README module
+      table regen (`just readme` — both s3 modules picked up); commit
 
 #### Success Criteria
 
