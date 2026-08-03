@@ -2,12 +2,17 @@
 
 # Go
 # renovate: datasource=github-tags depName=golang/go
-go = "1.26.4"
+go = "1.26.5"
+# renovate: datasource=github-releases depName=segmentio/golines
 golines = "latest"
-"go:github.com/spf13/cobra-cli" = "latest"
+# renovate: datasource=go depName=golang.org/x/tools
 "go:golang.org/x/tools/cmd/goimports" = "latest"
-"go:github.com/vektra/mockery/v2" = "latest"
+# renovate: datasource=go depName=golang.org/x/tools
 "go:golang.org/x/tools/cmd/godoc" = "latest"
+# renovate: datasource=go depName=spf13/cobra-cli
+"go:github.com/spf13/cobra-cli" = "latest"
+# renovate: datasource=go depName=vektra/mockery/v3
+"go:github.com/vektra/mockery/v3" = "latest"
 
 # Terraform
 # renovate: datasource=github-releases depName=hashicorp/terraform
