@@ -356,8 +356,12 @@ read.
       returns InvalidArgument) — so the apply does not verify the
       fixture's queue policy; the README section is the contract.
       Both recorded in FINDINGS.md
-- [ ] 4.4 README (contract section + destination-policy ownership note);
-      USAGE.md; CLAUDE.md; root README regen; commit
+- [x] 4.4 README (destinations + the singleton rationale, the
+      destination-policy ownership note with the required queue-policy
+      shape and the real-S3-rejects/LocalStack-doesn't caveat, test
+      table; the shared surface defers to `s3/bucket`'s README);
+      USAGE.md lock-free; CLAUDE.md; root README regen (18 modules);
+      commit
 
 #### Success Criteria
 

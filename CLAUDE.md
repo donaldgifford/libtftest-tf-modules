@@ -231,8 +231,31 @@ Tracked in git. As of this writing:
   data-source evaluation (an `expect_failures` run on the default
   tri-state still attempts a real S3 read — disable logging in those
   runs), and there is no `setequal()` function (use
-  `toset(a) == toset(b)`). Remaining: `events-bucket` (Phase 4);
-  `cloudfront-origin-bucket` + `presigned-transfer-bucket` deferred.
+  `toset(a) == toset(b)`). `events-bucket` (Phase 4, implemented) is
+  `bucket` plus notification.tf: one `aws_s3_bucket_notification` (a
+  **per-bucket singleton** — the API replaces the whole configuration on
+  every write, so all destinations live in that single root resource
+  where plan suites can assert them), typed `sqs_queues`/`sns_topics`
+  lists (unique ids, non-empty events, per-entry prefix/suffix filters)
+  + `eventbridge_enabled`, and an at-least-one-destination precondition
+  (no "notifications off" mode — use `bucket` for that). Destination
+  resource policies belong to the **destination** stacks; the apply
+  fixture is the worked example. Tests: plan 13 runs + Community apply
+  3 runs (**run and passing**, `SERVICES=s3,sts,sqs,sns,events`). Its
+  `security_baseline.tftest.hcl` is byte-identical to `bucket`'s — the
+  destination its precondition needs rides in the file-level
+  `variables` block, exploiting a confirmed `terraform test` behavior:
+  **a test-file `variables` block silently ignores variables the module
+  under test doesn't declare, exactly like `-var-file`**. **F6 probe 2 →
+  POSITIVE** (LocalStack delivers the `s3:TestEvent` handshake + a full
+  `ObjectCreated:Put` record), but the baked depth stays the config
+  surface because `terraform test` cannot receive an SQS message — here
+  the harness is the limiter, not the emulator (inverse of probe 1). A
+  second probe found LocalStack does **not** enforce destination
+  policies (real S3 returns `InvalidArgument` for a policy-less queue),
+  so the apply demonstrates the queue-policy shape without verifying it.
+  Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
+  deferred.
 
 ### Shared test fixtures (`test/fixtures/`)
 
