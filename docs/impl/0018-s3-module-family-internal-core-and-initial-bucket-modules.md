@@ -217,7 +217,11 @@ The per-region log sink; producer of the reserved-key contract.
       terraform.tfstate`, no `<name>` segment; non-default-sink =
       another live-repo folder + consumer `access_logging.target_bucket`
       override); USAGE.md already regenerated in 2.3
-- [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
+- [x] 2.6 ADR-0020: `s3` added to the `<shape>` list (with the flat-key
+      exception), `s3/bucket` consumer row (marked Phase 3, the 13th
+      read), and a "reserved stack name" section — the live-repo folder
+      `s3/access-logs` IS the contract; non-default sinks opt out via
+      the consumer `target_bucket` override
 - [ ] 2.7 CLAUDE.md; root README module table regen (`just readme`);
       commit
 
