@@ -338,9 +338,24 @@ read.
       at once, per-entry filters, EventBridge-only), and validation
       (no-destination against the resource, duplicate ids, empty event
       list, inherited guards)
-- [ ] 4.3 Community apply: SQS queue + queue-policy fixture
-      (+ EventBridge enabled run); **F6 probe 2** (notification firing;
-      OQ 4a: manual probe first) → FINDINGS.md
+- [x] 4.3 Community apply (3 runs, **run and passing**):
+      `fixtures/destinations` = state bucket + the real access-logs
+      sink at the reserved key + an SQS queue **with its queue policy**
+      (owned by the destination stack — the fixture is the worked
+      example) + an SNS topic; runs cover SQS-with-default-tri-state
+      and all-three-kinds-with-logging-off.
+      **F6 probe 2 → POSITIVE:** LocalStack delivers both the
+      `s3:TestEvent` handshake and a full `ObjectCreated:Put` record
+      within seconds. Baked depth stays the configuration surface
+      anyway — `terraform test` has no way to receive an SQS message
+      (no data source; the `external` provider would be a new
+      dependency), so here the *harness* is the limiter, not the
+      emulator (the inverse of probe 1). **Second finding:** LocalStack
+      does NOT enforce the destination policy (registering a
+      notification to a policy-less queue succeeds, where real S3
+      returns InvalidArgument) — so the apply does not verify the
+      fixture's queue policy; the README section is the contract.
+      Both recorded in FINDINGS.md
 - [ ] 4.4 README (contract section + destination-policy ownership note);
       USAGE.md; CLAUDE.md; root README regen; commit
 
