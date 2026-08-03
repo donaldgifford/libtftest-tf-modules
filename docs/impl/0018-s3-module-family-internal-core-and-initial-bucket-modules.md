@@ -315,21 +315,53 @@ read.
 
 #### Tasks
 
-- [ ] 4.1 Module: bucket surface (tri-state +
-      `additional_policy_statements` included) + notification.tf —
-      the singleton `aws_s3_bucket_notification` in the module root,
-      typed `sns_topics` / `sqs_queues`
-      lists (arn, events, filter_prefix, filter_suffix) +
-      `eventbridge_enabled` bool (DESIGN-0019 OQ 5a),
-      at-least-one-destination precondition
-- [ ] 4.2 Plan suites: `security_baseline.tftest.hcl` copy; notification
-      shape assertions; ADR-0020 three-path assertions; validation
-      (no-destination `expect_failures`)
-- [ ] 4.3 Community apply: SQS queue + queue-policy fixture
-      (+ EventBridge enabled run); **F6 probe 2** (notification firing;
-      OQ 4a: manual probe first) → FINDINGS.md
-- [ ] 4.4 README (contract section + destination-policy ownership note);
-      USAGE.md; CLAUDE.md; root README regen; commit
+- [x] 4.1 Module: the full `s3/bucket` surface (tri-state +
+      `additional_policy_statements`) + notification.tf — the singleton
+      `aws_s3_bucket_notification` in the module root, typed
+      `sqs_queues` / `sns_topics` lists (id, arn, events,
+      filter_prefix, filter_suffix; unique-id + non-empty-events
+      validations) + `eventbridge_enabled` (OQ 5a), and the
+      at-least-one-destination precondition. Four notification outputs
+      (`notification_id`, `eventbridge_enabled`, and the two id=>arn
+      maps) give the suites an attribute-derived window. This is the
+      one purpose module whose root aws requirement is genuinely used,
+      so no tflint-ignore
+- [x] 4.2 Plan suites (13 runs green): `security_baseline.tftest.hcl`
+      **byte-identical** to `s3/bucket`'s (verified `diff -q`) — the
+      destination the precondition needs rides in the file-level
+      `variables` block as `eventbridge_enabled = true`, which
+      `s3/bucket` silently ignores. **Gotcha confirmed by probe:** a
+      test-file `variables` block tolerates variables the module under
+      test does not declare, exactly like `-var-file`; that is what
+      makes byte-identity possible. Plus the three ADR-0020 tri-state
+      runs, four notification-shape runs (single SQS, all three kinds
+      at once, per-entry filters, EventBridge-only), and validation
+      (no-destination against the resource, duplicate ids, empty event
+      list, inherited guards)
+- [x] 4.3 Community apply (3 runs, **run and passing**):
+      `fixtures/destinations` = state bucket + the real access-logs
+      sink at the reserved key + an SQS queue **with its queue policy**
+      (owned by the destination stack — the fixture is the worked
+      example) + an SNS topic; runs cover SQS-with-default-tri-state
+      and all-three-kinds-with-logging-off.
+      **F6 probe 2 → POSITIVE:** LocalStack delivers both the
+      `s3:TestEvent` handshake and a full `ObjectCreated:Put` record
+      within seconds. Baked depth stays the configuration surface
+      anyway — `terraform test` has no way to receive an SQS message
+      (no data source; the `external` provider would be a new
+      dependency), so here the *harness* is the limiter, not the
+      emulator (the inverse of probe 1). **Second finding:** LocalStack
+      does NOT enforce the destination policy (registering a
+      notification to a policy-less queue succeeds, where real S3
+      returns InvalidArgument) — so the apply does not verify the
+      fixture's queue policy; the README section is the contract.
+      Both recorded in FINDINGS.md
+- [x] 4.4 README (destinations + the singleton rationale, the
+      destination-policy ownership note with the required queue-policy
+      shape and the real-S3-rejects/LocalStack-doesn't caveat, test
+      table; the shared surface defers to `s3/bucket`'s README);
+      USAGE.md lock-free; CLAUDE.md; root README regen (18 modules);
+      commit
 
 #### Success Criteria
 

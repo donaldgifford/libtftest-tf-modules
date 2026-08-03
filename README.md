@@ -45,6 +45,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`rds/serverless`](modules/rds/serverless) | `v0.18.0` | IMPL-0007 | 7 | apply | — |
 | [`s3/access-logs-bucket`](modules/s3/access-logs-bucket) | `unreleased` | IMPL-0018 | 3 | apply | — |
 | [`s3/bucket`](modules/s3/bucket) | `unreleased` | IMPL-0018 | 3 | apply | — |
+| [`s3/events-bucket`](modules/s3/events-bucket) | `unreleased` | IMPL-0018 | 3 | apply | — |
 | [`s3/internal/core`](modules/s3/internal/core) | `unreleased` | IMPL-0018 | 5 | — | — |
 
 <!-- END_MODULE_TABLE -->
