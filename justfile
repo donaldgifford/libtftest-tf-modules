@@ -6,9 +6,10 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # (IMPL-0015). Centralizes the six globals Terragrunt injects in production
 # (account_name/account_id/region/remote_state_bucket/remote_state_bucket_region/
 # deploy_role_name) so each consumer's account-scoped remote-state read +
-# assume_role resolves. Relative to a module dir (modules/<service>/<module>),
-# the repo-root fixtures dir is three levels up.
-tf_test_varfile := "../../../test/fixtures/terragrunt-inputs.tfvars"
+# assume_role resolves. Absolute (IMPL-0018 task 1.1): a module-relative path
+# breaks for module dirs deeper than modules/<service>/<module> (e.g. the
+# depth-4 modules/s3/internal/core).
+tf_test_varfile := justfile_directory() / "test/fixtures/terragrunt-inputs.tfvars"
 
 # Show this menu.
 default:

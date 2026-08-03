@@ -24,6 +24,10 @@
 #   * A change to a shared fixture dir (test/fixtures/<name>/**) fans out to
 #     that fixture's CONSUMERS — the modules whose tree references <name>
 #     (e.g. reference-vpc -> its remote-state consumers), computed by grep.
+#   * A change to a service's internal module (modules/<service>/internal/**)
+#     fans out to EVERY leaf module of that service (IMPL-0018) — an internal
+#     core is consumed by relative path, so each consumer's plan composes it
+#     and must re-test; the internal module itself is included (own plan suite).
 #
 # `community` / `pro` are the changed set intersected with the modules that
 # actually ship that apply tier.
@@ -139,6 +143,19 @@ main() {
       consumers="$(fixture_consumers "${name}")"
       changed="$(printf '%s\n%s\n' "${changed}" "${consumers}")"
     done <<<"${fixtures}"
+
+    # Internal-module fan-out (IMPL-0018): modules/<service>/internal/** is a
+    # shared core consumed by relative path — a change there re-tests every
+    # leaf module of the service, the internal module itself included (it
+    # ships its own plan suite).
+    local internal_services svc members
+    internal_services="$(printf '%s\n' "${files}" \
+      | sed -nE 's#^modules/([^/]+)/internal/.*#\1#p' | sort -u)"
+    while IFS= read -r svc; do
+      [[ -n "${svc}" ]] || continue
+      members="$(printf '%s\n' "${all_modules}" | grep -E "^${svc}/" || true)"
+      changed="$(printf '%s\n%s\n' "${changed}" "${members}")"
+    done <<<"${internal_services}"
   fi
 
   # Normalize the changed set: drop blanks, de-dup, keep only real modules.

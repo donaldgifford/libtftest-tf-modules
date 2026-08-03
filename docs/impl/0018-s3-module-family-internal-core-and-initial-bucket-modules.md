@@ -117,20 +117,20 @@ suite, and the two CI corrections.
 
 #### Tasks
 
-- [ ] 1.1 justfile: hoist `tf_test_varfile` to an absolute path
+- [x] 1.1 justfile: hoist `tf_test_varfile` to an absolute path
       (`justfile_directory() + "/test/fixtures/terragrunt-inputs.tfvars"`)
       so depth-4 module dirs resolve the shared var-file; verify an
       existing module still passes (`just tf test network/vpc-lookup`)
-- [ ] 1.2 Scaffold `modules/s3/internal/core`: versions.tf
+- [x] 1.2 Scaffold `modules/s3/internal/core`: versions.tf
       (`required_version = ">= 1.1"`, aws `~> 6.2`, random `~> 3.7`),
       `.tflint.hcl` + `.terraform-docs.yml` copied from
       `network/vpc-lookup`, README (not independently consumable; nesting
       exemption + never-versioned condition), generated USAGE.md
-- [ ] 1.3 naming.tf: `name` validation (lowercase alnum + hyphens, 3-37),
+- [x] 1.3 naming.tf: `name` validation (lowercase alnum + hyphens, 3-37),
       `name_override`, count-gated `random_string` (5 lowercase alnum)
       behind `shard_prefix_enabled`, composed-name local; destructive
       shard-toggle note in README
-- [ ] 1.4 bucket.tf: `aws_s3_bucket` (+ `force_destroy`, tags),
+- [x] 1.4 bucket.tf: `aws_s3_bucket` (+ `force_destroy`, tags),
       public-access block (all four on, no variables), ownership controls
       (BucketOwnerEnforced, no variable), versioning (`versioning_enabled`
       default false), SSE configuration from the `encryption` object (kms
@@ -138,29 +138,29 @@ suite, and the two CI corrections.
       lifecycle (`abort_incomplete_multipart_days` default 7 +
       `extra_lifecycle_rules`); preconditions: composed-name
       length/charset, `kms_key_arn` requires kms mode
-- [ ] 1.5 policy.tf: composed policy document — fixed
+- [x] 1.5 policy.tf: composed policy document — fixed
       `DenyInsecureTransport` + `DenyOldTls` sids, opt-in VPCE deny from
       `allowed_vpc_endpoint_ids`, `internal_policy_statements` merge
       (OQ 2a: typed object list — required `sid`, optional
       effect/principals/conditions) with the reserved-baseline-sid
       validation; one `aws_s3_bucket_policy`
-- [ ] 1.6 logging.tf: `logging` object input, count-gated
+- [x] 1.6 logging.tf: `logging` object input, count-gated
       `aws_s3_bucket_logging`, null-prefix defaulting to
       `<composed-name>/`, self-logging precondition
-- [ ] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,
+- [x] 1.7 outputs.tf: `bucket_id` / `bucket_name` / `bucket_arn`,
       `bucket_policy_json`, `logging_target` + `logging_prefix`,
       attribute-derived `security_baseline` object (DESIGN-0019 shape)
-- [ ] 1.8 Core plan suites (`tests/`): baseline defaults, encryption
+- [x] 1.8 Core plan suites (`tests/`): baseline defaults, encryption
       modes (kms default / CMK / s3), naming + shard + override, policy
       sid composition via jsondecode, logging tri-state wiring + prefix
       default, validation.tftest.hcl `expect_failures` (name charset +
       bounds, composed length, kms-key-on-s3-mode, reserved sid,
       self-logging)
-- [ ] 1.9 changed-modules.sh: internal fan-out rule (diff under
+- [x] 1.9 changed-modules.sh: internal fan-out rule (diff under
       `modules/<service>/internal/**` adds every leaf module under
       `modules/<service>/`) + changed-modules.test.sh cases via the
       `CHANGED_FILES_OVERRIDE` seam
-- [ ] 1.10 CLAUDE.md: start the `modules/s3/` section (core + family
+- [x] 1.10 CLAUDE.md: start the `modules/s3/` section (core + family
       shape); commit
 
 #### Success Criteria

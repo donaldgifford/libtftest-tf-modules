@@ -43,6 +43,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`rds/proxy`](modules/rds/proxy) | `v0.18.1` | IMPL-0010 | 5 | plan-only | ✅ |
 | [`rds/read-replica`](modules/rds/read-replica) | `v0.17.0` | IMPL-0013 | 3 | plan-only | ✅ |
 | [`rds/serverless`](modules/rds/serverless) | `v0.18.0` | IMPL-0007 | 7 | apply | — |
+| [`s3/internal/core`](modules/s3/internal/core) | `unreleased` | IMPL-0018 | 5 | — | — |
 
 <!-- END_MODULE_TABLE -->
 
