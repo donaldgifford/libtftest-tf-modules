@@ -36,3 +36,56 @@ jobs:
           noop-labels: "dont-release"
           release-notes-prefix: "### RELEASE NOTES"
           with-v: true
+
+  # ── Keep the README module table in sync with the tag just cut ────────────
+  # scripts/gen-readme.sh derives each module's Version column from the
+  # EARLIEST TAG CONTAINING that module's most recent top-level *.tf commit.
+  # Cutting a tag therefore changes the expected table for every module in
+  # the release — a module that read `unreleased` in the merged PR reads
+  # `v0.19.0` the moment the tag lands.
+  #
+  # Nothing regenerated it, so main failed its own `just readme --check`
+  # drift gate after every releasing merge, and every PR opened afterwards
+  # inherited the red check until someone ran `just readme` by hand.
+  #
+  # Safe against loops by construction: a push made with GITHUB_TOKEN does
+  # not trigger further workflow runs.
+  refresh-readme:
+    name: Refresh README module table
+    needs: bump-version
+    # No tag cut (dont-release) => no version can have changed => nothing
+    # to refresh.
+    if: needs.bump-version.outputs.skipped != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history + tags: module_version() resolves versions with
+          # `git tag --contains <commit>`, which needs both.
+          fetch-depth: 0
+          fetch-tags: true
+          ref: main
+
+      - uses: jdx/mise-action@v4.2.1
+
+      - name: Regenerate module table
+        run: just readme
+
+      - name: Commit if changed
+        env:
+          TAG: ${{ needs.bump-version.outputs.tag }}
+        run: |
+          if git diff --quiet -- README.md; then
+            echo "module table already current for ${TAG} — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs(readme): refresh module table for ${TAG}"
+          # Another merge may have landed while this ran; rebase once rather
+          # than clobbering it.
+          git pull --rebase origin main
+          git push origin HEAD:main
