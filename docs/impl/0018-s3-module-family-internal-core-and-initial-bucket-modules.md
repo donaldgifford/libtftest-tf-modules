@@ -375,10 +375,17 @@ read.
 
 #### Tasks
 
-- [ ] 5.1 Static-gate guards: versioned-core-source grep (the core is
-      consumed only via the relative path — no registry/git-ref source
-      anywhere under `modules/s3/`) + baseline-suite identity check
-      (OQ 3a: `diff -q` across the three copies)
+- [x] 5.1 Static-gate guards in `scripts/static-check.sh` (new section
+      5, so `just static` and the CI `static` job both carry them):
+      (a) any `source = ` line under `modules/s3/` pointing at the core
+      must be exactly `"../internal/core"` — a registry name or git ref
+      fails; (b) `diff -q` of `events-bucket`'s
+      `security_baseline.tftest.hcl` against `bucket`'s. The identity
+      set is the **pair**, not three copies — `access-logs-bucket` is
+      the documented F3 variant (SSE-S3, no tri-state) and is
+      deliberately excluded. Both guards verified by deliberate
+      violation (versioned source → caught with the offending line;
+      appended comment → caught with the diff), then reverted
 - [ ] 5.2 Full pass from a clean tree: `just static`; all four plan
       suites; all three Community applies
 - [ ] 5.3 Fidelity greps: reserved-key literal consistent across module
