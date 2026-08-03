@@ -212,8 +212,11 @@ The per-region log sink; producer of the reserved-key contract.
       and passing 1/1**; grant with Service principal + SourceAccount
       condition accepted verbatim; `s3_use_path_style = true` required;
       teardown clean without force_destroy
-- [ ] 2.5 README with the ADR-0020 producer contract section (reserved
-      key, non-default-sink pattern); USAGE.md
+- [x] 2.5 README with the ADR-0020 producer contract section (flat
+      reserved key `<account_name>/<region>/s3/access-logs/
+      terraform.tfstate`, no `<name>` segment; non-default-sink =
+      another live-repo folder + consumer `access_logging.target_bucket`
+      override); USAGE.md already regenerated in 2.3
 - [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
 - [ ] 2.7 CLAUDE.md; root README module table regen (`just readme`);
       commit
