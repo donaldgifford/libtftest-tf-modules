@@ -181,7 +181,7 @@ The per-region log sink; producer of the reserved-key contract.
 
 #### Tasks
 
-- [ ] 2.1 Module: core call with SSE-S3 pinned
+- [x] 2.1 Module: core call with SSE-S3 pinned
       (`encryption = { mode = "s3" }`), versioning pinned off, **no**
       access_logging surface; log-delivery grant via
       `internal_policy_statements` (`logging.s3.amazonaws.com`,
@@ -189,21 +189,43 @@ The per-region log sink; producer of the reserved-key contract.
       DESIGN-0019 OQ 2a); retention via `extra_lifecycle_rules`
       (`log_retention_days` default 90, null disables — OQ 1a); `name`
       defaults to `"access-logs"` (OQ 3a)
-- [ ] 2.2 variables.tf (name-composition globals `account_id` +
+- [x] 2.2 variables.tf (name-composition globals `account_id` +
       `region`, retention, shard/name_override/force_destroy/tags
       pass-throughs) and outputs.tf (contract `bucket_name` + additive
       `bucket_arn` / `bucket_id`, `security_baseline` re-export)
-- [ ] 2.3 Plan suites: `security_baseline.tftest.hcl` (the canonical
-      first copy), default.tftest.hcl (AES256, grant sid + condition,
-      retention rule, composed default name
-      `access-logs-<account_id>-<region>`), validation.tftest.hcl
-- [ ] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
-      (OQ 5a: token-free `localstack/localstack:4.4`, minimal SERVICES)
-- [ ] 2.5 README with the ADR-0020 producer contract section (reserved
-      key, non-default-sink pattern); USAGE.md
-- [ ] 2.6 ADR-0020: s3 producer row + reserved-stack-name note
-- [ ] 2.7 CLAUDE.md; root README module table regen (`just readme`);
-      commit
+- [x] 2.3 Plan suites: `security_baseline.tftest.hcl` (landed as the
+      documented F3 VARIANT — AES256/no-KMS, so the byte-identical
+      diff-guard pair is bucket/events-bucket), default.tftest.hcl
+      (grant sid + Service principal + SourceAccount condition +
+      objects-only Resource, retention wiring via the new
+      `lifecycle_rule_ids` core output, composed default name
+      `access-logs-<account_id>-<region>`, non-default-sink name run),
+      validation.tftest.hcl (retention 0, name charset) — 6/6 green.
+      Root `versions.tf` gained the aws `~> 6.2` requirement
+      (tflint-ignored as unused): without it terraform test cannot bind
+      the test-file provider block and every plan run fails on real
+      credential resolution.
+- [x] 2.4 Community apply suite (`tests-localstack/`) + FINDINGS.md
+      (OQ 5a: token-free `localstack/localstack:4.4`, `SERVICES=s3,sts`)
+      — real apply of the full chain (bucket/PAB/ownership/SSE/
+      versioning/lifecycle/policy), no fixture (pure producer), **run
+      and passing 1/1**; grant with Service principal + SourceAccount
+      condition accepted verbatim; `s3_use_path_style = true` required;
+      teardown clean without force_destroy
+- [x] 2.5 README with the ADR-0020 producer contract section (flat
+      reserved key `<account_name>/<region>/s3/access-logs/
+      terraform.tfstate`, no `<name>` segment; non-default-sink =
+      another live-repo folder + consumer `access_logging.target_bucket`
+      override); USAGE.md already regenerated in 2.3
+- [x] 2.6 ADR-0020: `s3` added to the `<shape>` list (with the flat-key
+      exception), `s3/bucket` consumer row (marked Phase 3, the 13th
+      read), and a "reserved stack name" section — the live-repo folder
+      `s3/access-logs` IS the contract; non-default sinks opt out via
+      the consumer `target_bucket` override
+- [x] 2.7 CLAUDE.md (s3 bullet: Phase 2 implemented — sink posture,
+      flat reserved key, F3 baseline variant, wrapper-module
+      required_providers gotcha, test results); root README module
+      table regen (`just readme` — both s3 modules picked up); commit
 
 #### Success Criteria
 
