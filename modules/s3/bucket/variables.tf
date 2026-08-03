@@ -148,7 +148,20 @@ variable "additional_policy_statements" {
       values   = list(string)
     })), [])
   }))
-  default  = []
+  default = []
+
+  # Mirrors the core's guard so the failure is root-addressable:
+  # terraform test expect_failures cannot target a child module's
+  # variable validation, and the operator-facing error should name
+  # THIS variable, not the core's internal one.
+  validation {
+    condition = alltrue([
+      for s in var.additional_policy_statements :
+      !contains(["DenyInsecureTransport", "DenyOldTls", "DenyOutsideVpce"], s.sid)
+    ])
+    error_message = "additional_policy_statements must not reuse the reserved baseline sids (DenyInsecureTransport, DenyOldTls, DenyOutsideVpce) — the merge is additive-only; statements can never shadow or replace the baseline."
+  }
+
   nullable = false
 }
 

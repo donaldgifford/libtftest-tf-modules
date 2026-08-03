@@ -256,13 +256,22 @@ read.
       `internal_policy_statements` (DESIGN-0019 OQ 4b: additive-only;
       the core's reserved-sid validation is the guard) — same typed
       object list as the core, landed with 3.1 (one module surface)
-- [ ] 3.3 Plan suites: `security_baseline.tftest.hcl` copy;
-      default.tftest.hcl — override_data stub + ADR-0020 assertion
-      (`config.key == "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`
-      on the enabled path), zero-instance assertions on the disabled and
-      override paths, additive statement rendering beside intact baseline
-      sids; validation.tftest.hcl (tri-state combinations, reserved-sid
-      `expect_failures`)
+- [x] 3.3 Plan suites (9 runs green): `security_baseline.tftest.hcl` —
+      the family's CANONICAL copy (events-bucket's must stay
+      byte-identical for the Phase-5 diff guard); default.tftest.hcl —
+      override_data stub + the ADR-0020 assertion (`config.key ==
+      "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`),
+      `length(data...) == 0` on both no-read paths, resolved
+      target/prefix per path, additive statement beside intact baseline
+      sids + resource_suffixes expansion; validation.tftest.hcl
+      (disabled+target, disabled+prefix, reserved sid, name charset).
+      Two `terraform test` gotchas: a variable-validation failure does
+      NOT short-circuit data-source evaluation (an `expect_failures`
+      run on the default tri-state still attempts a real S3 read —
+      disable logging in those runs), and there is no `setequal()`
+      function (use `toset(a) == toset(b)`). The reserved-sid guard is
+      mirrored onto the root variable because `expect_failures` cannot
+      target a child module's validation.
 - [ ] 3.4 Community apply: `fixtures/access-logs` instantiating the
       **real** access-logs-bucket module + seeding the reserved-key state
       object into the shared `remote_state_bucket` (proxy / read-replica
