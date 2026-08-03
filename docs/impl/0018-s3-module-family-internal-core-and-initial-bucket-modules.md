@@ -386,10 +386,18 @@ read.
       deliberately excluded. Both guards verified by deliberate
       violation (versioned source → caught with the offending line;
       appended comment → caught with the diff), then reverted
-- [ ] 5.2 Full pass from a clean tree: `just static`; all four plan
-      suites; all three Community applies
-- [ ] 5.3 Fidelity greps: reserved-key literal consistent across module
-      code, tests, ADR-0020, and READMEs; no un-prefixed fixture keys
+- [x] 5.2 Full pass from a clean tree, all in one run:
+      `just static` exit 0 (18 modules, now including the two new
+      guards); plan suites **47/47** — core 19, access-logs-bucket 6,
+      bucket 9, events-bucket 13; Community applies **7/7** —
+      access-logs-bucket 1, bucket 3, events-bucket 3
+- [x] 5.3 Fidelity greps clean: all six `terraform.tfstate` key
+      literals under `modules/s3/` are account-scoped
+      (`${var.account_name}/…` in module + fixture code,
+      `sandbox/…` in the two plan assertions) with zero un-prefixed
+      keys; the reserved-key literal is consistent across module code,
+      tests, fixtures, READMEs, ADR-0020, DESIGN-0019 and INV-0009; all
+      three core consumers use `source = "../internal/core"` verbatim
 - [ ] 5.4 docz closure: INV-0009 → Concluded (probe outcomes recorded in
       its F6), DESIGN-0019 → Implemented, this IMPL → Completed;
       `docz update` (restore any TOC mangling); root README regen; commit
