@@ -49,5 +49,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0015 | Terragrunt multi-account remote-state migration | Completed | 2026-07-24 | Donald Gifford | [0015-terragrunt-multi-account-remote-state-migration.md](0015-terragrunt-multi-account-remote-state-migration.md) |
 | IMPL-0016 | CI test-gating pipeline for changed Terraform modules | Completed | 2026-07-25 | Donald Gifford | [0016-ci-test-gating-pipeline-for-changed-terraform-modules.md](0016-ci-test-gating-pipeline-for-changed-terraform-modules.md) |
 | IMPL-0017 | RDS master secret rotation default and manage-false guardrail | Completed | 2026-07-29 | Donald Gifford | [0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md](0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md) |
-| IMPL-0018 | S3 module family internal core and initial bucket modules | Draft | 2026-08-02 | Donald Gifford | [0018-s3-module-family-internal-core-and-initial-bucket-modules.md](0018-s3-module-family-internal-core-and-initial-bucket-modules.md) |
+| IMPL-0018 | S3 module family internal core and initial bucket modules | Completed | 2026-08-02 | Donald Gifford | [0018-s3-module-family-internal-core-and-initial-bucket-modules.md](0018-s3-module-family-internal-core-and-initial-bucket-modules.md) |
 <!-- END DOCZ AUTO-GENERATED -->

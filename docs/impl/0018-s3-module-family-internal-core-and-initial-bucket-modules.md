@@ -1,7 +1,7 @@
 ---
 id: IMPL-0018
 title: "S3 module family internal core and initial bucket modules"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-02
 ---
@@ -9,7 +9,7 @@ created: 2026-08-02
 
 # IMPL 0018: S3 module family internal core and initial bucket modules
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-02
 
@@ -375,17 +375,37 @@ read.
 
 #### Tasks
 
-- [ ] 5.1 Static-gate guards: versioned-core-source grep (the core is
-      consumed only via the relative path — no registry/git-ref source
-      anywhere under `modules/s3/`) + baseline-suite identity check
-      (OQ 3a: `diff -q` across the three copies)
-- [ ] 5.2 Full pass from a clean tree: `just static`; all four plan
-      suites; all three Community applies
-- [ ] 5.3 Fidelity greps: reserved-key literal consistent across module
-      code, tests, ADR-0020, and READMEs; no un-prefixed fixture keys
-- [ ] 5.4 docz closure: INV-0009 → Concluded (probe outcomes recorded in
-      its F6), DESIGN-0019 → Implemented, this IMPL → Completed;
-      `docz update` (restore any TOC mangling); root README regen; commit
+- [x] 5.1 Static-gate guards in `scripts/static-check.sh` (new section
+      5, so `just static` and the CI `static` job both carry them):
+      (a) any `source =` line under `modules/s3/` pointing at the core
+      must be exactly `"../internal/core"` — a registry name or git ref
+      fails; (b) `diff -q` of `events-bucket`'s
+      `security_baseline.tftest.hcl` against `bucket`'s. The identity
+      set is the **pair**, not three copies — `access-logs-bucket` is
+      the documented F3 variant (SSE-S3, no tri-state) and is
+      deliberately excluded. Both guards verified by deliberate
+      violation (versioned source → caught with the offending line;
+      appended comment → caught with the diff), then reverted
+- [x] 5.2 Full pass from a clean tree, all in one run:
+      `just static` exit 0 (18 modules, now including the two new
+      guards); plan suites **47/47** — core 19, access-logs-bucket 6,
+      bucket 9, events-bucket 13; Community applies **7/7** —
+      access-logs-bucket 1, bucket 3, events-bucket 3
+- [x] 5.3 Fidelity greps clean: all six `terraform.tfstate` key
+      literals under `modules/s3/` are account-scoped
+      (`${var.account_name}/…` in module + fixture code,
+      `sandbox/…` in the two plan assertions) with zero un-prefixed
+      keys; the reserved-key literal is consistent across module code,
+      tests, fixtures, READMEs, ADR-0020, DESIGN-0019 and INV-0009; all
+      three core consumers use `source = "../internal/core"` verbatim
+- [x] 5.4 docz closure: INV-0009 → **Concluded** with both probe
+      outcomes written into its F6 (plus the third, unplanned finding
+      that LocalStack does not enforce destination policies),
+      DESIGN-0019 → **Implemented**, this IMPL → **Completed**;
+      `docz update` per type (the known TOC mangling hit impl/0009,
+      impl/0017 and inv/0008 — reverted; the DESIGN-0018 row for the
+      still-untracked file removed from the index again); root README
+      regen; commit
 
 #### Success Criteria
 
