@@ -205,10 +205,34 @@ Tracked in git. As of this writing:
   suites can pin rule wiring at plan. Tests: plan `tests/` (6 runs, the
   gate) + a real Community apply in `tests-localstack/` (1 run, token-free
   `localstack/localstack:4.4`, `SERVICES=s3,sts`, `s3_use_path_style` —
-  run and passing). Remaining: `bucket` (Phase 3 — tri-state
-  `access_logging`, first count-gated remote-state read), `events-bucket`
-  (Phase 4); `cloudfront-origin-bucket` + `presigned-transfer-bucket`
-  deferred.
+  run and passing). `bucket` (Phase 3, implemented) is the
+  general-purpose bucket and the family's reference consumer: the F4
+  `access_logging` tri-state (default `{}` = look the sink up at the flat
+  reserved key / explicit `target_bucket` / `enabled = false`) driving the
+  fleet's **first count-gated remote-state read** — the two non-default
+  paths create no data source at all, so they neither need the producer
+  nor pay the bootstrapping order (ADR-0020 now records this
+  conditional-read pattern). Resolution is
+  `coalesce(override, one(data...[*].outputs.bucket_name))`; the core
+  resolves a null prefix to `<composed-name>/`. Adds
+  `additional_policy_statements` (OQ 4b additive pass-through; the
+  reserved-sid guard is **mirrored onto the root variable** because
+  `expect_failures` cannot target a child module's validation). Tests:
+  plan `tests/` (9 runs — all three paths, the ADR-0020 key assertion via
+  `override_data`, additive merge) + Community apply (3 runs, **run and
+  passing**) whose `fixtures/access-logs` applies the **real** sink
+  module and seeds the reserved key, proving the account-scoped +
+  `assume_role` read end to end without any VPC. **F6 probe 1 →
+  NEGATIVE:** LocalStack 4.4 round-trips the `PutBucketLogging` config
+  but never materializes delivered log objects, so per DESIGN-0019 OQ 6a
+  the suites assert the config surface only (`logging_target` /
+  `logging_prefix`), never delivery. **`terraform test` gotchas found
+  here:** a variable-validation failure does NOT short-circuit
+  data-source evaluation (an `expect_failures` run on the default
+  tri-state still attempts a real S3 read — disable logging in those
+  runs), and there is no `setequal()` function (use
+  `toset(a) == toset(b)`). Remaining: `events-bucket` (Phase 4);
+  `cloudfront-origin-bucket` + `presigned-transfer-bucket` deferred.
 
 ### Shared test fixtures (`test/fixtures/`)
 

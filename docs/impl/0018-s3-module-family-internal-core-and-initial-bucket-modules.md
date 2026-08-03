@@ -242,31 +242,64 @@ read.
 
 #### Tasks
 
-- [ ] 3.1 Module: six Terragrunt globals; tri-state `access_logging`;
-      remote_state.tf — count-gated read of the reserved key with
-      `assume_role` + `region = remote_state_bucket_region`; resolved
-      logging into the core; baseline pass-throughs (`versioning_enabled`,
-      `kms_key_arn`, `force_destroy`, `allowed_vpc_endpoint_ids`,
-      `shard_prefix_enabled`, `name_override`, MPU days, tags)
-- [ ] 3.2 `additional_policy_statements` pass-through into the core's
+- [x] 3.1 Module: six Terragrunt globals; tri-state `access_logging`
+      (validation: target_bucket/prefix require enabled — contradictory
+      combos fail at plan, not silently ignore); count-gated read of the
+      flat reserved key in main.tf with `assume_role` +
+      `use_path_style = true` (rds/instance pattern); resolution via
+      `one(...[*].outputs.bucket_name)` (null on both no-read paths) +
+      `coalesce(override, lookup)`; all baseline pass-throughs.
+      `logging_target`/`logging_prefix` re-exported as the tri-state
+      test window. tflint gotcha: multi-line conditional needs
+      parentheses (`terraform_conditional_parentheses`)
+- [x] 3.2 `additional_policy_statements` pass-through into the core's
       `internal_policy_statements` (DESIGN-0019 OQ 4b: additive-only;
-      the core's reserved-sid validation is the guard)
-- [ ] 3.3 Plan suites: `security_baseline.tftest.hcl` copy;
-      default.tftest.hcl — override_data stub + ADR-0020 assertion
-      (`config.key == "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`
-      on the enabled path), zero-instance assertions on the disabled and
-      override paths, additive statement rendering beside intact baseline
-      sids; validation.tftest.hcl (tri-state combinations, reserved-sid
-      `expect_failures`)
-- [ ] 3.4 Community apply: `fixtures/access-logs` instantiating the
-      **real** access-logs-bucket module + seeding the reserved-key state
-      object into the shared `remote_state_bucket` (proxy / read-replica
-      composing-fixture precedent); apply with the default lookup;
-      **F6 probe 1** (log-delivery materialization; OQ 4a: manual probe
-      first, then bake only the assertable depth) → FINDINGS.md
-- [ ] 3.5 README consumer contract section; USAGE.md
-- [ ] 3.6 ADR-0020: consumer row + the conditional-read note
-- [ ] 3.7 CLAUDE.md; root README regen; commit
+      the core's reserved-sid validation is the guard) — same typed
+      object list as the core, landed with 3.1 (one module surface)
+- [x] 3.3 Plan suites (9 runs green): `security_baseline.tftest.hcl` —
+      the family's CANONICAL copy (events-bucket's must stay
+      byte-identical for the Phase-5 diff guard); default.tftest.hcl —
+      override_data stub + the ADR-0020 assertion (`config.key ==
+      "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`),
+      `length(data...) == 0` on both no-read paths, resolved
+      target/prefix per path, additive statement beside intact baseline
+      sids + resource_suffixes expansion; validation.tftest.hcl
+      (disabled+target, disabled+prefix, reserved sid, name charset).
+      Two `terraform test` gotchas: a variable-validation failure does
+      NOT short-circuit data-source evaluation (an `expect_failures`
+      run on the default tri-state still attempts a real S3 read —
+      disable logging in those runs), and there is no `setequal()`
+      function (use `toset(a) == toset(b)`). The reserved-sid guard is
+      mirrored onto the root variable because `expect_failures` cannot
+      target a child module's validation.
+- [x] 3.4 Community apply (3 runs, **run and passing**):
+      `fixtures/access-logs` instantiates the **real**
+      access-logs-bucket module + seeds the reserved-key state object
+      (composing-fixture precedent; no `reference-vpc` — S3-only suite
+      skips the ~1-2 min NAT). Default-lookup run resolves
+      `logging_target` to the sink the fixture actually created, so the
+      account-scoped + `assume_role` read is proven end to end
+      (LocalStack STS mints creds for the role ARN; global
+      `AWS_ENDPOINT_URL` routes both STS and S3); override run creates
+      zero data-source instances on a real apply.
+      **F6 probe 1 → NEGATIVE:** LocalStack 4.4 round-trips the logging
+      *configuration* faithfully but never materializes delivered log
+      objects (10 requests, sink empty at 60 s and ~150 s, no container
+      log activity). Per DESIGN-0019 OQ 6a the suite asserts the
+      config surface only — no vacuous delivery test. Recorded in
+      FINDINGS.md
+- [x] 3.5 README: the tri-state table, the ADR-0020 consumer contract
+      (flat reserved key, count-gating, bootstrapping order), the
+      additive-statements section, and the test-split table; USAGE.md
+      regenerated lock-free
+- [x] 3.6 ADR-0020: `s3/bucket` consumer row (flat key, count-gated) +
+      a **conditional-read** subsection — the first optional read in the
+      fleet; the key contract binds only the default path, and the
+      pattern generalizes to any compose-by-default/override-explicitly
+      consumer
+- [x] 3.7 CLAUDE.md (Phase 3 implemented: tri-state, count-gated read,
+      the root-mirrored reserved-sid guard, both terraform test gotchas,
+      the negative F6 probe); root README regen (17 modules); commit
 
 #### Success Criteria
 
