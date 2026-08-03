@@ -242,15 +242,20 @@ read.
 
 #### Tasks
 
-- [ ] 3.1 Module: six Terragrunt globals; tri-state `access_logging`;
-      remote_state.tf — count-gated read of the reserved key with
-      `assume_role` + `region = remote_state_bucket_region`; resolved
-      logging into the core; baseline pass-throughs (`versioning_enabled`,
-      `kms_key_arn`, `force_destroy`, `allowed_vpc_endpoint_ids`,
-      `shard_prefix_enabled`, `name_override`, MPU days, tags)
-- [ ] 3.2 `additional_policy_statements` pass-through into the core's
+- [x] 3.1 Module: six Terragrunt globals; tri-state `access_logging`
+      (validation: target_bucket/prefix require enabled — contradictory
+      combos fail at plan, not silently ignore); count-gated read of the
+      flat reserved key in main.tf with `assume_role` +
+      `use_path_style = true` (rds/instance pattern); resolution via
+      `one(...[*].outputs.bucket_name)` (null on both no-read paths) +
+      `coalesce(override, lookup)`; all baseline pass-throughs.
+      `logging_target`/`logging_prefix` re-exported as the tri-state
+      test window. tflint gotcha: multi-line conditional needs
+      parentheses (`terraform_conditional_parentheses`)
+- [x] 3.2 `additional_policy_statements` pass-through into the core's
       `internal_policy_statements` (DESIGN-0019 OQ 4b: additive-only;
-      the core's reserved-sid validation is the guard)
+      the core's reserved-sid validation is the guard) — same typed
+      object list as the core, landed with 3.1 (one module surface)
 - [ ] 3.3 Plan suites: `security_baseline.tftest.hcl` copy;
       default.tftest.hcl — override_data stub + ADR-0020 assertion
       (`config.key == "sandbox/us-east-1/s3/access-logs/terraform.tfstate"`
