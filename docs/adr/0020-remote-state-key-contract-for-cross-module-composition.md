@@ -103,13 +103,22 @@ consumer read at plan time.
 | `rds/proxy` | target | `<acct>/<region>/rds/<dir>/<target_identifier>/…` — `dir` = `target_dir_map[target_type]`: `rds-instance`→`instance`, `aurora-cluster`→`cluster`, `serverless`→`serverless` | `rds/instance` \| `rds/cluster` \| `rds/serverless` |
 | `rds/read-replica` | cluster | `<acct>/<region>/rds/cluster/<cluster_identifier>/…` | `rds/cluster` |
 | `efs/filesystem` | vpc + eks | `<acct>/<region>/vpc/<vpc_name>/…`, `<acct>/<region>/eks/<cluster_name>/…` | `network/vpc-lookup`, `eks/cluster` |
-| `s3/bucket` (IMPL-0018 Phase 3) | access-logs sink | `<acct>/<region>/s3/access-logs/…` — **flat, no `<name>` segment**; read only when tri-state `access_logging` defaults to the fleet sink | `s3/access-logs-bucket` |
+| `s3/bucket` | access-logs sink | `<acct>/<region>/s3/access-logs/…` — **flat, no `<name>` segment**; **count-gated** — the read exists only on the default tri-state path | `s3/access-logs-bucket` |
 
-All 12 reads carry the cross-account `assume_role`
+All 13 reads carry the cross-account `assume_role`
 (`arn:aws:iam::<account_id>:role/<deploy_role_name>`,
 `session_name = "Deploy-Tf"`) and `region = <remote_state_bucket_region>`
-per IMPL-0015; the `s3/bucket` read (the 13th) lands with IMPL-0018
-Phase 3 and carries the same block.
+per IMPL-0015.
+
+**The conditional read.** `s3/bucket` is the first consumer whose read
+is *optional*: `count = enabled && target_bucket == null ? 1 : 0`. The
+two non-default tri-state paths (an explicit sink, or logging off)
+create no data source at all, so those stacks neither require the
+producer to exist nor pay the bootstrapping ordering. This is the
+pattern for any future "compose by default, override explicitly"
+consumer — the key contract binds only the default path, and the
+`config.key` plan assertion runs against the enabled path with an
+`override_data` stub.
 
 ### The identifier coupling
 

@@ -288,9 +288,18 @@ read.
       log activity). Per DESIGN-0019 OQ 6a the suite asserts the
       config surface only — no vacuous delivery test. Recorded in
       FINDINGS.md
-- [ ] 3.5 README consumer contract section; USAGE.md
-- [ ] 3.6 ADR-0020: consumer row + the conditional-read note
-- [ ] 3.7 CLAUDE.md; root README regen; commit
+- [x] 3.5 README: the tri-state table, the ADR-0020 consumer contract
+      (flat reserved key, count-gating, bootstrapping order), the
+      additive-statements section, and the test-split table; USAGE.md
+      regenerated lock-free
+- [x] 3.6 ADR-0020: `s3/bucket` consumer row (flat key, count-gated) +
+      a **conditional-read** subsection — the first optional read in the
+      fleet; the key contract binds only the default path, and the
+      pattern generalizes to any compose-by-default/override-explicitly
+      consumer
+- [x] 3.7 CLAUDE.md (Phase 3 implemented: tri-state, count-gated read,
+      the root-mirrored reserved-sid guard, both terraform test gotchas,
+      the negative F6 probe); root README regen (17 modules); commit
 
 #### Success Criteria
 
