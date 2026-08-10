@@ -6,13 +6,14 @@
 
 version: 2
 updates:
-  # version updates: enabled / security updates: enabled
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 7
+  # NB: github-actions is deliberately NOT listed here — Renovate owns that
+  # ecosystem (its config:recommended enables the github-actions manager).
+  # Both tools tracking it produced a duplicate PR for every Action release,
+  # racing to different versions: #62 (Dependabot, codeql 4.37.5) vs #79
+  # (Renovate, 4.37.6), and #63 vs #80 for mise-action. Renovate wins the
+  # split because it was consistently the fresher of the two and already
+  # owns mise.toml via its custom regex manager.
+  #
   # version updates: disabled (open-pull-requests-limit: 0) / security: enabled.
   # Scoped to the repo's real Go modules — there is no root go.mod, and the
   # inherited docker@cicd entry pointed at a cicd/ dir that never existed
