@@ -426,8 +426,9 @@ keep CI and local machines on identical binaries. Renovate keeps them
 current via the custom regex manager in `renovate.json` (mise's own manager
 is disabled there) — **a pin with no annotation is invisible to Renovate and
 silently rots**, so always add one. Two datasource traps live here: `go:`
-tools need the *full module path* as `depName` (`github.com/spf13/cobra-cli`,
-not `spf13/cobra-cli`), and a repo whose tags aren't bare semver needs an
+tools need the *full module path* as `depName`
+(`github.com/google/go-licenses`, not `google/go-licenses`), and a repo
+whose tags aren't bare semver needs an
 `extractVersion` packageRule (`golang/go` → `go1.26.5`, `jqlang/jq` →
 `jq-1.8.2`).
 
