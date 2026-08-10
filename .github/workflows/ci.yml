@@ -124,7 +124,7 @@ jobs:
         module: ${{ fromJSON(needs.detect.outputs.community) }}
     services:
       localstack:
-        image: localstack/localstack-pro:2026.7.0
+        image: localstack/localstack-pro:2026.07.2
         ports:
           - 4566:4566
         env:
@@ -165,7 +165,7 @@ jobs:
         module: ${{ fromJSON(needs.detect.outputs.pro) }}
     services:
       localstack:
-        image: localstack/localstack-pro:2026.7.0
+        image: localstack/localstack-pro:2026.07.2
         ports:
           - 4566:4566
         env:
