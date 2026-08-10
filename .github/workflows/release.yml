@@ -68,7 +68,7 @@ jobs:
           fetch-tags: true
           ref: main
 
-      - uses: jdx/mise-action@v4.2.1
+      - uses: jdx/mise-action@v4.2.4
 
       - name: Regenerate module table
         run: just readme
