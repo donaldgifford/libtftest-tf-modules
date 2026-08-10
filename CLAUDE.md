@@ -417,6 +417,20 @@ All tool versions are pinned in `mise.toml`. Bootstrap with `mise install`
 before doing anything else — the Terraform, terraform-docs, tflint,
 golangci-lint, docz, just, etc. binaries all come from mise.
 
+**No `latest`, ever, and every pin carries a `# renovate:` annotation.**
+`latest` makes mise list upstream versions over the network on every run
+under a 20s per-tool ceiling; one such call timing out against
+`proxy.golang.org` killed `mise install` mid-CI and failed the static gate
+before it ran a single check. Exact pins skip version listing entirely and
+keep CI and local machines on identical binaries. Renovate keeps them
+current via the custom regex manager in `renovate.json` (mise's own manager
+is disabled there) — **a pin with no annotation is invisible to Renovate and
+silently rots**, so always add one. Two datasource traps live here: `go:`
+tools need the *full module path* as `depName` (`github.com/spf13/cobra-cli`,
+not `spf13/cobra-cli`), and a repo whose tags aren't bare semver needs an
+`extractVersion` packageRule (`golang/go` → `go1.26.5`, `jqlang/jq` →
+`jq-1.8.2`).
+
 ## Common commands
 
 `justfile` recipes (run `just` to list, `just --list` for the full menu):
