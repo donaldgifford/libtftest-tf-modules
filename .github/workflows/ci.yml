@@ -25,9 +25,9 @@ jobs:
     name: Static gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - name: just static
         # Authenticate tflint --init's GitHub plugin fetch (avoids the
@@ -50,11 +50,11 @@ jobs:
       community: ${{ steps.matrix.outputs.community }}
       pro: ${{ steps.matrix.outputs.pro }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - id: matrix
         name: Compute test matrix
@@ -85,9 +85,9 @@ jobs:
       matrix:
         module: ${{ fromJSON(needs.detect.outputs.changed) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - name: just tf test ${{ matrix.module }}
         run: just tf test ${{ matrix.module }}
@@ -136,9 +136,9 @@ jobs:
           --health-retries 30
           --health-start-period 30s
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - name: just tf test-localstack ${{ matrix.module }}
         run: just tf test-localstack ${{ matrix.module }}
@@ -177,9 +177,9 @@ jobs:
           --health-retries 30
           --health-start-period 30s
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - name: just tf test-localstack-pro ${{ matrix.module }}
         run: just tf test-localstack-pro ${{ matrix.module }}
@@ -192,12 +192,12 @@ jobs:
     name: README matrix drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: jdx/mise-action@v3
+      - uses: jdx/mise-action@v4.2.1
 
       - name: just readme --check
         run: just readme --check
