@@ -80,7 +80,7 @@ golangci-lint = "2.12.2"
 
 # Security
 # renovate: datasource=github-releases depName=anchore/syft
-syft = "1.50.0"
+syft = "1.51.0"
 # renovate: datasource=go depName=golang.org/x/vuln
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
 
