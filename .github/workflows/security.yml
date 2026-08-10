@@ -66,7 +66,7 @@ jobs:
       # defeating the continue-on-error above. Only upload real output.
       - name: Upload SARIF file
         if: hashFiles('govulncheck.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4.37.3
+        uses: github/codeql-action/upload-sarif@v4.37.5
         with:
           sarif_file: govulncheck.sarif
           category: govulncheck-${{ matrix.gomod }}
