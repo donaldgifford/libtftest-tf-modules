@@ -289,7 +289,31 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 
 ## Open Questions
 
+> **Resolved 2026-08-11: 1b, 2a, 3a, 4a, 5a, 6a.** The producer module
+> comes first: `modules/secretsmanager/secret` owns secret creation
+> (requirement 1), and the RDS modules then gain only a
+> remote-state-composed **reference** mode (requirement 2) — no
+> in-module create option is ever built, so nothing ships that the
+> producer would later replace. The remaining answers relocate rather
+> than lapse: **3a** (local `ephemeral "random_password"` generation),
+> **5a** (`name_prefix` + recovery-window variable), and the
+> create-side half of **4a** (version-bump rotation, none in v1) now
+> land in the producer module; **2a** (typed object surface, now
+> two-state `managed` / `reference` + the generalized guardrail) and
+> **6a** (`required_version >= 1.11`, needed by BOTH sides — the
+> producer for `secret_string_wo`, the RDS modules for the ephemeral
+> read + `password_wo`) land in the RDS change. The F3 probe results
+> transfer intact: the fully plan-testable half (generation, F3.3)
+> concentrates in the producer's own suite, and the RDS plan suites
+> stub the pointer read with the existing `override_data` pattern while
+> keeping reference mode OFF (F3.4), with the live proof in the apply
+> tier. Sequencing: DESIGN for the producer (reserving the ADR-0020
+> `secrets` shape, pointer-only outputs per F7), then the RDS
+> reference-mode DESIGN or a second phase of the same doc.
+
 ### 1. What is the overall architecture?
+
+**Resolved: b.**
 
 - **a. (Recommended)** Extend the three secret-owning RDS modules with
   the tri-state mode (`managed` / `create` / `reference`); build no new
@@ -307,6 +331,8 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 - Other: (your call)
 
 ### 2. What variable surface expresses the mode?
+
+**Resolved: a.**
 
 - **a. (Recommended)** One typed object, e.g.
   `master_password = { mode = "managed" | "create" | "reference", secret_arn = ..., secret_kms_key_arn = ..., version = 1 }`
@@ -326,6 +352,8 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 
 ### 3. How is the password generated in create mode?
 
+**Resolved: a.**
+
 - **a. (Recommended)** `ephemeral "random_password"` (random provider
   `~> 3.7`, already in-fleet via the s3 core). Opens locally with no
   API call, which is precisely what makes create mode assertable in the
@@ -344,6 +372,8 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 
 ### 4. What happens to rotation in the customer-managed modes?
 
+**Resolved: a.**
+
 - **a. (Recommended)** v1 ships none: create mode rotates by bumping
   `version` (one apply = new password in secret + DB, F4); reference
   mode's rotation belongs to the secret's owner, with the
@@ -361,6 +391,8 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 
 ### 5. How are create-mode secret naming and deletion handled?
 
+**Resolved: a.**
+
 - **a. (Recommended)** `name_prefix = "<identifier_prefix>-master-"`
   (SM name-reuse is blocked for the length of the recovery window, so
   an exact name would brick recreate-after-destroy for up to 30 days),
@@ -374,6 +406,8 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 - Other: (your call)
 
 ### 6. How is the `required_version` floor raise rolled out?
+
+**Resolved: a.**
 
 - **a. (Recommended)** Raise `required_version` to `>= 1.11` only in
   the three modules that gain write-only arguments, in the same minor
