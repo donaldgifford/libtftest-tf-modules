@@ -22,7 +22,9 @@ No modules.
 | Name | Type |
 | ---- | ---- |
 | [aws_secretsmanager_secret.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_policy.read_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_policy) | resource |
 | [aws_secretsmanager_secret_version.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_iam_policy_document.read_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
 ## Inputs
 
@@ -33,6 +35,7 @@ No modules.
 | name | Logical secret name. Seeds the aws\_secretsmanager\_secret name\_prefix (the created secret is <name>-<random-suffix>) and is the <name> segment of the ADR-0020 remote-state key consumers compose: <account\_name>/<region>/secrets/<name>/terraform.tfstate. The state-key coupling is to THIS value, not the suffixed physical secret name. | `string` | n/a | yes |
 | password\_length | Length of the generated password. | `number` | `32` | no |
 | password\_override\_special | Special characters the generator may use. The default is the RDS-legal set (no '/', '@', '"', or space) so the DB-credentials shape works for postgres and mysql master passwords without per-consumer tuning. | `string` | `"!#$%&*()-_=+[]{}<>:?"` | no |
+| read\_principals | IAM principal ARNs (roles, users, or account roots) granted read-only access (GetSecretValue + DescribeSecret) via a resource policy on the secret. Empty (default) creates no policy resource at all. Cross-account principals additionally require the BYO-CMK path (var.kms\_key\_arn) plus a kms:Decrypt grant in that key's own policy — the AWS-managed key cannot cross accounts. | `list(string)` | `[]` | no |
 | secret\_recovery\_window\_days | Recovery window Secrets Manager holds a deleted secret for. 0 = immediate permanent deletion (test teardown / break-glass); otherwise 7-30 days (AWS API constraint). NB: the secret NAME stays reserved for the length of this window — which is why the module uses name\_prefix (DESIGN-0020 resolution 5a). | `number` | `30` | no |
 | secret\_string\_version | Version gate for the write-only secret value (INV-0010 F4). The generated password is only SENT when this integer changes: leave it and applies are no-ops (the in-memory regeneration is discarded unsent); bump it and exactly one new password lands in the secret. Rotation = bump this number. Consumers that copy the value onward do NOT pick the rotation up automatically. | `number` | `1` | no |
 | tags | Tags applied to the secret. | `map(string)` | `{}` | no |
