@@ -103,7 +103,7 @@ cross-referencing.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/secretsmanager/secret`: `versions.tf` with
+- [x] 1.1 Scaffold `modules/secretsmanager/secret`: `versions.tf` with
       `required_version = ">= 1.11"` + a why-comment (write-only
       arguments — the fleet's first 1.11 floor; do not "simplify" it
       down), aws `~> 6.2`, random `~> 3.7`; `.tflint.hcl` (ruleset-aws
@@ -112,7 +112,7 @@ cross-referencing.
       (test suites must use the real-provider-fake-creds pattern —
       `mock_provider` rejects ephemeral types, INV-0010 F3.1; outputs
       are pointer-only, never the value, F7)
-- [ ] 1.2 `variables.tf`: `name` (charset validation, fleet norm),
+- [x] 1.2 `variables.tf`: `name` (charset validation, fleet norm),
       `username` (nullable string — the OQ 1a shape switch),
       `secret_string_version` (number, default 1, validation `>= 1`),
       `password_length` (default 32, validation `>= 16`) +
@@ -123,7 +123,7 @@ cross-referencing.
       `aws/secretsmanager` key — OQ 2 resolution), `description`,
       `tags`; attribute order per the tflint terraform-style rule
       (nullable last)
-- [ ] 1.3 `main.tf`: `aws_secretsmanager_secret` (`name_prefix =
+- [x] 1.3 `main.tf`: `aws_secretsmanager_secret` (`name_prefix =
       "${var.name}-"` — resolution 5a name-reuse rationale in a
       comment, `recovery_window_in_days`, `kms_key_id =
       var.kms_key_arn`, description, tags);
@@ -134,11 +134,11 @@ cross-referencing.
       `secret_string_wo_version = var.secret_string_version`; comment
       marking the ephemeral-reference invariant (nothing else may read
       `ephemeral.random_password.this.result`)
-- [ ] 1.4 `outputs.tf`: the pointer-only contract set exactly —
+- [x] 1.4 `outputs.tf`: the pointer-only contract set exactly —
       `secret_arn`, `secret_id`, `secret_name`, `kms_key_arn`
       (passthrough; null ⇒ managed key ⇒ proxy wildcard path),
       `secret_string_version`, `username`
-- [ ] 1.5 Plan suite `tests/` (real-provider-fake-creds header comment
+- [x] 1.5 Plan suite `tests/` (real-provider-fake-creds header comment
       explaining why no `mock_provider` — F3.1): `default.tftest.hcl`
       (both content shapes planned; the **no-leak gate**:
       `secret_string_wo == null` AND `secret_string_wo_version ==
@@ -148,10 +148,10 @@ cross-referencing.
       recovery window 1–6 rejected + 0 accepted, `secret_string_version
       = 0` rejected, `password_length < 16` rejected),
       `outputs_contract.tftest.hcl` (the output set pinned by name)
-- [ ] 1.6 Verify CI pickup: `just changed` with a seeded diff under
+- [x] 1.6 Verify CI pickup: `just changed` with a seeded diff under
       `modules/secretsmanager/secret/` lists the module at the plan
       tier (leaf-module auto-discovery, no script changes expected)
-- [ ] 1.7 `just tf docs secretsmanager/secret` (USAGE.md), `just tf
+- [x] 1.7 `just tf docs secretsmanager/secret` (USAGE.md), `just tf
       fmt|lint|validate|test`; CLAUDE.md: start the
       `modules/secretsmanager/` section (posture, 1.11 floor,
       mock_provider constraint); conventional commit

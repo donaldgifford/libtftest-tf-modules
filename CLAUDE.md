@@ -256,6 +256,34 @@ Tracked in git. As of this writing:
   so the apply demonstrates the queue-policy shape without verifying it.
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
+- **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
+  IMPL-0019, in progress). The fleet's SM secret producer (INV-0010
+  resolution 1b: producer first; the RDS reference mode follows): creates a
+  customer-managed secret whose value — bare generated password or, when
+  `username` is set, the RDS-format `{"username","password"}` JSON that
+  `rds/proxy` requires — **never exists in state, plan output, or code**.
+  Mechanics: local `ephemeral "random_password"` (random `~> 3.7`; chosen
+  over the aws `aws_secretsmanager_random_password` for offline
+  plan-testability) → write-only `secret_string_wo` gated by
+  `secret_string_wo_version = var.secret_string_version` (steady-state
+  applies are no-ops, rotation = bump the integer; consumers copying the
+  value onward re-send on their own bump). **The fleet's first
+  `required_version = ">= 1.11"`** (write-only args; do not "simplify"
+  down). `name_prefix = "<name>-"` because SM reserves deleted names for
+  the recovery window (`secret_recovery_window_days`, 0 = teardown path);
+  the ADR-0020 `secrets` key couples to `var.name`, not the suffixed
+  physical name. KMS: null default = AWS-managed `aws/secretsmanager` key
+  and a **faithful null `kms_key_arn` output** (rds/proxy branches on it);
+  BYO CMK required for cross-account. Outputs are **pointer-only** (F7 —
+  arn/id/name/kms/version/username, never the value). **Test constraint:
+  `mock_provider` is structurally impossible in this module** (rejects
+  ephemeral resource types even at count 0, no `override_ephemeral`;
+  INV-0010 F3.1/F3.2) — suites use the real-provider-fake-creds pattern.
+  Plan suite: 15 runs (the gate) incl. the permanent **no-leak assertion**
+  (`secret_string_wo == null` in a passing plan). Community apply +
+  `read_principals` policy + conftest credential gate land in later
+  IMPL-0019 phases. Sub-directory leaves room for siblings
+  (`secretsmanager/rotation-lambda` if ever).
 
 ### Shared test fixtures (`test/fixtures/`)
 
