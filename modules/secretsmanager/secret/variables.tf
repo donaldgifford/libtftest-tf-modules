@@ -110,6 +110,24 @@ variable "kms_key_arn" {
 }
 
 #--------------------------------------------------------------
+# Cross-account reads (DESIGN-0020 OQ 3a)
+#--------------------------------------------------------------
+
+variable "read_principals" {
+  description = "IAM principal ARNs (roles, users, or account roots) granted read-only access (GetSecretValue + DescribeSecret) via a resource policy on the secret. Empty (default) creates no policy resource at all. Cross-account principals additionally require the BYO-CMK path (var.kms_key_arn) plus a kms:Decrypt grant in that key's own policy — the AWS-managed key cannot cross accounts."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for p in var.read_principals :
+      can(regex("^arn:aws[a-z-]*:iam::[0-9]{12}:(root|role/.+|user/.+)$", p))
+    ])
+    error_message = "Every read_principals entry must be an IAM principal ARN (arn:aws:iam::<account-id>:root, :role/..., or :user/...) — wildcards are rejected by construction."
+  }
+}
+
+#--------------------------------------------------------------
 # Metadata
 #--------------------------------------------------------------
 
