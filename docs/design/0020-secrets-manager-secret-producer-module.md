@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0020
 title: "Secrets Manager secret producer module"
-status: Draft
+status: Approved
 author: Donald Gifford
 created: 2026-08-11
 ---
@@ -9,7 +9,7 @@ created: 2026-08-11
 
 # DESIGN 0020: Secrets Manager secret producer module
 
-**Status:** Draft
+**Status:** Approved
 **Author:** Donald Gifford
 **Date:** 2026-08-11
 
@@ -245,20 +245,28 @@ arguments are only *sent* when `secret_string_wo_version` changes. So:
 
 ### KMS posture
 
-Per OQ 2. Whatever the answer, the module's `kms_key_arn` output must
-faithfully report what encrypts the secret (null when it is the
-AWS-managed `aws/secretsmanager` key) because the proxy's IAM composer
-keys off it: a non-null ARN gets exact `kms:Decrypt` scoping, null
-falls back to the existing `ViaService`-fenced wildcard (INV-0010 F5,
-`modules/rds/proxy/iam.tf`).
+Resolved (OQ 2, Other): **the AWS-managed `aws/secretsmanager` key is
+the default; BYO CMK overrides; null is what the pointer reports for
+the managed case.** Concretely: `kms_key_arn` (string, default `null`);
+when null the resource's `kms_key_id` is left unset so Secrets Manager
+uses `aws/secretsmanager`, and the module's `kms_key_arn` **output** is
+null; when set, the CMK ARN rides the resource and the output
+faithfully echoes it. The output contract matters because the proxy's
+IAM composer keys off it: a non-null ARN gets exact `kms:Decrypt`
+scoping, null falls back to the existing `ViaService`-fenced wildcard
+(INV-0010 F5, `modules/rds/proxy/iam.tf`). Documented caveat:
+cross-account reads require the BYO CMK path (OQ 3 interaction below).
 
 ### Cross-account reads
 
-Per OQ 3. The mechanism (whatever surface is chosen) is an
-`aws_secretsmanager_secret_policy` granting `GetSecretValue` /
-`DescribeSecret` to named principals, plus the documented caveat that a
-CMK-encrypted secret **also** needs a key-policy grant the module does
-not own — and cross-account with the AWS-managed
+Resolved (OQ 3a): typed `read_principals` (list of IAM principal ARNs,
+default `[]` → no policy resource at all, count-gated). The module
+composes an `aws_secretsmanager_secret_policy` granting
+`GetSecretValue` / `DescribeSecret` to exactly those principals;
+validation rejects `*`. A raw `policy_json` passthrough (OQ 3b) is
+**explicitly deferred** to follow-up work, not rejected. Documented
+caveats: a CMK-encrypted secret **also** needs a key-policy grant the
+module does not own — and cross-account with the AWS-managed
 `aws/secretsmanager` key does not work at all (AWS restriction), which
 the README must state to head off a confusing `AccessDenied`.
 
@@ -366,8 +374,9 @@ resolution 1b is unbroken. After this module lands:
    JSON shape note pointing at this module's `username` mode.
 3. **ADR-0020**: add the RDS consumer row under the `secrets` shape.
 4. **Deferred/optional**: rotation-lambda sibling INV (INV-0010 OQ 4c),
-   BYO-value mode via ephemeral variables if OQ 1 defers it, replicas
-   if OQ 4 defers them.
+   BYO-value mode via ephemeral variables (OQ 1 resolution defers it),
+   multi-region replicas (OQ 4a defers them), and the raw `policy_json`
+   passthrough (OQ 3 resolution defers it).
 
 ## Phases
 
@@ -458,7 +467,21 @@ Success criteria:
 
 ## Open Questions
 
+> **Resolved 2026-08-11: 1a, 2 Other, 3a (+ explicit deferral), 4a,
+> 5a, 6a.** OQ 2's resolution in the operator's words: "default to the
+> aws managed key — aws/secretsmanager key, then byo, then null" —
+> i.e. the managed key is the default, a BYO CMK overrides it, and
+> null is what the `kms_key_arn` pointer output reports in the managed
+> case (the proxy's `ViaService` wildcard path). OQ 3 resolves to the
+> typed `read_principals` surface with the raw `policy_json`
+> passthrough (3b) explicitly deferred to follow-up work rather than
+> rejected. The Detailed Design sections above are updated to the
+> resolved semantics; deferrals are tracked in
+> [Follow-up work item 4](#follow-up-work-the-rds-reference-mode).
+
 ### 1. What secret content shapes does v1 support?
+
+**Resolved: a.**
 
 - **a. (Recommended)** Two, selected by `username`: set → the
   RDS-format JSON `{"username", "password"}` (what `rds/proxy` requires
@@ -479,6 +502,8 @@ Success criteria:
 
 ### 2. What is the KMS default?
 
+**Resolved: Other — managed key default, BYO override, null output for managed (see note above).**
+
 - **a. (Recommended)** BYO `kms_key_arn`, default `null` → the
   AWS-managed `aws/secretsmanager` key. Zero marginal cost, zero
   key-management scope, and the null case is already first-class
@@ -496,6 +521,8 @@ Success criteria:
 
 ### 3. What shape does the cross-account read surface take?
 
+**Resolved: a, with 3b explicitly deferred.**
+
 - **a. (Recommended)** Typed `read_principals` (list of IAM principal
   ARNs, default `[]` → no policy resource at all, count-gated like the
   fleet's other optional resources). The module composes the
@@ -511,6 +538,8 @@ Success criteria:
 
 ### 4. Are multi-region replicas in v1?
 
+**Resolved: a.**
+
 - **a. (Recommended)** No — defer. The first consumer (RDS reference
   mode) is same-region by construction, `replica` blocks bring
   per-region KMS decisions with them, and adding replicas later is
@@ -521,6 +550,8 @@ Success criteria:
 - Other: (your call)
 
 ### 5. What are the generated-password defaults?
+
+**Resolved: a.**
 
 - **a. (Recommended)** `password_length = 32`,
   `override_special = "!#$%&*()-_=+[]{}<>:?"` — the RDS-legal set
@@ -533,6 +564,8 @@ Success criteria:
 - Other: (your call)
 
 ### 6. How deep does the apply suite verify the secret?
+
+**Resolved: a.**
 
 - **a. (Recommended)** Metadata-only: secret exists, ARN/name/KMS
   outputs are real, a current version exists (via the
