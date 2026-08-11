@@ -50,4 +50,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0016 | CI test-gating pipeline for changed Terraform modules | Completed | 2026-07-25 | Donald Gifford | [0016-ci-test-gating-pipeline-for-changed-terraform-modules.md](0016-ci-test-gating-pipeline-for-changed-terraform-modules.md) |
 | IMPL-0017 | RDS master secret rotation default and manage-false guardrail | Completed | 2026-07-29 | Donald Gifford | [0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md](0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md) |
 | IMPL-0018 | S3 module family internal core and initial bucket modules | Completed | 2026-08-02 | Donald Gifford | [0018-s3-module-family-internal-core-and-initial-bucket-modules.md](0018-s3-module-family-internal-core-and-initial-bucket-modules.md) |
+| IMPL-0019 | Secrets Manager secret producer module | Draft | 2026-08-11 | Donald Gifford | [0019-secrets-manager-secret-producer-module.md](0019-secrets-manager-secret-producer-module.md) |
 <!-- END DOCZ AUTO-GENERATED -->
