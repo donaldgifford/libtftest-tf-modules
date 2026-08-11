@@ -50,4 +50,5 @@ docz create design "Your Design Title"
 | DESIGN-0016 | RDS test fixtures mirror the vpc-lookup remote-state contract | Implemented | 2026-07-23 | Donald Gifford | [0016-rds-test-fixtures-mirror-the-vpc-lookup-remote-state-contract.md](0016-rds-test-fixtures-mirror-the-vpc-lookup-remote-state-contract.md) |
 | DESIGN-0017 | EFS test fixture mirrors the vpc-lookup remote-state contract | Draft | 2026-07-23 | Donald Gifford | [0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md](0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md) |
 | DESIGN-0019 | S3 module family internal core and initial bucket modules | Implemented | 2026-08-02 | Donald Gifford | [0019-s3-module-family-internal-core-and-initial-bucket-modules.md](0019-s3-module-family-internal-core-and-initial-bucket-modules.md) |
+| DESIGN-0020 | Secrets Manager secret producer module | Approved | 2026-08-11 | Donald Gifford | [0020-secrets-manager-secret-producer-module.md](0020-secrets-manager-secret-producer-module.md) |
 <!-- END DOCZ AUTO-GENERATED -->

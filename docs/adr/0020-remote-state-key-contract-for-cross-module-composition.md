@@ -16,6 +16,7 @@ created: 2026-07-29
   - [The canonical key shape](#the-canonical-key-shape)
   - [The contract table](#the-contract-table)
   - [The identifier coupling](#the-identifier-coupling)
+  - [The reserved stack name (s3/access-logs)](#the-reserved-stack-name-s3access-logs)
   - [Enforcement — what is checked where](#enforcement--what-is-checked-where)
 - [Consequences](#consequences)
   - [Positive](#positive)

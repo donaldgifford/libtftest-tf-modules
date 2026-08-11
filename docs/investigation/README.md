@@ -22,6 +22,7 @@ Design docs, plans, and implementation docs can reference investigations by ID
 | INV-0007 | Open Renovate and Dependabot PR and security-alert triage | Open | 2026-07-24 | Donald Gifford | [0007-open-renovate-and-dependabot-pr-and-security-alert-triage.md](0007-open-renovate-and-dependabot-pr-and-security-alert-triage.md) |
 | INV-0008 | RDS managed master secret rotation schedule and manage-false guardrails | Concluded | 2026-07-29 | Donald Gifford | [0008-rds-managed-master-secret-rotation-schedule-and-manage-false.md](0008-rds-managed-master-secret-rotation-schedule-and-manage-false.md) |
 | INV-0009 | S3 module family layout and security baseline | Concluded | 2026-08-01 | Donald Gifford | [0009-s3-module-family-layout-and-security-baseline.md](0009-s3-module-family-layout-and-security-baseline.md) |
+| INV-0010 | RDS master password via customer-managed Secrets Manager secrets | Concluded | 2026-08-11 | Donald Gifford | [0010-rds-master-password-via-customer-managed-secrets-manager-secrets.md](0010-rds-master-password-via-customer-managed-secrets-manager-secrets.md) |
 <!-- END DOCZ AUTO-GENERATED -->
 <!-- BEGIN DOCZ AUTO-GENERATED -->
 <!-- END DOCZ AUTO-GENERATED -->
