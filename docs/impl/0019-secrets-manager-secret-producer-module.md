@@ -28,9 +28,12 @@ created: 2026-08-11
   - [Phase 3: LocalStack Community apply suite](#phase-3-localstack-community-apply-suite)
     - [Tasks](#tasks-2)
     - [Success Criteria](#success-criteria-2)
-  - [Phase 4: Contract and doc closure](#phase-4-contract-and-doc-closure)
+  - [Phase 4: Conftest credential policy gate](#phase-4-conftest-credential-policy-gate)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+  - [Phase 5: Contract and doc closure](#phase-5-contract-and-doc-closure)
+    - [Tasks](#tasks-4)
+    - [Success Criteria](#success-criteria-4)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -66,6 +69,9 @@ tracked in DESIGN-0020's Follow-up section, **not** this doc).
   arguments).
 - Plan suite (the gate) including the permanent no-leak assertion;
   Community LocalStack apply suite + FINDINGS.md.
+- The conftest credential policy gate (OQ 4 resolution): a repo-level
+  Rego policy denying persisted credential arguments fleet-wide, pinned
+  conftest in mise, wired into the static gate.
 - ADR-0020 `secrets` shape row; module README "Remote-state key
   contract" section; CLAUDE.md + INV-0010 closure notes.
 
@@ -76,6 +82,9 @@ tracked in DESIGN-0020's Follow-up section, **not** this doc).
 - Rotation Lambda, multi-region replicas, BYO-caller-value via
   ephemeral variables, raw `policy_json` passthrough — all explicitly
   deferred (DESIGN-0020 Follow-up item 4).
+- The Atlantis plan-JSON integration of the conftest policy — that leg
+  belongs to the live repo (same boundary as ADR-0020's folder-naming
+  leg); the policy here is authored so that variant can follow.
 - Any change to the three RDS modules' existing managed-secret default
   or IMPL-0017 rotation surface.
 
@@ -206,11 +215,11 @@ named volume.
       version-listing data source shows a current (`AWSCURRENT`)
       version, `kms_key_arn` output null on the managed-key path; no
       value read anywhere
-- [ ] 3.2 Rotation run per IMPL OQ 2 resolution (if 2a: a second run
-      block bumping `secret_string_version` to 2, asserting the
-      AWSCURRENT version id **changed** via the version-listing data
-      source — still metadata-only; if 2b: record the deferral in
-      FINDINGS.md instead)
+- [ ] 3.2 Rotation run (OQ 2a resolved): a second run block bumping
+      `secret_string_version` to 2, asserting the AWSCURRENT version id
+      **changed** via the version-listing data source — still
+      metadata-only; the live proof of the F4 version-gate mechanism
+      the RDS follow-up leans on
 - [ ] 3.3 `tests-localstack/FINDINGS.md`: parity notes — whether
       LocalStack emulates recovery-window name-reuse blocking (probe
       once, record outcome), anything the rotation run surfaces, the
@@ -229,34 +238,79 @@ named volume.
 
 ---
 
-### Phase 4: Contract and doc closure
+### Phase 4: Conftest credential policy gate
+
+The OQ 4 resolution: the no-leak invariant becomes policy-as-code — a
+repo-level conftest/Rego policy denying persisted credential arguments
+across the whole fleet (not just this module), enforced by the static
+gate, and authored so the live repo can later run the same policy
+family against Atlantis plan JSON.
+
+#### Tasks
+
+- [ ] 4.1 mise.toml: pin conftest (exact version, `# renovate:`
+      annotation — `datasource=github-releases
+      depName=open-policy-agent/conftest`); `mise install` verified,
+      no `latest`
+- [ ] 4.2 `policy/credentials.rego`: deny persisted credential
+      attributes in module source — `secret_string` / `secret_binary`
+      on `aws_secretsmanager_secret_version` (the `_wo` forms are the
+      only allowed path), `password` on `aws_db_instance`,
+      `master_password` on `aws_rds_cluster` (the `_wo` forms +
+      `manage_master_user_password` remain the only credential paths);
+      package doc-comment states the fleet invariant and that the
+      Atlantis plan-JSON variant belongs to the live repo
+- [ ] 4.3 `policy/credentials_test.rego` + violating/clean fixtures:
+      `conftest verify` unit tests covering each deny rule both ways
+- [ ] 4.4 justfile: `conftest` recipe (hcl2 parser over
+      `modules/**/*.tf` with the `policy/` dir); wire it into
+      `scripts/static-check.sh` as a new numbered section so the
+      static gate enforces it repo-wide in CI
+- [ ] 4.5 Deliberate-violation check (the IMPL-0018 guard pattern):
+      seed a scratch `secret_string` attribute, verify `just static`
+      fails with the policy message, revert
+- [ ] 4.6 CLAUDE.md: document the `policy/` dir + gate; conventional
+      commit
+
+#### Success Criteria
+
+- `conftest verify` green (policy unit tests)
+- Fleet-wide `conftest test` green today (no module uses persisted
+  credential arguments)
+- `just static` fails on the seeded violation and passes clean after
+  revert
+
+---
+
+### Phase 5: Contract and doc closure
 
 The fleet-level bookkeeping that makes the RDS follow-up start from
 zero re-derivation.
 
 #### Tasks
 
-- [ ] 4.1 ADR-0020: add the `secrets` shape row (producer =
+- [ ] 5.1 ADR-0020: add the `secrets` shape row (producer =
       `secretsmanager/secret`) + a reserved consumer-row placeholder
       naming the RDS reference mode as the intended first consumer
-- [ ] 4.2 CLAUDE.md: complete the `modules/secretsmanager/` section
+- [ ] 5.2 CLAUDE.md: complete the `modules/secretsmanager/` section
       (module posture, resolved decisions incl. the KMS
       default/override/null-output semantics, test-tier layout, the
-      1.11 floor, the mock_provider constraint, deferral list)
-- [ ] 4.3 INV-0010: append a note that the producer half of resolution
+      1.11 floor, the mock_provider constraint, the conftest gate,
+      deferral list)
+- [ ] 5.3 INV-0010: append a note that the producer half of resolution
       1b is delivered (pointer to DESIGN-0020 + the module path)
-- [ ] 4.4 `docz update` for indexes; restore the known TOC mangling
+- [ ] 5.4 `docz update` for indexes; restore the known TOC mangling
       (impl/0009, impl/0017, inv/0008 — and check inv/0010 / adr/0020)
-- [ ] 4.5 Final gates: `just static`, full plan matrix locally
+- [ ] 5.5 Final gates: `just static`, full plan matrix locally
       (`just tf test secretsmanager/secret`), `just docs lint` on
-      touched docs; PR per IMPL OQ 1 resolution, labeled `minor` (new
-      module); DESIGN-0020 status → Implemented and this doc →
+      touched docs; one PR spanning all phases labeled `minor`
+      (OQ 1a); DESIGN-0020 status → Implemented and this doc →
       Completed on merge
 
 #### Success Criteria
 
-- CI green: static + plan (+ community tier if
-  `CI_RUN_LOCALSTACK_APPLY` is enabled); `ci-gate` passes
+- CI green: static (incl. the conftest section) + plan (+ community
+  tier if `CI_RUN_LOCALSTACK_APPLY` is enabled); `ci-gate` passes
 - ADR-0020 and the module README agree on the key shape verbatim
 - CLAUDE.md reflects the Follow-up section as the next piece of work
 
@@ -274,8 +328,13 @@ zero re-derivation.
 | `modules/secretsmanager/secret/{.tflint.hcl,.terraform-docs.yml,README.md,USAGE.md}` | Create | Standard module chrome + contract/caveats README |
 | `modules/secretsmanager/secret/tests/*.tftest.hcl` | Create | Plan gate incl. the no-leak assertion |
 | `modules/secretsmanager/secret/tests-localstack/{apply.tftest.hcl,FINDINGS.md}` | Create | Community apply proof + parity notes |
+| `policy/credentials.rego` | Create | Fleet-wide persisted-credential deny policy (OQ 4) |
+| `policy/credentials_test.rego` (+ fixtures) | Create | `conftest verify` unit tests |
+| `mise.toml` | Modify | Pin conftest + `# renovate:` annotation |
+| `justfile` | Modify | `conftest` recipe |
+| `scripts/static-check.sh` | Modify | New numbered section running the policy gate |
 | `docs/adr/0020-*.md` | Modify | `secrets` shape row + reserved consumer row |
-| `CLAUDE.md` | Modify | `modules/secretsmanager/` section |
+| `CLAUDE.md` | Modify | `modules/secretsmanager/` section + `policy/` dir |
 | `docs/investigation/0010-*.md` | Modify | Producer-half-delivered note |
 | `docs/design/0020-*.md` | Modify | Status → Implemented at closure |
 
@@ -289,9 +348,12 @@ zero re-derivation.
 - Community apply (opt-in, live LocalStack 4.4,
   `SERVICES=secretsmanager,sts`): metadata-only apply proof + rotation
   run per OQ 2 — 1–2 runs.
+- Conftest (the OQ 4 resolution): `conftest verify` unit tests for the
+  policy itself; fleet-wide `conftest test` in the static gate; one
+  deliberate-violation run proving the gate fails loudly.
 - No Pro tier. No `mock_provider` anywhere in this module (INV-0010
-  F3.1) — enforced by comment + review, and by OQ 4's resolution if a
-  guard is chosen.
+  F3.1) — enforced by comment + review; the persisted-credential leak
+  vector is covered by the conftest gate.
 
 ## Dependencies
 
@@ -305,7 +367,23 @@ zero re-derivation.
 
 ## Open Questions
 
+> **Resolved 2026-08-11: 1a, 2a, 3a, 4 Other.** OQ 4 in the operator's
+> words: "we should add a conftest policy to be ran against
+> plans/applys from atlantis or just conftest checks" — the no-leak
+> invariant becomes **policy-as-code** rather than a bespoke grep: a
+> repo-level conftest/Rego policy denying persisted credential
+> arguments fleet-wide (`secret_string`/`secret_binary`,
+> `password`/`master_password` — the `_wo` forms and
+> `manage_master_user_password` stay the only credential paths),
+> pinned in mise, unit-tested via `conftest verify`, and enforced in
+> the static gate. That is the new Phase 4; contract/doc closure moved
+> to Phase 5. The Atlantis plan-JSON leg belongs to the live repo
+> (recorded in Out of Scope) — the policy is authored so that variant
+> can follow without redesign.
+
 ### 1. What is the PR and release cadence?
+
+**Resolved: a.**
 
 - **a. (Recommended)** One PR spanning all four phases, labeled
   `minor` (one new module, no existing module touched except docs;
@@ -324,6 +402,8 @@ zero re-derivation.
 
 ### 2. Does the apply suite prove rotation live?
 
+**Resolved: a.**
+
 - **a. (Recommended)** Yes — a second run block bumps
   `secret_string_version` 1 → 2 and asserts the `AWSCURRENT` version
   id changed via the version-listing data source. Still metadata-only
@@ -337,6 +417,8 @@ zero re-derivation.
 - Other: (your call)
 
 ### 3. When is the consumer side of the pointer contract proven?
+
+**Resolved: a.**
 
 - **a. (Recommended)** With the RDS reference mode (the DESIGN-0020
   follow-up): its serverless Community apply will instantiate this
@@ -352,6 +434,8 @@ zero re-derivation.
 - Other: (your call)
 
 ### 4. Does the no-leak invariant get a static guard?
+
+**Resolved: Other — conftest policy-as-code (see note above; now Phase 4).**
 
 - **a. (Recommended)** Not in v1. Terraform itself enforces the hard
   half (write-only arguments cannot persist; no readable
@@ -387,3 +471,7 @@ zero re-derivation.
 - `test/fixtures/terragrunt-inputs.tfvars` — shared globals; the plan
   suites need no per-suite edits (the var-file supplies unused globals
   silently).
+- conftest (`open-policy-agent/conftest`) — the OQ 4 policy-as-code
+  gate; Rego policies under `policy/`, unit-tested with
+  `conftest verify`, enforced by `scripts/static-check.sh`; the
+  Atlantis plan-JSON variant is the live repo's leg.
