@@ -31,7 +31,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 |--------|---------|------|:----------:|:----------:|:---:|
 | [`bedrock/claude-code`](modules/bedrock/claude-code) | `v0.10.0` | IMPL-0009 | 7 | apply | — |
 | [`ecr/org-registry`](modules/ecr/org-registry) | `v0.7.0` | IMPL-0006 | 8 | plan-only | — |
-| [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `v0.6.1` | IMPL-0005 | 7 | plan-only | — |
+| [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `unreleased` | IMPL-0005 | 7 | plan-only | — |
 | [`efs/filesystem`](modules/efs/filesystem) | `v0.17.0` | IMPL-0008 | 9 | apply | — |
 | [`eks/addons`](modules/eks/addons) | `v0.17.0` | IMPL-0003 | 4 | apply | — |
 | [`eks/cluster`](modules/eks/cluster) | `v0.17.0` | IMPL-0001 | 3 | apply | — |
@@ -47,6 +47,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`s3/bucket`](modules/s3/bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
 | [`s3/events-bucket`](modules/s3/events-bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
 | [`s3/internal/core`](modules/s3/internal/core) | `v0.19.0` | IMPL-0018 | 5 | — | — |
+| [`secretsmanager/secret`](modules/secretsmanager/secret) | `unreleased` | IMPL-0019 | 4 | apply | — |
 
 <!-- END_MODULE_TABLE -->
 
