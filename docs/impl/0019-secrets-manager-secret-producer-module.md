@@ -304,15 +304,15 @@ zero re-derivation.
 
 #### Tasks
 
-- [ ] 5.1 ADR-0020: add the `secrets` shape row (producer =
+- [x] 5.1 ADR-0020: add the `secrets` shape row (producer =
       `secretsmanager/secret`) + a reserved consumer-row placeholder
       naming the RDS reference mode as the intended first consumer
-- [ ] 5.2 CLAUDE.md: complete the `modules/secretsmanager/` section
+- [x] 5.2 CLAUDE.md: complete the `modules/secretsmanager/` section
       (module posture, resolved decisions incl. the KMS
       default/override/null-output semantics, test-tier layout, the
       1.11 floor, the mock_provider constraint, the conftest gate,
       deferral list)
-- [ ] 5.3 INV-0010: append a note that the producer half of resolution
+- [x] 5.3 INV-0010: append a note that the producer half of resolution
       1b is delivered (pointer to DESIGN-0020 + the module path)
 - [ ] 5.4 `docz update` for indexes; restore the known TOC mangling
       (impl/0009, impl/0017, inv/0008 — and check inv/0010 / adr/0020)
