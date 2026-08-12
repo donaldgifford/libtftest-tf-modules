@@ -14,7 +14,14 @@ Tracked in git. As of this writing:
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
-  DESIGN-0006 surfaced a second ECR module). `org-registry` (IMPL-0006,
+  DESIGN-0006 surfaced a second ECR module; the conftest credential gate's
+  **first real catch** — its operator placeholder was migrated from persisted
+  `secret_string` + `ignore_changes`, which read the operator-rotated real
+  token back into state on refresh, to write-only `secret_string_wo` with a
+  pinned `secret_string_wo_version = 1` as the version gate, raising the
+  module to `required_version >= 1.11`; upgrading replaces the version
+  resource and re-seeds the placeholder — see the README upgrade note).
+  `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
@@ -279,11 +286,17 @@ Tracked in git. As of this writing:
   `mock_provider` is structurally impossible in this module** (rejects
   ephemeral resource types even at count 0, no `override_ephemeral`;
   INV-0010 F3.1/F3.2) — suites use the real-provider-fake-creds pattern.
-  Plan suite: 15 runs (the gate) incl. the permanent **no-leak assertion**
-  (`secret_string_wo == null` in a passing plan). Community apply +
-  `read_principals` policy + conftest credential gate land in later
-  IMPL-0019 phases. Sub-directory leaves room for siblings
-  (`secretsmanager/rotation-lambda` if ever).
+  Plan suite: 19 runs (the gate) incl. the permanent **no-leak assertion**
+  (`secret_string_wo == null` in a passing plan) and the count-gated
+  `read_principals` resource policy (exact-ARN principals only, wildcards
+  rejected at validation). Community apply: 4/4 against token-free
+  `localstack/localstack:4.4` (`SERVICES=secretsmanager,sts`) — the live F4
+  proof (bumping `secret_string_version` replaces the AWSCURRENT version
+  id, read via the **plural** metadata-only
+  `aws_secretsmanager_secret_versions` fixture; never the singular
+  value-bearing data source). The generalized invariant is enforced
+  fleet-wide by the `policy/` conftest gate (below). Sub-directory leaves
+  room for siblings (`secretsmanager/rotation-lambda` if ever).
 
 ### Shared test fixtures (`test/fixtures/`)
 
@@ -439,6 +452,28 @@ unenforced here (belongs in the live repo).
   credentials per target. Results print as a per-account tab-aligned
   MODEL|PROVIDER|ACTION|OUTCOME table.
 
+### Policy-as-code (`policy/`)
+
+The fleet's conftest/OPA (Rego v1) policies, enforced repo-wide by the
+static gate (`scripts/static-check.sh` §6) and standalone via `just
+conftest`. `credentials.rego` (IMPL-0019 Phase 4 / DESIGN-0020) is the
+generalized no-leak invariant: **no module may pass a credential through a
+persisted Terraform argument** — deny rules on `secret_string` /
+`secret_binary` (`aws_secretsmanager_secret_version`), `password`
+(`aws_db_instance`), `master_password` (`aws_rds_cluster`); the write-only
+`_wo` forms + `manage_master_user_password` are the only legal credential
+paths. Presence alone is the violation (literal, var, or data read — it
+still lands in state). The sweep runs conftest's **hcl2 parser** over
+`modules/**/*.tf` (fixtures included); the parsed input shape is
+`input.resource.<type>.<name>` = **array** of bodies (probe with `conftest
+parse --parser hcl2` before writing rules). Unit tests in
+`credentials_test.rego` run via `conftest verify` (also gate §6). Two
+gotchas: keep `conftest` LAST in any pipeline (an early sweep piped
+through `tail` ate a real FAIL's exit code), and the Atlantis plan-JSON
+variant of this policy family belongs to the **live repo** (tfplan JSON is
+a different input shape). First real catch: `ecr/pull-through-cache`'s
+placeholder seeding (see the ECR bullet above).
+
 ## Tooling
 
 All tool versions are pinned in `mise.toml`. Bootstrap with `mise install`
@@ -484,10 +519,15 @@ whose tags aren't bare semver needs an
   - `all` — runs validate + lint + fmt + test in order (local convenience;
     CI splits these — see `just static` below).
 - `just static` — the repo-wide static gate (ADR-0019): `terraform fmt` +
-  `validate` + `tflint` + `terraform-docs` across **every** module, failing on any
-  violation or stale `USAGE.md`. Wraps `scripts/static-check.sh`; this is what the
-  CI `static` job runs first, before any plan/apply. Regenerates `USAGE.md`
-  lock-free (deterministic `~> 6.2` constraint form).
+  `validate` + `tflint` + `terraform-docs` + the `policy/` conftest credential
+  gate across **every** module, failing on any violation or stale `USAGE.md`.
+  Wraps `scripts/static-check.sh`; this is what the CI `static` job runs first,
+  before any plan/apply. Regenerates `USAGE.md` lock-free (deterministic
+  `~> 6.2` constraint form).
+- `just conftest` — the credential no-leak policy gate standalone (fast loop):
+  `conftest verify` over `policy/` unit tests, then the hcl2-parser sweep of
+  `modules/**/*.tf` against `policy/credentials.rego`. Also runs inside
+  `just static`.
 - `just changed [base]` — preview the CI test matrix for HEAD vs `base` (default
   `origin/main`): which **changed** modules CI runs at the plan / community / pro
   tiers. Wraps `scripts/changed-modules.sh` (IMPL-0016 / ADR-0019) — emits the

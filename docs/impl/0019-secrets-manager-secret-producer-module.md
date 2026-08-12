@@ -269,7 +269,7 @@ family against Atlantis plan JSON.
 - [x] 4.5 Deliberate-violation check (the IMPL-0018 guard pattern):
       seed a scratch `secret_string` attribute, verify `just static`
       fails with the policy message, revert
-- [ ] 4.6 CLAUDE.md: document the `policy/` dir + gate; conventional
+- [x] 4.6 CLAUDE.md: document the `policy/` dir + gate; conventional
       commit
 
 #### Success Criteria
