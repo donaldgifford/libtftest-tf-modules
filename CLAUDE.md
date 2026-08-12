@@ -264,7 +264,7 @@ Tracked in git. As of this writing:
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
-  IMPL-0019, in progress). The fleet's SM secret producer (INV-0010
+  IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a
   customer-managed secret whose value — bare generated password or, when
   `username` is set, the RDS-format `{"username","password"}` JSON that
@@ -295,8 +295,16 @@ Tracked in git. As of this writing:
   id, read via the **plural** metadata-only
   `aws_secretsmanager_secret_versions` fixture; never the singular
   value-bearing data source). The generalized invariant is enforced
-  fleet-wide by the `policy/` conftest gate (below). Sub-directory leaves
-  room for siblings (`secretsmanager/rotation-lambda` if ever).
+  fleet-wide by the `policy/` conftest gate (below). Publishes at the
+  ADR-0020 `secrets` shape (`<acct>/<region>/secrets/<name>/…`; `<name>`
+  couples to `var.name`, never the suffixed physical name). **Next piece
+  of work (DESIGN-0020 Follow-up 1): the RDS reference mode** — a
+  `master_password` object on `rds/{instance,serverless,cluster}` reading
+  this producer's state, the value ephemerally → `password_wo`/
+  `master_password_wo` (the ADR-0020 reserved consumer row). Deferred:
+  raw policy-JSON escape hatch (OQ 3a — additive `read_principals` only
+  until a concrete need), consumer-side proof (rides the RDS follow-up,
+  IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
 ### Shared test fixtures (`test/fixtures/`)
 
