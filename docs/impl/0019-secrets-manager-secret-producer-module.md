@@ -316,7 +316,7 @@ zero re-derivation.
       1b is delivered (pointer to DESIGN-0020 + the module path)
 - [x] 5.4 `docz update` for indexes; restore the known TOC mangling
       (impl/0009, impl/0017, inv/0008 — and check inv/0010 / adr/0020)
-- [ ] 5.5 Final gates: `just static`, full plan matrix locally
+- [x] 5.5 Final gates: `just static`, full plan matrix locally
       (`just tf test secretsmanager/secret`), `just docs lint` on
       touched docs; one PR spanning all phases labeled `minor`
       (OQ 1a); DESIGN-0020 status → Implemented and this doc →
