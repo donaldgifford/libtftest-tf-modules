@@ -262,11 +262,11 @@ family against Atlantis plan JSON.
       Atlantis plan-JSON variant belongs to the live repo
 - [x] 4.3 `policy/credentials_test.rego` + violating/clean fixtures:
       `conftest verify` unit tests covering each deny rule both ways
-- [ ] 4.4 justfile: `conftest` recipe (hcl2 parser over
+- [x] 4.4 justfile: `conftest` recipe (hcl2 parser over
       `modules/**/*.tf` with the `policy/` dir); wire it into
       `scripts/static-check.sh` as a new numbered section so the
       static gate enforces it repo-wide in CI
-- [ ] 4.5 Deliberate-violation check (the IMPL-0018 guard pattern):
+- [x] 4.5 Deliberate-violation check (the IMPL-0018 guard pattern):
       seed a scratch `secret_string` attribute, verify `just static`
       fails with the policy message, revert
 - [ ] 4.6 CLAUDE.md: document the `policy/` dir + gate; conventional
