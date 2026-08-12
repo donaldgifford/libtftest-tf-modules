@@ -172,14 +172,14 @@ consumer-facing halves that don't need a live apply.
 
 #### Tasks
 
-- [ ] 2.1 `policy.tf`: `aws_secretsmanager_secret_policy` count-gated
+- [x] 2.1 `policy.tf`: `aws_secretsmanager_secret_policy` count-gated
       on `length(var.read_principals) > 0`, composing the
       `GetSecretValue` + `DescribeSecret` grant to exactly those
       principals via `aws_iam_policy_document`; `read_principals`
       variable (list(string), default `[]`) with validation rejecting
       `"*"` and non-ARN entries (OQ 3a; raw `policy_json` stays
       deferred — comment points at DESIGN-0020 Follow-up 4)
-- [ ] 2.2 README: "Remote-state key contract" section (`secrets` shape
+- [x] 2.2 README: "Remote-state key contract" section (`secrets` shape
       `<account_name>/<region>/secrets/<name>/terraform.tfstate`,
       triple-coupling, pointer-only rule, SM-secret-name ≠ state-key
       `<name>` note); caveats block (CMK needed for cross-account —
@@ -187,11 +187,11 @@ consumer-facing halves that don't need a live apply.
       scope; rotation does **not** auto-propagate to referencing
       consumers — INV-0010 F4); replicas + BYO-value deferral notes
       (OQ 4a / OQ 1a)
-- [ ] 2.3 Plan suite additions: `policy.tftest.hcl` — no policy
+- [x] 2.3 Plan suite additions: `policy.tftest.hcl` — no policy
       resource at `[]` (count 0), grant shape via `jsondecode` for a
       two-principal case, `expect_failures` for `"*"` and a non-ARN
       string
-- [ ] 2.4 `just tf docs` regen; fmt/lint/test; conventional commit
+- [x] 2.4 `just tf docs` regen; fmt/lint/test; conventional commit
 
 #### Success Criteria
 
@@ -208,27 +208,27 @@ named volume.
 
 #### Tasks
 
-- [ ] 3.1 `tests-localstack/apply.tftest.hcl`: apply with
+- [x] 3.1 `tests-localstack/apply.tftest.hcl`: apply with
       `secret_recovery_window_days = 0` (real teardown); metadata-only
       assertions per OQ 6a — outputs are real ARNs (`secret_arn`
       matches the SM ARN shape and embeds the suffixed name), the
       version-listing data source shows a current (`AWSCURRENT`)
       version, `kms_key_arn` output null on the managed-key path; no
       value read anywhere
-- [ ] 3.2 Rotation run (OQ 2a resolved): a second run block bumping
+- [x] 3.2 Rotation run (OQ 2a resolved): a second run block bumping
       `secret_string_version` to 2, asserting the AWSCURRENT version id
       **changed** via the version-listing data source — still
       metadata-only; the live proof of the F4 version-gate mechanism
       the RDS follow-up leans on
-- [ ] 3.3 `tests-localstack/FINDINGS.md`: parity notes — whether
+- [x] 3.3 `tests-localstack/FINDINGS.md`: parity notes — whether
       LocalStack emulates recovery-window name-reuse blocking (probe
       once, record outcome), anything the rotation run surfaces, the
       `SERVICES` line and the no-token reminder
-- [ ] 3.4 Run live: `just tf test-localstack secretsmanager/secret`
+- [x] 3.4 Run live: `just tf test-localstack secretsmanager/secret`
       against a running Community 4.4 container — suite passing;
       `just changed` (seeded) now shows the module in the community
       tier
-- [ ] 3.5 Conventional commit
+- [x] 3.5 Conventional commit
 
 #### Success Criteria
 
@@ -248,11 +248,11 @@ family against Atlantis plan JSON.
 
 #### Tasks
 
-- [ ] 4.1 mise.toml: pin conftest (exact version, `# renovate:`
+- [x] 4.1 mise.toml: pin conftest (exact version, `# renovate:`
       annotation — `datasource=github-releases
       depName=open-policy-agent/conftest`); `mise install` verified,
       no `latest`
-- [ ] 4.2 `policy/credentials.rego`: deny persisted credential
+- [x] 4.2 `policy/credentials.rego`: deny persisted credential
       attributes in module source — `secret_string` / `secret_binary`
       on `aws_secretsmanager_secret_version` (the `_wo` forms are the
       only allowed path), `password` on `aws_db_instance`,
@@ -260,7 +260,7 @@ family against Atlantis plan JSON.
       `manage_master_user_password` remain the only credential paths);
       package doc-comment states the fleet invariant and that the
       Atlantis plan-JSON variant belongs to the live repo
-- [ ] 4.3 `policy/credentials_test.rego` + violating/clean fixtures:
+- [x] 4.3 `policy/credentials_test.rego` + violating/clean fixtures:
       `conftest verify` unit tests covering each deny rule both ways
 - [ ] 4.4 justfile: `conftest` recipe (hcl2 parser over
       `modules/**/*.tf` with the `policy/` dir); wire it into
@@ -279,6 +279,21 @@ family against Atlantis plan JSON.
   credential arguments)
 - `just static` fails on the seeded violation and passes clean after
   revert
+
+> **The policy's first real catch (4.3 → 4.4):** the initial
+> fleet-wide sweep was NOT green — `ecr/pull-through-cache`'s
+> `aws_secretsmanager_secret_version.upstream` seeded its operator
+> placeholder via persisted `secret_string` + `ignore_changes`. That
+> shape had a live refresh leak: `secret_string` is read back on every
+> refresh, so once an operator rotated in the real Docker Hub/GHCR
+> token, the next plan/apply persisted it into state in plaintext.
+> Resolved by migrating the module to `secret_string_wo` with a pinned
+> `secret_string_wo_version = 1` (the version gate replaces
+> `ignore_changes` exactly), raising its `required_version` to
+> `>= 1.11`, and adding the no-leak plan assertion — no waiver needed;
+> the success criterion holds for real. Upgrade caveat (version
+> resource is replaced, placeholder re-seeded) documented in the
+> module README.
 
 ---
 

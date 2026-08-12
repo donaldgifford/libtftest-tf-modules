@@ -14,9 +14,16 @@
 #     --secret-id ecr-pullthroughcache/<name_prefix>-docker-hub \
 #     --secret-string '{"username":"<user>","accessToken":"<token>"}'
 #
-# lifecycle.ignore_changes = [secret_string] on the version ensures
-# the operator-rotated value persists across subsequent terraform
-# apply runs — Terraform won't clobber it back to the placeholder.
+# The placeholder is seeded WRITE-ONLY (secret_string_wo, IMPL-0019
+# Phase 4 / the DESIGN-0020 no-leak invariant). The old secret_string
+# + ignore_changes shape had a refresh leak: secret_string is read
+# back on every refresh, so once an operator rotated in the real
+# token, the next plan/apply persisted it into Terraform state in
+# plaintext. Write-only arguments are never read back and never
+# stored. The pinned secret_string_wo_version = 1 is what ignore_
+# changes used to do: the provider only re-sends the placeholder if
+# that integer changes, so the operator-rotated value persists across
+# applies untouched.
 
 resource "aws_secretsmanager_secret" "upstream" {
   for_each = local.authenticated
@@ -30,10 +37,7 @@ resource "aws_secretsmanager_secret" "upstream" {
 resource "aws_secretsmanager_secret_version" "upstream" {
   for_each = local.authenticated
 
-  secret_id     = aws_secretsmanager_secret.upstream[each.key].id
-  secret_string = jsonencode({ username = "REPLACE_ME", accessToken = "REPLACE_ME" })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
+  secret_id                = aws_secretsmanager_secret.upstream[each.key].id
+  secret_string_wo         = jsonencode({ username = "REPLACE_ME", accessToken = "REPLACE_ME" })
+  secret_string_wo_version = 1
 }
