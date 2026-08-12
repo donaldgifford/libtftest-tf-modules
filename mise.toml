@@ -67,6 +67,10 @@ golangci-lint = "2.12.2"
 # Security
 # renovate: datasource=go depName=golang.org/x/vuln
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
+# Policy-as-code (IMPL-0019 Phase 4): the credential no-leak gate under
+# policy/ runs via conftest in scripts/static-check.sh.
+# renovate: datasource=github-releases depName=open-policy-agent/conftest
+conftest = "0.69.0"
 
 # Compliance
 # renovate: datasource=go depName=github.com/google/go-licenses
