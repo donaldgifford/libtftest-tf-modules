@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 ## Per-module conventions
 
 Each `modules/<service>/<name>/` directory is a self-contained Terraform module

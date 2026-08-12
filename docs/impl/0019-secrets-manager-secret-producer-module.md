@@ -1,7 +1,7 @@
 ---
 id: IMPL-0019
 title: "Secrets Manager secret producer module"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-08-11
 ---
@@ -9,7 +9,7 @@ created: 2026-08-11
 
 # IMPL 0019: Secrets Manager secret producer module
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-11
 
@@ -314,7 +314,7 @@ zero re-derivation.
       deferral list)
 - [x] 5.3 INV-0010: append a note that the producer half of resolution
       1b is delivered (pointer to DESIGN-0020 + the module path)
-- [ ] 5.4 `docz update` for indexes; restore the known TOC mangling
+- [x] 5.4 `docz update` for indexes; restore the known TOC mangling
       (impl/0009, impl/0017, inv/0008 — and check inv/0010 / adr/0020)
 - [ ] 5.5 Final gates: `just static`, full plan matrix locally
       (`just tf test secretsmanager/secret`), `just docs lint` on

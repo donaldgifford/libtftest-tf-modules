@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0020
 title: "Secrets Manager secret producer module"
-status: Approved
+status: Implemented
 author: Donald Gifford
 created: 2026-08-11
 ---
@@ -9,7 +9,7 @@ created: 2026-08-11
 
 # DESIGN 0020: Secrets Manager secret producer module
 
-**Status:** Approved
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-08-11
 

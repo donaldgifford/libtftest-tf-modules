@@ -940,8 +940,8 @@ lint-all:
 
 #### Time-to-signal estimates
 
-Per the existing per-module timings documented in CLAUDE.md
-+ FINDINGS.md:
+Per the existing per-module timings documented in CLAUDE.md +
+FINDINGS.md:
 
 | Job | Cost | Parallelism |
 |-----|------|-------------|
@@ -1482,8 +1482,8 @@ depName — Renovate's `customManagers` (formerly
 
 **Recommendation: replace Dependabot wholesale with Renovate.**
 The split-brain of running both is worse than picking one;
-Renovate covers everything Dependabot does plus the in-HCL
-+ tflint + mise pins Dependabot can't see.
+Renovate covers everything Dependabot does plus the in-HCL +
+tflint + mise pins Dependabot can't see.
 
 #### Proposed `.github/renovate.json` shape
 
@@ -1940,12 +1940,14 @@ parse(commit):
 ```
 
 A `feat(efs/filesystem): ...` commit:
+
 - Goes into `modules/efs/filesystem/CHANGELOG.md` under "Features".
 - Also goes into the root `CHANGELOG.md` under "Features" as
   `**efs/filesystem**: ...` (same shape as the short-term
   cliff.toml's `commit.scope` template).
 
 A `feat(workflows): ...` commit (no module scope):
+
 - Goes only into the root `CHANGELOG.md`.
 
 ##### Per-module version bump
@@ -2064,8 +2066,8 @@ docs, tflint — against the MAX version). Notable:
   vs. their pre-commit setup).
 
 **Release approach.** Uses `cycjimmy/semantic-release-action@v5`
-with `@semantic-release/changelog` + `@semantic-release/git`
-+ `conventional-changelog-conventionalcommits`. Tags are
+with `@semantic-release/changelog` + `@semantic-release/git` +
+`conventional-changelog-conventionalcommits`. Tags are
 repo-level (`v20.0.0`), not per-module — they ship 8+ separate
 single-module repositories instead of one monorepo. This
 reinforces the per-module versioning argument: at their scale
