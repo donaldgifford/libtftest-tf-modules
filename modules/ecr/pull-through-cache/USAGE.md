@@ -11,7 +11,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| terraform | >= 1.1 |
+| terraform | >= 1.11 |
 | aws | ~> 6.2 |
 
 ## Providers

@@ -40,4 +40,14 @@ run "plan_auth" {
     condition     = length(aws_secretsmanager_secret_version.upstream) == 2
     error_message = "All-authenticated upstreams must produce two Secrets Manager secret versions"
   }
+
+  # The no-leak gate (IMPL-0019 Phase 4): the placeholder is seeded
+  # write-only, so even in a plan it must surface as null. If this
+  # fails, someone reverted to the persisted secret_string argument.
+  assert {
+    condition = alltrue([
+      for v in aws_secretsmanager_secret_version.upstream : v.secret_string_wo == null
+    ])
+    error_message = "the credential placeholder leaked into the plan — secret_string_wo (write-only) is the only allowed seed path"
+  }
 }

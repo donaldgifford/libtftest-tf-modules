@@ -310,6 +310,15 @@ create-mode ON/OFF + all preconditions, and the live apply proof riding
 > tier. Sequencing: DESIGN for the producer (reserving the ADR-0020
 > `secrets` shape, pointer-only outputs per F7), then the RDS
 > reference-mode DESIGN or a second phase of the same doc.
+>
+> **Producer half delivered 2026-08-12** (DESIGN-0020 → IMPL-0019):
+> `modules/secretsmanager/secret` is implemented — ephemeral
+> `random_password` → `secret_string_wo`, pointer-only outputs, the
+> ADR-0020 `secrets` shape reserved, and the generalized no-leak
+> invariant enforced fleet-wide as the `policy/` conftest gate (whose
+> first sweep caught and fixed a real persisted-credential path in
+> `ecr/pull-through-cache`). The RDS **reference** mode (requirement 2)
+> is the remaining half — DESIGN-0020 Follow-up 1.
 
 ### 1. What is the overall architecture?
 

@@ -22,9 +22,11 @@ The module does NOT:
   for the rationale.
 - **Populate the Secrets Manager credentials.** The module creates the
   secret + an initial placeholder version (`{"username":"REPLACE_ME",
-  "accessToken":"REPLACE_ME"}`) and uses
-  `lifecycle.ignore_changes = [secret_string]` so the operator-rotated
-  value isn't clobbered on later applies. See the post-apply step below.
+  "accessToken":"REPLACE_ME"}`) seeded through the **write-only**
+  `secret_string_wo` argument with a pinned `secret_string_wo_version`,
+  so the operator-rotated value isn't clobbered on later applies — and
+  no credential (not even the placeholder) is ever read back into
+  Terraform state. See the post-apply step below.
 - **Rewrite image references.** Helm chart values / Kustomize patches /
   workload manifests still point at `docker.io/library/nginx`. Rewriting to
   `<account>.dkr.ecr.<region>.amazonaws.com/docker-hub/library/nginx` is the
@@ -84,9 +86,20 @@ aws secretsmanager put-secret-value \
   --secret-string '{"username":"<github_user>","accessToken":"<github_pat>"}'
 ```
 
-`lifecycle.ignore_changes = [secret_string]` on the version resource means
-subsequent `terraform apply` runs won't revert this value. Rotation is an
+The placeholder is written through the **write-only** `secret_string_wo`
+argument with `secret_string_wo_version` pinned to `1`: the provider only
+re-sends the placeholder if that integer changes, so subsequent
+`terraform apply` runs won't revert this value — and, unlike the module's
+original `secret_string` + `ignore_changes` shape, the operator-set token
+is never read back into Terraform state on refresh. Rotation is an
 operator workflow, not a Terraform-managed loop.
+
+> **Upgrading from the `secret_string` version of this module:** the
+> switch to `secret_string_wo` replaces the
+> `aws_secretsmanager_secret_version` resource, which stages a fresh
+> placeholder version as `AWSCURRENT`. Re-run the `put-secret-value`
+> step above after the upgrade apply to restore the real credentials —
+> until then, pulls through the authenticated upstreams will fail auth.
 
 ## Consumer integration: wire the IAM policy into managed nodes
 
