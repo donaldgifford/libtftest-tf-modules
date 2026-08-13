@@ -51,11 +51,11 @@ created: 2026-05-15
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
   - [Q1 — DESIGN-0004 Mode B is partly stale; should this module own pre-built role bundles?](#q1--design-0004-mode-b-is-partly-stale-should-this-module-own-pre-built-role-bundles)
-  - [Q2 — Stable input contract for cross-module composition (just cluster_name?)](#q2--stable-input-contract-for-cross-module-composition-just-clustername)
-  - [Q3 — LocalStack fidelity of awsekspodidentityassociation](#q3--localstack-fidelity-of-awsekspodidentityassociation)
+  - [Q2 — Stable input contract for cross-module composition (just `cluster_name`?)](#q2--stable-input-contract-for-cross-module-composition-just-cluster_name)
+  - [Q3 — LocalStack fidelity of `aws_eks_pod_identity_association`](#q3--localstack-fidelity-of-aws_eks_pod_identity_association)
   - [Q4 — Association eventual consistency in apply tests](#q4--association-eventual-consistency-in-apply-tests)
-  - [Q5 — association_id output vs id](#q5--associationid-output-vs-id)
-  - [Q6 — Cross-account targetaccountarns convenience input](#q6--cross-account-targetaccountarns-convenience-input)
+  - [Q5 — `association_id` output vs `id`](#q5--association_id-output-vs-id)
+  - [Q6 — Cross-account `target_account_arns` convenience input](#q6--cross-account-target_account_arns-convenience-input)
 - [References](#references)
 <!--toc:end-->
 

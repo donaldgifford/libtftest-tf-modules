@@ -31,7 +31,7 @@ created: 2026-05-15
   - [Phase 4: User data template (AL2023 + gVisor install)](#phase-4-user-data-template-al2023--gvisor-install)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
-  - [Phase 5: awseksnode_group resource](#phase-5-awseksnodegroup-resource)
+  - [Phase 5: aws_eks_node_group resource](#phase-5-aws_eks_node_group-resource)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
   - [Phase 6: Outputs and USAGE.md generation](#phase-6-outputs-and-usagemd-generation)
@@ -52,7 +52,7 @@ created: 2026-05-15
   - [Q3 — Kubelet-join LocalStack fidelity in Phase 8](#q3--kubelet-join-localstack-fidelity-in-phase-8)
   - [Q4 — gVisor systrap on arm64](#q4--gvisor-systrap-on-arm64)
   - [Q5 — Renovate pinning UX](#q5--renovate-pinning-ux)
-  - [Q6 — var.extranodepolicies for opt-in ECR pull-through policy](#q6--varextranodepolicies-for-opt-in-ecr-pull-through-policy)
+  - [Q6 — `var.extra_node_policies` for opt-in ECR pull-through policy](#q6--varextra_node_policies-for-opt-in-ecr-pull-through-policy)
   - [Q7 — Containerd pull-through registry mirror in user data](#q7--containerd-pull-through-registry-mirror-in-user-data)
 - [References](#references)
 <!--toc:end-->
@@ -561,6 +561,7 @@ public migration; brownfield cluster validating the cache before
 redirecting real traffic).
 
 Input shape:
+
 ```hcl
 variable "containerd_pull_through_mirror" {
   description = "When enabled, user data writes a containerd config dropin redirecting the listed upstream registries to cache_url_prefix. Requires the corresponding ECR pull-through cache module to be instantiated and the matching node IAM policy attached via var.extra_node_policies."

@@ -176,7 +176,7 @@ deferring to this INV).
 1. **Define the required-files manifest.** A list of files +
    optional grep patterns that every module must have:
 
-   ```
+   ```text
    versions.tf            grep:'hashicorp/aws'
    .tflint.hcl
    .terraform-docs.yml
@@ -299,12 +299,14 @@ Provisional, pending the investigation steps actually being run:
    marker.
 
 **Estimated effort:**
+
 - `just lint-modules` + CI wiring: ≤ 1 hour.
 - `tmpl/module/` + `just tf new`: 2–4 hours (including testing
   against a throwaway module create+destroy cycle).
 - Drift CI: 1 hour after tmpl exists.
 
 **Out of scope for this INV:**
+
 - Migrating the four pending IMPLs' Phase 1 task language to use
   `just tf new`. That's a 4-line edit per IMPL doc done as a
   cleanup pass once the recipe exists.
