@@ -56,14 +56,14 @@ created: 2026-05-18
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
-  - [Q1 — name_prefix semantics — RESOLVED (b)](#q1--nameprefix-semantics--resolved-b)
-  - [Q2 — data.awsorganizationsorganization permission scope — RESOLVED (a)](#q2--dataawsorganizationsorganization-permission-scope--resolved-a)
+  - [Q1 — `name_prefix` semantics — RESOLVED (b)](#q1--name_prefix-semantics--resolved-b)
+  - [Q2 — `data.aws_organizations_organization` permission scope — RESOLVED (a)](#q2--dataaws_organizations_organization-permission-scope--resolved-a)
   - [Q3 — Pro-tier auto-detection in tests-localstack/ — RESOLVED (INV-0002 filed)](#q3--pro-tier-auto-detection-in-tests-localstack--resolved-inv-0002-filed)
   - [Q4 — Existing-repo migration — RESOLVED (c)](#q4--existing-repo-migration--resolved-c)
   - [Q5 — var.tags shape — RESOLVED (map(string))](#q5--vartags-shape--resolved-mapstring)
-  - [Q6 — IMMUTABLEWITHEXCLUSION provider pin — RESOLVED (~> 6.2)](#q6--immutablewithexclusion-provider-pin--resolved--62)
+  - [Q6 — `IMMUTABLE_WITH_EXCLUSION` provider pin — RESOLVED (`~> 6.2`)](#q6--immutable_with_exclusion-provider-pin--resolved--62)
   - [Q7 — Output via SSM Parameter Store — RESOLVED (c, opt-in, configurable cross-account)](#q7--output-via-ssm-parameter-store--resolved-c-opt-in-configurable-cross-account)
-  - [Q8 — Module-managed KMS key destruction safety — RESOLVED (doc + prevent_destroy)](#q8--module-managed-kms-key-destruction-safety--resolved-doc--preventdestroy)
+  - [Q8 — Module-managed KMS key destruction safety — RESOLVED (doc + prevent_destroy)](#q8--module-managed-kms-key-destruction-safety--resolved-doc--prevent_destroy)
 - [References](#references)
 <!--toc:end-->
 

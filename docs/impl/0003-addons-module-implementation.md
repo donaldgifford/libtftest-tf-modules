@@ -54,11 +54,11 @@ created: 2026-05-15
 - [Dependencies](#dependencies)
 - [Open Questions](#open-questions)
   - [Q1 — Shared Pod Identity trust policy location](#q1--shared-pod-identity-trust-policy-location)
-  - [Q2 — cluster_version missing from cluster module outputs](#q2--clusterversion-missing-from-cluster-module-outputs)
-  - [Q3 — Default for podidentityagent_version](#q3--default-for-podidentityagentversion)
-  - [Q4 — LocalStack data.awseksaddon_version fidelity](#q4--localstack-dataawseksaddonversion-fidelity)
+  - [Q2 — `cluster_version` missing from cluster module outputs](#q2--cluster_version-missing-from-cluster-module-outputs)
+  - [Q3 — Default for `pod_identity_agent_version`](#q3--default-for-pod_identity_agent_version)
+  - [Q4 — LocalStack `data.aws_eks_addon_version` fidelity](#q4--localstack-dataaws_eks_addon_version-fidelity)
   - [Q5 — PrivateLink endpoint testing](#q5--privatelink-endpoint-testing)
-  - [Q6 — configuration_values JSON testing](#q6--configurationvalues-json-testing)
+  - [Q6 — `configuration_values` JSON testing](#q6--configuration_values-json-testing)
 - [References](#references)
 <!--toc:end-->
 

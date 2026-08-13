@@ -35,7 +35,7 @@ created: 2026-05-27
 - [Testing Strategy](#testing-strategy)
 - [Migration / Rollout Plan](#migration--rollout-plan)
 - [Open Questions](#open-questions)
-  - [Q1 — count vs foreach on read-replica instances — RESOLVED (foreach)](#q1--count-vs-foreach-on-read-replica-instances--resolved-foreach)
+  - [Q1 — `count` vs `for_each` on `read-replica` instances — RESOLVED (`for_each`)](#q1--count-vs-for_each-on-read-replica-instances--resolved-for_each)
   - [Q2 — RDS-managed master password vs caller-managed Secrets Manager — RESOLVED (AWS-managed default)](#q2--rds-managed-master-password-vs-caller-managed-secrets-manager--resolved-aws-managed-default)
   - [Q3 — Parameter family resolution: static map vs data source — RESOLVED (static map)](#q3--parameter-family-resolution-static-map-vs-data-source--resolved-static-map)
   - [Q4 — Engine version pinning strategy — RESOLVED (optional + auto-minor on)](#q4--engine-version-pinning-strategy--resolved-optional--auto-minor-on)
