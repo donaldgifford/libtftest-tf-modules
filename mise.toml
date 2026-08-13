@@ -74,4 +74,4 @@ conftest = "0.69.0"
 
 # Compliance
 # renovate: datasource=go depName=github.com/google/go-licenses
-"go:github.com/google/go-licenses" = "1.6.0"
+"go:github.com/google/go-licenses" = "2.0.1"
