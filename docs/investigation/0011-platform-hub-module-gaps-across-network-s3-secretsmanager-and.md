@@ -208,9 +208,10 @@ settle:
   Platform RFC (their RFC-0001 — the "harness-removal" evidence
   requirement text; the sandbox hosts "security testing, harness
   evaluation, and red-team exercises," which is the closest shared-doc
-  context) and the §2 workload-group definitions. The node-class
-  DESIGN proceeds on the operator-stated classes
-  (core / observability / temporal / secure) and taint rules.
+  context) and the §2 workload-group definitions. *(Batch 4 closed the
+  §2 half — the workload-group definitions arrived with DESIGN-0001;
+  only the RFC-0001 evidence text remains outstanding, wanted by the
+  S3 evidence-bucket DESIGN.)*
 
 **Third batch (2026-08-14):** the platform's ADR-0011 ("Use Terraform
 with ArgoCD Bootstrap for Cluster Provisioning", 2026-08-13) and the
@@ -268,8 +269,71 @@ Go-reconciler ADR from batch 2:
 - **The "§2" source is identified:** the platform's DESIGN-0001
   ("Management Cluster and Multi-Cluster Substrate" — §2 node groups
   incl. the reserved `temporal` group, §4 IAM, §6 module review) is
-  the doc the rollup implements — still unshared, now the single most
-  useful missing input for the EKS and IAM DESIGNs.
+  the doc the rollup implements — shared and distilled in batch 4
+  below.
+
+**Fourth batch (2026-08-14):** the platform's DESIGN-0001 itself
+("Management Cluster and Multi-Cluster Substrate", Draft 2026-08-13) —
+the §2/§4/§6 source the rollup implements, closing batch 3's gap:
+
+- **Account layout (§1):** `sse-mgmt` hub plus `sse-prd`/`sse-stg`/
+  `sse-dev` spokes in the primary org; `sse-sandbox` in a **separate
+  org** (no IAM trust, build deferred). The account boundary is the
+  environment boundary.
+- **§2 node groups (the original request's "§2"):** the hub runs three
+  purpose-built groups, each an `eks/managed-node-group`
+  instantiation — `core` (untainted, the default landing zone; ArgoCD,
+  Kargo, ESO, ALB controller, Headlamp, platform operators),
+  `observability` (label + `NO_SCHEDULE` taint; kube-prometheus/
+  Thanos, Alertmanager, Loki, Grafana, ClickHouse, Langfuse, hub
+  Alloy), and `temporal` (reserved, label + taint). **No `secure`
+  group on the hub** — the OQ 13 enum
+  `{core, observability, temporal, secure}` covers the hub's three
+  plus the currently hardwired class. **Split seam the EKS DESIGN must
+  note:** DESIGN-0001 reserves splitting `observability` into
+  `monitoring` + `observability` as "a label change in the baseline
+  charts, not a redesign" — under the closed-enum resolution that
+  split needs a one-line enum addition in this repo first, so the
+  DESIGN should record the enum as deliberately cheap to extend
+  (additive value + baked rule, no structural change).
+- **§4 IAM (feeds the access-entries and IAM-pair DESIGNs):** concrete
+  principals for the generic `access_entries` map — each spoke binds
+  the hub argocd-deployer's assumed `sse-platform-access` role to a
+  deploy RBAC group and break-glass SSO to admin; human access
+  everywhere is SSO permission sets → access entries (no static
+  kubeconfigs); cluster stacks apply via the per-account
+  `iam/deploy-role` path, never hub-resident credentials.
+- **Endpoint posture confirmed:** the Assumptions state hub → spoke
+  connectivity as "hub → spoke **private** EKS API endpoints" — spokes
+  run private-only (OQ 12's motivating case) while the hub keeps
+  private+public with the fence.
+- **Reserved state keys:** DESIGN-0001 names
+  `<account>/<region>/iam/<role>` and `<account>/<region>/dns/<zone>`
+  — the platform side of the ADR-0020 contract for the IAM pair and
+  the `dns/` family; `zone-lookup` publishes/asserts the same
+  `dns/<zone>` shape (OQ 4 confirmed from the producer side).
+- **§6 review deltas:** all three batch-3 conflicts trace to this
+  doc's wording (secure default, Object Lock on `s3/bucket`,
+  `dns/zone` create) — the platform-side amendments belong here as
+  well as in the rollup. `ecr/org-registry` multi-org is phrased
+  stronger here ("the policy surface should grow now rather than be
+  retrofitted") but stays trigger-gated per the rollup.
+- **GAP flagged for the operator:** §2's AWS-side dependency list
+  includes **ACM certs** (the Gateway-class hostnames), but no `acm`
+  module exists in this fleet and neither §6's review table nor the
+  rollup's work list carries a row for it — either the live repo uses
+  raw resources for certs or a module is missing from both platform
+  docs.
+- **Also confirmed:** the hub-shaped test fixture expectation (tagged
+  VPC → `vpc-lookup` → eks stacks — exactly the `reference-vpc` +
+  rollup Phase-2 criterion); the registration-secret schema
+  (`{name, endpoint, ca_data, labels: {environment, class}, auth:
+  {role_arn}}`) as the stable contract no module here ever writes;
+  substrate SM shells restricted to externally-sourced values — git
+  credentials and Okta OIDC clients are the SM external mode's
+  concrete first consumers; and the S3 consumers by name (Thanos /
+  Loki / ClickHouse tiering for `extra_lifecycle_rules`, Loki/audit
+  retention for the evidence bucket, the existing access-logs sink).
 
 ### F2 — Provider surface verification
 
@@ -549,9 +613,12 @@ its DESIGN is written.
 >   hub docs into this repo rather than cited blind — landing first as
 >   the EKS DESIGN's Context section, promoted to a standalone reference
 >   doc only if it outgrows that. **Progress:** the topology ADR was
->   shared and distilled into F1 on 2026-08-14; the parent RFC's §2
->   workload groups + evidence-retention sections remain to be shared
->   for the S3 and node-class DESIGNs.
+>   shared and distilled into F1 on 2026-08-14 (batch 2), the
+>   cluster-path correction + rollup on 2026-08-14 (batch 3), and the
+>   platform DESIGN-0001 with the §2 workload groups and §4 IAM on
+>   2026-08-14 (batch 4) — only the platform RFC-0001
+>   evidence-retention text remains outstanding (S3 evidence-bucket
+>   DESIGN input).
 > - **OQ 3 (a, plus the path):** one zone per instance, AND the module
 >   lives at **`modules/dns/zone-lookup`** — a new `dns/` service
 >   directory mirroring `network/vpc-lookup`'s naming, leaving sibling
