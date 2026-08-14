@@ -175,6 +175,52 @@ section is the in-repo record):
   distillation when the S3 and node-class DESIGNs are written; until
   then, the requirement rows stand as given in this INV.
 
+**Second batch (2026-08-14):** five more platform docs shared —
+Management Cluster Baseline ADR, Kubernetes Platform RFC (their
+RFC-0002), Cluster Provisioning ADR, Central Monitoring Stack ADR, and
+the Talos modules DESIGN (a separate future repo; out of scope here
+beyond confirming sandbox/Talos never consumes this fleet). What they
+settle:
+
+- **The ArgoCD-to-spoke auth path IS the access-entries consumer:** the
+  hub registers spokes via Secrets Manager + External Secrets Operator
+  (connection metadata only — no tokens), and "the ArgoCD controllers
+  authenticate to spokes via IAM and EKS access entries." OQ 11's
+  generic map has its first concrete cross-account principal. The
+  registration secret itself (value written by the provisioning tool,
+  never by Terraform) plus ESO-read git-credential/OIDC secrets confirm
+  the OQ 9 external-mode + `read_principals` shape ("secrets flow one
+  way, from Secrets Manager into the cluster").
+- **S3 backing confirmed:** "Object storage (S3) backs Thanos and Loki;
+  block storage serves only hot paths. Retention and lifecycle policies
+  are set per store" — the OQ 8 lifecycle/tiering exposure and the
+  evidence bucket serve the Thanos + Loki stores; ClickHouse rides
+  block storage (S3 only for backups, if ever).
+- **Split-horizon DNS confirmed:** the hub baseline runs external-dns
+  "serving both our internal DNS and external DNS" — supporting OQ 3's
+  one-zone-per-stack with public/internal folder names.
+- **THE TRAJECTORY CAVEAT (Cluster Provisioning ADR, Proposed):**
+  "Terraform/Terragrunt is removed from the cluster path" — a
+  purpose-built Go reconciler is to own EKS clusters, managed node
+  groups, EKS add-ons, **access entries**, and the registration secret,
+  adopting existing clusters ("Terraform state is archived, not
+  migrated"). That is exactly the surface OQs 11/12/13 extend. The EKS
+  module changes therefore serve as **day-0 hub bring-up + the
+  executable reference spec** the reconciler later encodes (matching
+  the original request's "Day-0 hub + provisioner reference" framing) —
+  the EKS DESIGN must record this trajectory and stay lean: encode the
+  platform opinions, skip long-tail lifecycle features the tool will
+  own. Non-cluster infrastructure (VPC, RDS, S3, Secrets Manager, IAM —
+  everything else in this INV) explicitly **stays Terraform** per that
+  ADR.
+- **Still missing after batch 2:** the parent Internal Security
+  Platform RFC (their RFC-0001 — the "harness-removal" evidence
+  requirement text; the sandbox hosts "security testing, harness
+  evaluation, and red-team exercises," which is the closest shared-doc
+  context) and the §2 workload-group definitions. The node-class
+  DESIGN proceeds on the operator-stated classes
+  (core / observability / temporal / secure) and taint rules.
+
 ### F2 — Provider surface verification
 
 Everything needed exists in the pinned provider (probed against the resolved
