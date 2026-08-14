@@ -397,6 +397,33 @@ cites the hub doc per the OQ 1 convention.
 
 ## Open Questions
 
+> **Resolved 2026-08-14: 2a, 4a, 5a, 6a, 7a, 8a, 9a, 10a, 11a; 1, 3, and
+> 13 resolved with modifications; 12 remains open.**
+>
+> - **OQ 1 (Other — distill, don't just cite):** worth doing. The
+>   hub/spoke model's module-relevant parts get pulled from the external
+>   hub docs into this repo (operator will share them for review) rather
+>   than cited blind — landing first as the EKS DESIGN's Context section,
+>   promoted to a standalone reference doc only if it outgrows that.
+> - **OQ 3 (a, plus the path):** one zone per instance, AND the module
+>   lives at **`modules/dns/zone-lookup`** — a new `dns/` service
+>   directory mirroring `network/vpc-lookup`'s naming, leaving sibling
+>   room for a future create-mode `dns/zone` the way `network/` leaves
+>   room for `network/vpc`. Path and state segment align (`dns/`).
+> - **OQ 13 (a, modified — default flips to core):** enum
+>   `{core, observability, temporal, secure}` + baked per-class rules +
+>   nullable gVisor override as designed, but **`workload_class`
+>   defaults to `"core"`**, and the plan suite must test BOTH the
+>   core-default run AND an explicit `secure` run (secure is the
+>   highest-stakes class to pin). **Consequence recorded:** today's
+>   hardwired behavior IS secure, so a core default is a breaking default
+>   change — existing node-group stacks that don't set the variable
+>   would silently lose the taint + gVisor on upgrade. The DESIGN must
+>   carry the major-bump + migration note (existing stacks pin
+>   `workload_class = "secure"` before upgrading).
+> - **OQ 12 stays open** pending the defaults discussion (what option a
+>   changes vs today's surface).
+
 ### 1. How do we anchor the external hub design references?
 
 The hub doc (its §2 workload groups, hub principals, its RFC-0001
