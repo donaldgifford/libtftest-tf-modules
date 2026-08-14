@@ -247,18 +247,24 @@ Go-reconciler ADR from batch 2:
   (DESIGN-0001 assumes externally managed network — consistent with
   `vpc-lookup` as the consumption path).
 - **Three conflicts between the platform rollup and this INV's
-  resolutions, needing operator reconciliation:** (1) the rollup pins
-  `workload_class` "**default remains `secure`**" with a zero-diff
-  replan success criterion, vs the OQ 13 resolution (2026-08-14,
-  confirmed) flipping the default to `core`; (2) the rollup puts
-  Object Lock on `s3/bucket` directly, vs OQ 6a's new
-  `s3/evidence-bucket` purpose module (this repo's DESIGN-0019
-  "new needs = new purpose modules, not new knobs" ruling); (3) the
-  rollup's Phase 2 module is **`dns/zone`** — a create module
-  ("platform zone + per-account delegation; no record resources"), vs
-  OQ 3/4's read-only `dns/zone-lookup` first — and unlike the VPC
-  case, the platform CREATES its zones, so a lookup may have nothing
-  to look up on day 0.
+  resolutions — all reconciled 2026-08-14, this repo's resolutions
+  stand; the rollup doc needs the corresponding amendments on the
+  platform side:** (1) the rollup pins `workload_class` "**default
+  remains `secure`**" with a zero-diff replan success criterion, vs
+  the OQ 13 resolution (2026-08-14, confirmed) flipping the default to
+  `core` — core default stands (zero live consumers); the rollup's
+  "today's secure posture exactly" success criterion must be amended.
+  (2) The rollup puts Object Lock on `s3/bucket` directly, vs OQ 6a's
+  new `s3/evidence-bucket` purpose module (this repo's DESIGN-0019
+  "new needs = new purpose modules, not new knobs" ruling) — the
+  purpose module stands; the core grows the capability, the purpose
+  module exposes it. (3) The rollup's Phase 2 module is **`dns/zone`**
+  — a create module ("platform zone + per-account delegation; no
+  record resources"), vs OQ 3/4's read-only `dns/zone-lookup` first;
+  the operator re-confirmed **lookup first** ("for dns we need the dns
+  lookup first"), so `dns/zone-lookup` ships as the contract producer
+  and the create-mode `dns/zone` follows as its Phase-2 sibling in the
+  same `dns/` directory.
 - **The "§2" source is identified:** the platform's DESIGN-0001
   ("Management Cluster and Multi-Cluster Substrate" — §2 node groups
   incl. the reserved `temporal` group, §4 IAM, §6 module review) is
@@ -512,13 +518,26 @@ unrelated (F1).
 ## Recommendation
 
 Resolve the open questions below, then fan out into DESIGN docs (OQ 2 for
-the split) in this order: `network/r53-lookup` first (smallest, pure
+the split) in this order: `dns/zone-lookup` first (smallest, pure
 producer, no existing-module risk, unblocks the external-dns pod-identity
-worked example), then the S3 pair (one family DESIGN: evidence bucket +
-lifecycle exposure — both touch the core, ride one core change), the
-Secrets Manager external mode (small, pattern-established), and the two EKS
-changes (access surface + endpoint posture; workload class). Each DESIGN
-cites the hub doc per the OQ 1 convention.
+worked example; lookup-first re-confirmed 2026-08-14 — see F1 batch 3),
+then the S3 pair (one family DESIGN: evidence bucket + lifecycle exposure
+— both touch the core, ride one core change), the Secrets Manager external
+mode (small, pattern-established), and the two EKS changes (access
+surface + endpoint posture; workload class). Each DESIGN cites the hub
+doc per the OQ 1 convention.
+
+Queued behind the hub-day-0 four (from the platform rollup's Phase 2 —
+spoke substrate; each fires its own DESIGN here when work starts, per the
+rollup's cross-repo convention): **`dns/zone`** (create mode — platform
+zone + per-account delegation, no record resources; sibling to
+`zone-lookup`), **`iam/deploy-role`** (codifies the deploy role every
+ADR-0020 `assume_role` read already references), and
+**`iam/cross-account-role`** (the `sse-platform-access` pattern). Parked
+with triggers (rollup Phase 3): `ecr/org-registry` multi-org (sandbox
+build), `elasticache/redis` (Langfuse queue decision), `org/*` (home
+decision). The IAM pair wants the platform's DESIGN-0001 §4 shared before
+its DESIGN is written.
 
 ## Open Questions
 
@@ -538,6 +557,9 @@ cites the hub doc per the OQ 1 convention.
 >   directory mirroring `network/vpc-lookup`'s naming, leaving sibling
 >   room for a future create-mode `dns/zone` the way `network/` leaves
 >   room for `network/vpc`. Path and state segment align (`dns/`).
+>   **Re-confirmed 2026-08-14** against the platform rollup's Phase-2
+>   `dns/zone` create module: lookup ships first; `dns/zone` follows
+>   as the sibling (see F1 batch 3, conflict 3).
 > - **OQ 13 (a, modified — core default, CONFIRMED 2026-08-14):** enum
 >   `{core, observability, temporal, secure}` + baked per-class rules +
 >   nullable gVisor override as designed, with **`workload_class`
