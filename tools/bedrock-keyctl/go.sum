@@ -36,6 +36,8 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.45.4 h1:w/AryDYMjSUANSQ2uoZxJovUsMTw
 github.com/aws/aws-sdk-go-v2/service/sts v1.45.4/go.mod h1:WeBiAa67azG7Su9Vf+ChGDBLiAozJCXzdjXiPBUwtbc=
 github.com/aws/smithy-go v1.27.6 h1:0zjT8jgK3jbrTT7JJ3EE6JsMhX8JTrZ+f1sEndYDXrA=
 github.com/aws/smithy-go v1.27.6/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
+github.com/aws/smithy-go v1.27.8 h1:FR0dxZfIlV7Z8eh2iHfIofdunw382XsDV3Mxt9nUvRY=
+github.com/aws/smithy-go v1.27.8/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
