@@ -410,17 +410,16 @@ cites the hub doc per the OQ 1 convention.
 >   directory mirroring `network/vpc-lookup`'s naming, leaving sibling
 >   room for a future create-mode `dns/zone` the way `network/` leaves
 >   room for `network/vpc`. Path and state segment align (`dns/`).
-> - **OQ 13 (a, modified — default flips to core):** enum
+> - **OQ 13 (a, modified — core default, CONFIRMED 2026-08-14):** enum
 >   `{core, observability, temporal, secure}` + baked per-class rules +
->   nullable gVisor override as designed, but **`workload_class`
->   defaults to `"core"`**, and the plan suite must test BOTH the
->   core-default run AND an explicit `secure` run (secure is the
->   highest-stakes class to pin). **Consequence recorded:** today's
->   hardwired behavior IS secure, so a core default is a breaking default
->   change — existing node-group stacks that don't set the variable
->   would silently lose the taint + gVisor on upgrade. The DESIGN must
->   carry the major-bump + migration note (existing stacks pin
->   `workload_class = "secure"` before upgrading).
+>   nullable gVisor override as designed, with **`workload_class`
+>   defaulting to `"core"`** — the operator confirmed nothing built from
+>   the eks modules exists that can't be rebuilt, so the lower-entry
+>   default lands now while there are zero live consumers (no migration
+>   burden; the DESIGN still records it as the default-behavior change
+>   vs the previously hardwired secure). The plan suite must test BOTH
+>   the core-default run AND an explicit `secure` run — secure is the
+>   highest-stakes class and "needs to be dialed."
 > - **OQ 12 stays open** pending the defaults discussion (what option a
 >   changes vs today's surface).
 
