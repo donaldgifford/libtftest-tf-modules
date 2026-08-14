@@ -1,7 +1,7 @@
 ---
 id: INV-0011
 title: "Platform hub module gaps across network, s3, secretsmanager, and eks"
-status: In Progress
+status: Concluded
 author: Donald Gifford
 created: 2026-08-13
 ---
@@ -9,7 +9,7 @@ created: 2026-08-13
 
 # INV 0011: Platform hub module gaps across network, s3, secretsmanager, and eks
 
-**Status:** In Progress
+**Status:** Concluded
 **Author:** Donald Gifford
 **Date:** 2026-08-13
 
@@ -21,6 +21,7 @@ created: 2026-08-13
 - [Environment](#environment)
 - [Findings](#findings)
   - [F1 — The hub context is external to this repo](#f1--the-hub-context-is-external-to-this-repo)
+    - [Hub topology distillation from the shared ADR](#hub-topology-distillation-from-the-shared-adr)
   - [F2 — Provider surface verification](#f2--provider-surface-verification)
   - [F3 — r53-lookup mirrors vpc-lookup](#f3--r53-lookup-mirrors-vpc-lookup)
   - [F4 — S3 Object Lock must enter through the core](#f4--s3-object-lock-must-enter-through-the-core)
@@ -139,6 +140,40 @@ grep across all of docs/:
 Consequence: each follow-up DESIGN needs a citation convention for the hub
 doc (OQ 1), and nothing in this INV may claim this repo's RFC-0001 as the
 evidence-bucket motivation.
+
+#### Hub topology distillation from the shared ADR
+
+The operator shared the platform's topology ADR ("Kubernetes Runtime and
+Cluster Topology", Proposed, 2026-07-25) on 2026-08-14. The
+module-relevant facts, distilled here per the OQ 1 resolution (the temp
+copy under `modules/eks/` is reference-only and gets deleted; this
+section is the in-repo record):
+
+- **Topology:** a **management cluster (hub)** — EKS, hosting GitOps and
+  core platform services, applications never run there — with
+  **environment clusters (spokes)** for dev / stage / prod, **each in its
+  own AWS account**, gated by a promotion workflow. A **sandbox** lives in
+  a separate AWS organization (own identity, no standing trust) hosting
+  isolated EKS and Talos burner environments, outside the promotion flow;
+  the hub-to-sandbox management channel boundary is explicitly TBD.
+- **Module consequences:** the hub is critical infrastructure — "HA and
+  break-glass access are required" — which is the direct requirement
+  behind the break-glass access entry (OQ 11) and the endpoint-fence work
+  (OQ 12). Spokes living in their own accounts means the hub principals
+  (argocd-deployer, provisioner) reach spoke clusters **cross-account** —
+  exactly why the generic `access_entries` map takes direct principal
+  ARNs instead of the SSO path's in-account regex resolution. Talos and
+  the sandbox organization sit outside this fleet's Terraform scope (the
+  EKS modules serve hub + spokes; burner environments are not consumers).
+- **Still missing (lives in the parent "Internal Security Platform RFC",
+  not the ADR):** the §2 workload groups (core / observability /
+  temporal / secure) behind OQ 13, the hub principals enumeration, and
+  the Loki/audit evidence-retention requirement ("harness-removal")
+  behind the S3 evidence bucket. Thanos appears in the ADR only as a
+  follow-up pointer ("long-term metrics retention (Thanos)") — consistent
+  with the S3 tiering ask. Those RFC sections should be shared for
+  distillation when the S3 and node-class DESIGNs are written; until
+  then, the requirement rows stand as given in this INV.
 
 ### F2 — Provider surface verification
 
@@ -397,14 +432,17 @@ cites the hub doc per the OQ 1 convention.
 
 ## Open Questions
 
-> **Resolved 2026-08-14: 2a, 4a, 5a, 6a, 7a, 8a, 9a, 10a, 11a; 1, 3, and
-> 13 resolved with modifications; 12 remains open.**
+> **All resolved 2026-08-14: 2a, 4a, 5a, 6a, 7a, 8a, 9a, 10a, 11a; 1, 3,
+> 12, and 13 resolved with modifications.**
 >
 > - **OQ 1 (Other — distill, don't just cite):** worth doing. The
 >   hub/spoke model's module-relevant parts get pulled from the external
->   hub docs into this repo (operator will share them for review) rather
->   than cited blind — landing first as the EKS DESIGN's Context section,
->   promoted to a standalone reference doc only if it outgrows that.
+>   hub docs into this repo rather than cited blind — landing first as
+>   the EKS DESIGN's Context section, promoted to a standalone reference
+>   doc only if it outgrows that. **Progress:** the topology ADR was
+>   shared and distilled into F1 on 2026-08-14; the parent RFC's §2
+>   workload groups + evidence-retention sections remain to be shared
+>   for the S3 and node-class DESIGNs.
 > - **OQ 3 (a, plus the path):** one zone per instance, AND the module
 >   lives at **`modules/dns/zone-lookup`** — a new `dns/` service
 >   directory mirroring `network/vpc-lookup`'s naming, leaving sibling
@@ -420,8 +458,28 @@ cites the hub doc per the OQ 1 convention.
 >   vs the previously hardwired secure). The plan suite must test BOTH
 >   the core-default run AND an explicit `secure` run — secure is the
 >   highest-stakes class and "needs to be dialed."
-> - **OQ 12 stays open** pending the defaults discussion (what option a
->   changes vs today's surface).
+> - **OQ 12 (Other — operator shape):** the `endpoint_public_access =
+>   true` default and its implicit `["0.0.0.0/0"]` fence are the
+>   unbroken contract. Additively: `endpoint_public_access_cidrs`
+>   (literal CIDRs, default `[]`) and
+>   `endpoint_public_access_prefix_list_ids` (expanded to CIDRs via
+>   `data.aws_ec2_managed_prefix_list` at plan time); the effective
+>   fence is the union of both, and an empty union resolves to
+>   `["0.0.0.0/0"]` — so nothing set means exactly today's behavior.
+>   README carries a warning callout: expansion is **plan-time only**
+>   (prefix-list edits land on the next apply of the cluster stack, not
+>   live like an SG prefix-list reference) and the union counts against
+>   the EKS 40-CIDR public-endpoint limit. Guards: at least one endpoint
+>   enabled; fence inputs set while the public endpoint is off fail the
+>   plan. **The conditional ignore-changes idea is recorded as
+>   infeasible as asked:** Terraform `lifecycle` arguments are static
+>   (they cannot reference variables), so the module cannot ignore
+>   outside-Terraform fence changes only when prefix lists are in use —
+>   and an unconditional ignore would make the literal CIDR variable
+>   inert after creation. Live prefix-list sync is therefore a recorded
+>   follow-up (an out-of-band syncer such as EventBridge-on-prefix-list
+>   -change plus a module-wide ignored-fence posture decision), not a v1
+>   knob.
 
 ### 1. How do we anchor the external hub design references?
 
