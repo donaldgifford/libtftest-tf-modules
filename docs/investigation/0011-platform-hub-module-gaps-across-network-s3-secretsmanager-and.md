@@ -199,20 +199,11 @@ settle:
 - **Split-horizon DNS confirmed:** the hub baseline runs external-dns
   "serving both our internal DNS and external DNS" — supporting OQ 3's
   one-zone-per-stack with public/internal folder names.
-- **THE TRAJECTORY CAVEAT (Cluster Provisioning ADR, Proposed):**
-  "Terraform/Terragrunt is removed from the cluster path" — a
-  purpose-built Go reconciler is to own EKS clusters, managed node
-  groups, EKS add-ons, **access entries**, and the registration secret,
-  adopting existing clusters ("Terraform state is archived, not
-  migrated"). That is exactly the surface OQs 11/12/13 extend. The EKS
-  module changes therefore serve as **day-0 hub bring-up + the
-  executable reference spec** the reconciler later encodes (matching
-  the original request's "Day-0 hub + provisioner reference" framing) —
-  the EKS DESIGN must record this trajectory and stay lean: encode the
-  platform opinions, skip long-tail lifecycle features the tool will
-  own. Non-cluster infrastructure (VPC, RDS, S3, Secrets Manager, IAM —
-  everything else in this INV) explicitly **stays Terraform** per that
-  ADR.
+- **~~THE TRAJECTORY CAVEAT~~ (SUPERSEDED — see batch 3):** the Cluster
+  Provisioning ADR's Go-reconciler direction ("Terraform/Terragrunt is
+  removed from the cluster path") was shared in error — the operator
+  flagged it as no longer current, and batch 3 carries the replacement
+  decision.
 - **Still missing after batch 2:** the parent Internal Security
   Platform RFC (their RFC-0001 — the "harness-removal" evidence
   requirement text; the sandbox hosts "security testing, harness
@@ -220,6 +211,59 @@ settle:
   context) and the §2 workload-group definitions. The node-class
   DESIGN proceeds on the operator-stated classes
   (core / observability / temporal / secure) and taint rules.
+
+**Third batch (2026-08-14):** the platform's ADR-0011 ("Use Terraform
+with ArgoCD Bootstrap for Cluster Provisioning", 2026-08-13) and the
+platform-side IMPL-0001 ("Terraform Module Work for the Management
+Cluster Substrate") — the current position, superseding the
+Go-reconciler ADR from batch 2:
+
+- **This repo's eks modules ARE the cluster path, long-term.** Clusters
+  are "Terraform stacks composed from the eks/\* modules"
+  (`eks/cluster` + `eks/managed-node-group`(s) + `eks/addons`,
+  Terragrunt-composed per environment account, VPC via `vpc-lookup`
+  remote state). The stack's boundary is the registration secret
+  (written to Secrets Manager in `sse-mgmt` by the cluster stack — the
+  live repo, never substrate module Terraform); ESO/ArgoCD own
+  everything past it. Direct quote on what that means here: "The
+  eks/\* modules become load-bearing platform components, not just
+  conveniences — their change bar (zero-diff replans, plan-test
+  invariants) is now platform policy." The EKS DESIGN is therefore a
+  full long-term surface, not a day-0 reference spec. A Temporal-based
+  engine remains a parked future direction (its own ADR if fleet churn
+  ever demands it; leading candidate is Talos machine lifecycle, not
+  the EKS path).
+- **The platform IMPL-0001 is the cross-repo rollup of exactly this
+  INV's work** (its Phase 1 = OQs 6–13's module changes; docz IDs are
+  per-repo, and each item gets a repo-local DESIGN/IMPL here that the
+  rollup links). It also adds adjacent work this INV did not cover,
+  queued behind the hub items: **`iam/deploy-role`** (codifies the
+  deploy role every ADR-0020 `assume_role` read references, state key
+  `<account>/<region>/iam/<role>`), **`iam/cross-account-role`** (the
+  `sse-platform-access` pattern), both Phase 2 (spoke substrate); and
+  parked Phase 3 triggers (`ecr/org-registry` multi-org on sandbox
+  build, `elasticache/redis` on the Langfuse queue decision, `org/*`
+  home decision). Network modules are explicitly out of scope
+  (DESIGN-0001 assumes externally managed network — consistent with
+  `vpc-lookup` as the consumption path).
+- **Three conflicts between the platform rollup and this INV's
+  resolutions, needing operator reconciliation:** (1) the rollup pins
+  `workload_class` "**default remains `secure`**" with a zero-diff
+  replan success criterion, vs the OQ 13 resolution (2026-08-14,
+  confirmed) flipping the default to `core`; (2) the rollup puts
+  Object Lock on `s3/bucket` directly, vs OQ 6a's new
+  `s3/evidence-bucket` purpose module (this repo's DESIGN-0019
+  "new needs = new purpose modules, not new knobs" ruling); (3) the
+  rollup's Phase 2 module is **`dns/zone`** — a create module
+  ("platform zone + per-account delegation; no record resources"), vs
+  OQ 3/4's read-only `dns/zone-lookup` first — and unlike the VPC
+  case, the platform CREATES its zones, so a lookup may have nothing
+  to look up on day 0.
+- **The "§2" source is identified:** the platform's DESIGN-0001
+  ("Management Cluster and Multi-Cluster Substrate" — §2 node groups
+  incl. the reserved `temporal` group, §4 IAM, §6 module review) is
+  the doc the rollup implements — still unshared, now the single most
+  useful missing input for the EKS and IAM DESIGNs.
 
 ### F2 — Provider surface verification
 
