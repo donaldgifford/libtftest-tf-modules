@@ -51,4 +51,8 @@ docz create design "Your Design Title"
 | DESIGN-0017 | EFS test fixture mirrors the vpc-lookup remote-state contract | Draft | 2026-07-23 | Donald Gifford | [0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md](0017-efs-test-fixture-mirrors-the-vpc-lookup-remote-state-contract.md) |
 | DESIGN-0019 | S3 module family internal core and initial bucket modules | Implemented | 2026-08-02 | Donald Gifford | [0019-s3-module-family-internal-core-and-initial-bucket-modules.md](0019-s3-module-family-internal-core-and-initial-bucket-modules.md) |
 | DESIGN-0020 | Secrets Manager secret producer module | Implemented | 2026-08-11 | Donald Gifford | [0020-secrets-manager-secret-producer-module.md](0020-secrets-manager-secret-producer-module.md) |
+| DESIGN-0021 | DNS zone lookup module | Draft | 2026-08-27 | Donald Gifford | [0021-dns-zone-lookup-module.md](0021-dns-zone-lookup-module.md) |
+| DESIGN-0022 | S3 evidence bucket and lifecycle tiering exposure | Draft | 2026-08-27 | Donald Gifford | [0022-s3-evidence-bucket-and-lifecycle-tiering-exposure.md](0022-s3-evidence-bucket-and-lifecycle-tiering-exposure.md) |
+| DESIGN-0023 | Secrets Manager externally managed secret mode | Draft | 2026-08-27 | Donald Gifford | [0023-secrets-manager-externally-managed-secret-mode.md](0023-secrets-manager-externally-managed-secret-mode.md) |
+| DESIGN-0024 | EKS hub posture access entries endpoint fence and workload classes | Draft | 2026-08-27 | Donald Gifford | [0024-eks-hub-posture-access-entries-endpoint-fence-and-workload.md](0024-eks-hub-posture-access-entries-endpoint-fence-and-workload.md) |
 <!-- END DOCZ AUTO-GENERATED -->

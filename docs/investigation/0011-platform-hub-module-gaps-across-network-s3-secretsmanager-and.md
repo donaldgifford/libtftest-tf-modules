@@ -639,6 +639,14 @@ mode (small, pattern-established), and the two EKS changes (access
 surface + endpoint posture; workload class). Each DESIGN cites the hub
 doc per the OQ 1 convention.
 
+**Fan-out delivered 2026-08-27:** the four hub-day-0 DESIGNs exist —
+**DESIGN-0021** (dns/zone-lookup), **DESIGN-0022** (S3 evidence bucket +
+lifecycle tiering exposure), **DESIGN-0023** (Secrets Manager externally
+managed mode), **DESIGN-0024** (EKS hub posture: access entries +
+endpoint fence + workload classes). All Draft; each encodes this INV's
+resolutions as decided and carries its own numbered Open Questions
+(lettered options, a = recommendation) for operator review.
+
 Queued behind the hub-day-0 four (from the platform rollup's Phase 2 —
 spoke substrate; each fires its own DESIGN here when work starts, per the
 rollup's cross-repo convention): **`dns/zone`** (create mode — platform
