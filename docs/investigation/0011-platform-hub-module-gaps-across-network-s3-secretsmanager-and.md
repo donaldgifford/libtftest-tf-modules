@@ -295,7 +295,20 @@ the §2/§4/§6 source the rollup implements, closing batch 3's gap:
   charts, not a redesign" — under the closed-enum resolution that
   split needs a one-line enum addition in this repo first, so the
   DESIGN should record the enum as deliberately cheap to extend
-  (additive value + baked rule, no structural change).
+  (additive value + baked rule, no structural change). **Cut line
+  resolved 2026-08-14:** the o11y stack always spins up first and
+  stays together — **Loki lives with kube-prometheus/Thanos,
+  Alertmanager, Grafana, and Alloy on `observability`**, and the
+  split, when it fires, peels ClickHouse + Langfuse off to a new
+  class. This contradicts DESIGN-0001's seam on both counts (its
+  metrics-vs-logs+analytics cut puts Loki with ClickHouse/Langfuse,
+  and its `monitoring` name would relabel the entire o11y stack at
+  split time while analytics kept the `observability` label —
+  inverting the churn); the platform-side sentence needs amending.
+  The fifth pre-baked enum value is therefore the **analytics** class
+  (recommended name `analytics`, finalized at EKS DESIGN review), so
+  the split is a live-repo + chart change with no module release in
+  the path — the same reserve-ahead-of-need move as `temporal`.
 - **§4 IAM (feeds the access-entries and IAM-pair DESIGNs):** concrete
   principals for the generic `access_entries` map — each spoke binds
   the hub argocd-deployer's assumed `sse-platform-access` role to a
@@ -675,7 +688,13 @@ wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 >   burden; the DESIGN still records it as the default-behavior change
 >   vs the previously hardwired secure). The plan suite must test BOTH
 >   the core-default run AND an explicit `secure` run — secure is the
->   highest-stakes class and "needs to be dialed."
+>   highest-stakes class and "needs to be dialed." **Amended
+>   2026-08-14 (F1 batch 4 split seam):** the enum gains a fifth
+>   pre-baked class for the future ClickHouse/Langfuse split —
+>   `{core, observability, analytics, temporal, secure}` — with Loki
+>   staying on `observability` (the o11y stack spins up first and
+>   stays together); the `analytics` name is the recommendation,
+>   confirmed at EKS DESIGN review.
 > - **OQ 12 (Other — operator shape):** the `endpoint_public_access =
 >   true` default and its implicit `["0.0.0.0/0"]` fence are the
 >   unbroken contract. Additively: `endpoint_public_access_cidrs`
