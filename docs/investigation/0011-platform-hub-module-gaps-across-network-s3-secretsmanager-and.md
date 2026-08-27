@@ -323,7 +323,42 @@ the §2/§4/§6 source the rollup implements, closing batch 3's gap:
   module exists in this fleet and neither §6's review table nor the
   rollup's work list carries a row for it — either the live repo uses
   raw resources for certs or a module is missing from both platform
-  docs.
+  docs. **Resolved 2026-08-14 — parked:** the existing certs live
+  outside Terraform today, and a lookup + create/adopt pair would only
+  bring them under management while nothing in the fleet consumes the
+  ARNs (the consumer is the Gateway listener config the LBC applies —
+  chart-side) — "terraform for terraform's sake" per the operator.
+  Live-repo concern until a real Terraform consumer appears; any
+  future module is an `acm/certificate` create/adopt shape (whose
+  DNS-validation records are a noted carve-out to the
+  no-record-resources rule — external-dns never owns validation
+  plumbing), not a lookup.
+- **NEW module surfaced by the ACM discussion (operator-proposed,
+  2026-08-14): the Gateway frontend security-group module.** The
+  rule-ownership seam is resolved **frontend-only Terraform**: the
+  LBC keeps the backend SG and node-SG rule management (closer to
+  the source that defines target ports and health checks — the k8s
+  repo), matching current practice where a new Gateway is handed
+  frontend SG IDs only. The module owns the per-Gateway-class
+  ingress-allowlist SGs (`external`: operator UIs — argocd CLI/API,
+  Kargo, webhook sources like GitHub; `internal`: spoke telemetry
+  ingest), with typed rules accepting CIDRs **and prefix-list IDs**.
+  Unlike the OQ 12 EKS endpoint fence, SG rules reference prefix
+  lists **natively and live** (`prefix_list_id` on
+  `aws_vpc_security_group_ingress_rule`) — list updates propagate
+  with zero Terraform applies, exactly the lifecycle OQ 12 wished
+  for and could not have. Needs only `vpc_id` from `vpc-lookup` (no
+  eks state read); composes cleanly against the node SG's
+  established granular-rules shape (`eks/cluster/security_group.tf`
+  — no inline rules) without ever touching it, and allowlist churn
+  never replans cluster or node-group stacks. Recorded posture: the
+  operator's default is the **hairpin model** (company-network
+  traffic egresses and re-enters via the external ALB rather than
+  multi-homing routes), with split-horizon internal DNS remaining an
+  open per-service option — the module surface is identical either
+  way, so it is not a one-way door. DESIGN sizing note: prefix-list
+  entries count against the rules-per-SG quota by the list's
+  `max_entries`.
 - **Also confirmed:** the hub-shaped test fixture expectation (tagged
   VPC → `vpc-lookup` → eks stacks — exactly the `reference-vpc` +
   rollup Phase-2 criterion); the registration-secret schema
@@ -596,12 +631,16 @@ spoke substrate; each fires its own DESIGN here when work starts, per the
 rollup's cross-repo convention): **`dns/zone`** (create mode — platform
 zone + per-account delegation, no record resources; sibling to
 `zone-lookup`), **`iam/deploy-role`** (codifies the deploy role every
-ADR-0020 `assume_role` read already references), and
-**`iam/cross-account-role`** (the `sse-platform-access` pattern). Parked
-with triggers (rollup Phase 3): `ecr/org-registry` multi-org (sandbox
+ADR-0020 `assume_role` read already references),
+**`iam/cross-account-role`** (the `sse-platform-access` pattern), and the
+**Gateway frontend security-group module** (operator-proposed, F1 batch 4
+— frontend-only ingress-allowlist SGs per Gateway class with native
+prefix-list rules; backend stays with the LBC). Parked with triggers
+(rollup Phase 3 + F1 batch 4): `ecr/org-registry` multi-org (sandbox
 build), `elasticache/redis` (Langfuse queue decision), `org/*` (home
-decision). The IAM pair wants the platform's DESIGN-0001 §4 shared before
-its DESIGN is written.
+decision), and `acm/certificate` (parked until a Terraform consumer of
+cert ARNs exists — today the ARN consumer is chart-side). The IAM pair
+wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 
 ## Open Questions
 
