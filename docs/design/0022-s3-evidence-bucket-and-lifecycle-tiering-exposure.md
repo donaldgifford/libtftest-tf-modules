@@ -415,6 +415,12 @@ excluded; live Community apply green.
 
 ## Open Questions
 
+> **All resolved 2026-08-27: 1a, 2a, 3a, 4a.** Retention duration is
+> required (no default), the evidence bucket and events-bucket both
+> gain the full lifecycle surface, and policy hardening stays
+> deferred. The Detailed Design above is already written to the
+> recommended shapes — no amendments.
+
 ### 1. Is the default retention duration required or defaulted?
 
 The mode defaults to COMPLIANCE (resolved, INV-0011 OQ 6a). The

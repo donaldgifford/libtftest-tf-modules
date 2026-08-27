@@ -701,8 +701,16 @@ wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 >   pre-baked class for the future ClickHouse/Langfuse split —
 >   `{core, observability, analytics, temporal, secure}` — with Loki
 >   staying on `observability` (the o11y stack spins up first and
->   stays together); the `analytics` name is the recommendation,
->   confirmed at EKS DESIGN review.
+>   stays together); the `analytics` name is the recommendation —
+>   **confirmed 2026-08-27** at DESIGN-0024 review (its OQ 1a).
+> - **OQ 11 (a, amended 2026-08-27 at DESIGN-0024 review):** the
+>   generic map's shape stands, but it lands in a **new
+>   `eks/access-entries` module** (an eks-state consumer like the
+>   other three) rather than inside `eks/cluster` — operator
+>   direction: access-entry churn must never replan the cluster
+>   stack. The SSO pair stays in `eks/cluster` untouched; the
+>   cluster gains one additive `sso_principal_arn` output feeding
+>   the cross-stack collision guard.
 > - **OQ 12 (Other — operator shape):** the `endpoint_public_access =
 >   true` default and its implicit `["0.0.0.0/0"]` fence are the
 >   unbroken contract. Additively: `endpoint_public_access_cidrs`

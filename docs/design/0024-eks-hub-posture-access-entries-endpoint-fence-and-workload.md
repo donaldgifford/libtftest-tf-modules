@@ -19,14 +19,18 @@ created: 2026-08-27
   - [Goals](#goals)
   - [Non-Goals](#non-goals)
 - [Background: the platform context](#background-the-platform-context)
-- [Detailed Design part 1: the cluster module](#detailed-design-part-1-the-cluster-module)
-  - [Generic access entries](#generic-access-entries)
+- [Detailed Design part 1: the access entries module](#detailed-design-part-1-the-access-entries-module)
+  - [Module layout and remote-state read](#module-layout-and-remote-state-read)
+  - [The entries surface](#the-entries-surface)
   - [Access entry validations](#access-entry-validations)
+  - [Cross-stack SSO collision guard](#cross-stack-sso-collision-guard)
+  - [Day-0 ordering](#day-0-ordering)
+- [Detailed Design part 2: the cluster module](#detailed-design-part-2-the-cluster-module)
   - [Bootstrap creator admin made explicit](#bootstrap-creator-admin-made-explicit)
   - [The endpoint fence](#the-endpoint-fence)
   - [Fence guards](#fence-guards)
   - [The README warning callout](#the-readme-warning-callout)
-- [Detailed Design part 2: the node group module](#detailed-design-part-2-the-node-group-module)
+- [Detailed Design part 3: the node group module](#detailed-design-part-3-the-node-group-module)
   - [The workload class input](#the-workload-class-input)
   - [Per-class baked rules](#per-class-baked-rules)
   - [Threading the five hardwired sites](#threading-the-five-hardwired-sites)
@@ -34,8 +38,8 @@ created: 2026-08-27
   - [The default-behavior change](#the-default-behavior-change)
 - [Testing Strategy](#testing-strategy)
 - [Phases](#phases)
-  - [Phase 1: Generic access entries](#phase-1-generic-access-entries)
-  - [Phase 2: Endpoint fence](#phase-2-endpoint-fence)
+  - [Phase 1: The access entries module](#phase-1-the-access-entries-module)
+  - [Phase 2: Cluster changes](#phase-2-cluster-changes)
   - [Phase 3: Workload classes](#phase-3-workload-classes)
   - [Phase 4: gVisor toggle and user-data assertions](#phase-4-gvisor-toggle-and-user-data-assertions)
   - [Phase 5: Closure](#phase-5-closure)
@@ -51,19 +55,28 @@ created: 2026-08-27
 
 ## Overview
 
-One DESIGN, two modules, one coherent story — the hub cluster posture
-(INV-0011 OQ 2a):
+One DESIGN, one new module plus two module changes — the hub cluster
+posture (INV-0011 OQ 2a, amended at review):
 
-- **`eks/cluster`** gains a generic `access_entries` map (arbitrary
-  principal → policies/scope/groups, additive beside the SSO
-  singleton) and the **endpoint fence** — `public_access_cidrs`
-  exposure with literal-CIDR and prefix-list inputs, preserving
-  today's `endpoint_public_access = true` + implicit `0.0.0.0/0`
-  contract exactly (INV-0011 OQ 11a + OQ 12 operator shape).
+- **`eks/access-entries` (NEW)** — the generic access-entry surface
+  (arbitrary principal → policies/scope/groups) as its **own
+  module**, an eks-state consumer beside `managed-node-group` /
+  `addons` / `pod-identity-access`. Pulled out of the cluster module
+  at review (OQ 2 amendment): access-entry churn — principals come
+  and go — must never plan, lock, or risk the cluster stack. The
+  SSO singleton stays in `eks/cluster`, untouched (INV-0011 OQ 11a,
+  as amended).
+- **`eks/cluster`** gains the **endpoint fence** —
+  `public_access_cidrs` exposure with literal-CIDR and prefix-list
+  inputs preserving today's `endpoint_public_access = true` +
+  implicit `0.0.0.0/0` contract exactly (INV-0011 OQ 12 operator
+  shape) — plus an explicit `bootstrap_cluster_creator_admin_permissions`
+  and one additive `sso_principal_arn` output.
 - **`eks/managed-node-group`** parameterizes the hardwired secure
-  class into a five-value `workload_class` enum
-  (`core` default) with baked per-class label/taint rules and a
-  nullable gVisor override (INV-0011 OQ 13, as amended).
+  class into a five-value `workload_class` enum (`core` default)
+  with baked per-class label/taint rules and a nullable gVisor
+  override (INV-0011 OQ 13, as amended; `analytics` confirmed at
+  this review).
 
 These changes carry a raised bar: per the platform's ADR-0011,
 per-cluster Terraform stacks composed from these modules **are the
@@ -76,22 +89,23 @@ invariants) is now platform policy."
 ### Goals
 
 - Hub and spoke principals (argocd-deployer via `sse-platform-access`,
-  break-glass SSO, the deploy role) expressible as access entries with
-  direct ARNs, per-entry policy associations, and full
+  break-glass SSO, the deploy role) expressible as access entries
+  with direct ARNs, per-entry policy associations, and full
   namespace-scoped `access_scope` — none of which the SSO path
-  supports (INV-0011 F7).
+  supports (INV-0011 F7) — in a stack whose plan/apply cadence is
+  independent of the cluster's.
 - Spoke clusters run **private-only** (`endpoint_public_access =
   false` — already mechanically possible, now guarded); the hub keeps
   private+public with a CIDR/prefix-list fence. Platform DESIGN-0001
   confirms the shape: "hub → spoke private EKS API endpoints."
 - Zero-diff replans for every existing consumer of `eks/cluster`:
-  no default flips, no address churn (the SSO resources keep their
-  addresses), the fence inputs default to exactly today's implicit
-  behavior.
+  no default flips, no address churn, the fence inputs default to
+  exactly today's implicit behavior, and the cluster's only
+  access-surface change is one additive output.
 - The node group serves all five classes
-  (`core` / `observability` / analytics-class per OQ 1 / `temporal` /
-  `secure`) with one input; `secure` remains fully expressible and
-  explicitly tested (the operator: it "needs to be dialed").
+  (`core` / `observability` / `analytics` / `temporal` / `secure`)
+  with one input; `secure` remains fully expressible and explicitly
+  tested (the operator: it "needs to be dialed").
 - The five F8 hardwired sites thread one class variable together —
   no half-parameterized states.
 
@@ -99,7 +113,8 @@ invariants) is now platform policy."
 
 - **Subsuming the SSO surface into the generic map.** Rejected
   (INV-0011 OQ 11b): breaking variable change + address migration for
-  no hub-side gain. SSO stays as-is beside the map.
+  no hub-side gain. SSO stays in `eks/cluster` as-is; the new module
+  owns only generic entries.
 - **Flipping `endpoint_public_access` to false by default**
   (DESIGN-0002's original intent). Stays resolved-by-documentation
   (IMPL-0001 Q11 / DESIGN-0015 Non-Goals); a future major-bump
@@ -149,7 +164,7 @@ INV-0011 F1):
   operators), `observability` (tainted — kube-prometheus/Thanos,
   Alertmanager, Loki, Grafana, ClickHouse, Langfuse, Alloy), and
   reserved `temporal`. No `secure` group on the hub. The future
-  split peels ClickHouse + Langfuse to the analytics class (OQ 1) —
+  split peels ClickHouse + Langfuse to `analytics` (OQ 1, resolved) —
   Loki stays with the o11y stack (operator resolution, 2026-08-14);
   pre-baking the class makes that split a live-repo + chart change
   with no module release.
@@ -162,25 +177,56 @@ INV-0011 F1):
   five sites including two string literals in the user-data template
   and an unconditional gVisor install part.
 
-## Detailed Design part 1: the cluster module
+## Detailed Design part 1: the access entries module
 
-### Generic access entries
+### Module layout and remote-state read
 
-Additive beside the SSO pair (INV-0011 OQ 11a) — `for_each` resources
-with new addresses; the SSO resources, tests, and consumers are
-untouched:
+```text
+modules/eks/access-entries/
+├── main.tf              # entries + flattened associations
+├── data.tf              # data.terraform_remote_state.eks (ADR-0020)
+├── variables.tf         # access_entries map + the six globals
+├── outputs.tf
+├── versions.tf
+├── .tflint.hcl
+├── README.md            # + "Remote-state key contract" section
+├── USAGE.md
+├── tests/               # plan suite (the gate)
+└── tests-localstack/    # Community apply suite + FINDINGS.md
+```
+
+The module is the fourth eks-state consumer, identical in read shape
+to `addons` / `pod-identity-access`: `cluster_name` + the six
+Terragrunt globals compose the account-scoped key
+`<account_name>/<region>/eks/<cluster_name>/terraform.tfstate` with
+the standard `assume_role` block; `cluster_name` is read at the use
+site per ADR-0001. ADR-0020's consumer table gains the row.
+
+**Why its own module (the OQ 2 amendment):** access entries are the
+highest-churn class of cluster-adjacent change — principals onboard,
+scopes adjust, break-glass rotates. In the cluster module, every one
+of those edits plans against (and locks) the stack that owns the
+control plane, the KMS key, and the node SG; a mistake plans
+alongside cluster-mutating changes. As its own stack, entry churn is
+a small, fast, low-blast-radius plan — the same isolation logic as
+`proxy`/`read-replica` against `cluster`, and the same seam
+`pod-identity-access` already proves for per-cluster IAM surfaces.
+
+### The entries surface
+
+Per INV-0011 OQ 11a (shape) + OQ 3a (map-of-maps) + OQ 2a (full
+ARNs):
 
 ```hcl
 variable "access_entries" {
-  description = "Generic EKS access entries: logical name -> entry. Additive beside the SSO surface (which stays regex-resolved and count-gated). Direct principal ARNs — no resolution. policy_associations grant EKS access policies with cluster or namespace scope; kubernetes_groups binds RBAC groups instead of (or alongside) policies."
+  description = "Generic EKS access entries: logical name -> entry. Direct principal ARNs — no resolution. policy_associations (map keyed by logical association name) grant EKS access policies with cluster or namespace scope; kubernetes_groups binds RBAC groups instead of (or alongside) policies."
   type = map(object({
     principal_arn     = string
     type              = optional(string, "STANDARD")
     kubernetes_groups = optional(list(string), [])
     user_name         = optional(string)
-    policy_associations = # collection shape per OQ 3, e.g.:
-    optional(map(object({
-      policy_arn = string # form per OQ 2
+    policy_associations = optional(map(object({
+      policy_arn = string
       access_scope = optional(object({
         type       = optional(string, "cluster")
         namespaces = optional(list(string), [])
@@ -196,14 +242,21 @@ variable "access_entries" {
 - One `aws_eks_access_policy_association.this` per (entry ×
   association), `for_each` over a flattened map keyed
   `"<entry>:<association>"` so adding an association never churns a
-  sibling's address.
+  sibling's address (OQ 3a).
+- `policy_arn` is the full ARN, prefix-validated against
+  `arn:aws:eks::aws:cluster-access-policy/` (OQ 2a) — AWS grows the
+  policy catalog without a module release; the validation still
+  catches a pasted IAM-policy ARN.
 - Full `access_scope { type, namespaces }` — the namespace scoping
-  the SSO path lacks (its association takes a bare type string
-  today; that stays as-is).
-- The worked example in the README is the platform §4 trio:
+  the SSO path lacks.
+- Outputs: `access_entry_arns` (map, logical name → entry ARN) and
+  `principal_arns` (map, logical name → principal) — operator/
+  consumer visibility, pointer-only.
+- The README worked example is the platform §4 trio:
   argocd-deployer (assumed `sse-platform-access` role → deploy
-  group), break-glass SSO (→ `AmazonEKSClusterAdminPolicy`,
-  cluster scope), and the deploy role per OQ 4's resolution.
+  group), break-glass SSO (→ `AmazonEKSClusterAdminPolicy`, cluster
+  scope), and the deploy role (see OQ 4's resolution — declared
+  here as the durable admin once day-0 completes).
 
 ### Access entry validations
 
@@ -215,18 +268,59 @@ variable "access_entries" {
   fleet's regex conventions; no wildcards).
 - Namespace scope requires namespaces: `access_scope.type =
   "namespace"` with an empty `namespaces` list fails at plan.
-- Duplicate-principal guard: a precondition rejects an
-  `access_entries` principal that collides with the SSO-resolved
-  principal when `sso_access_enabled` — two owners of one
-  principal's entry is an apply-time conflict surfaced at plan.
+
+### Cross-stack SSO collision guard
+
+The SSO singleton lives in the cluster stack; the generic entries
+live here — a duplicated principal is now a **cross-stack** conflict
+(two owners of one principal's entry fails at apply). The guard:
+
+- `eks/cluster` gains one additive output, `sso_principal_arn` — the
+  regex-resolved SSO role ARN when `sso_access_enabled`, else null —
+  published into the eks state alongside the existing outputs.
+- This module's precondition rejects any `access_entries` entry whose
+  `principal_arn` equals the state's `sso_principal_arn`. The read
+  is `try()`-null-safe so a cluster state predating the output (the
+  stale-state case) degrades to no-guard rather than an error —
+  documented in the README with the "re-apply the cluster stack to
+  pick up the output" note.
+
+### Day-0 ordering
+
+The entries stack applies **after** the cluster stack (it reads the
+eks state). The access floor during that window is the cluster
+creator's bootstrap admin entry (part 2, OQ 4): the stable
+automation principal that applied the cluster stack retains implicit
+admin, so a wrong or absent entries stack can never lock the fleet
+out of a fresh cluster. Once the entries stack applies, the declared
+map is the durable access surface.
+
+## Detailed Design part 2: the cluster module
 
 ### Bootstrap creator admin made explicit
 
 `access_config.bootstrap_cluster_creator_admin_permissions` is
 currently unset — the provider default (`true`) applies silently
-(INV-0011 F7: "worth an explicit decision while in the file").
-OQ 4 decides the value; either way the argument becomes explicit and
-the plan suite pins it.
+(INV-0011 F7). Resolved (OQ 4): the argument becomes **explicitly
+`true`** (zero diff — the current effective value), paired with an
+operational contract the README states plainly:
+
+- The bootstrap admin entry binds to **whatever principal creates
+  the cluster** — so cluster applies must run through the **stable
+  automation path** (today: Atlantis on the primary cluster under
+  its pod-identity role, assuming the per-account deploy role; the
+  platform DESIGN-0001 §4 deploy-role path), NOT an ad-hoc operator
+  SSO session. An `AWSReservedSSO_*` creator is a rotating
+  principal — permission-set changes re-mint the role suffix — and
+  its bootstrap entry silently goes stale.
+- If a day-0 bring-up does happen from an SSO workstation, the
+  resulting bootstrap entry is **disposable**: superseded by the
+  declared `eks/access-entries` map and deletable out-of-band once
+  the entries stack is green.
+- Moving to `false` + an explicit deploy-role entry is the recorded
+  follow-up posture decision once the hub pattern burns in
+  (feasible per-cluster at create time; the flag forces replacement
+  after).
 
 ### The endpoint fence
 
@@ -281,8 +375,9 @@ in state).
 - **Fence-without-public fails:** either fence input non-empty while
   `endpoint_public_access = false` fails at plan — a fence on a
   disabled endpoint is a misconfiguration, not a silent no-op.
-- **The 40-CIDR limit:** per OQ 5 — the union counts against the EKS
-  public-endpoint CIDR limit.
+- **The 40-CIDR limit (OQ 5a):** precondition
+  `length(local.public_access_cidrs) <= 40`, message naming both
+  fence inputs and prefix-list expansion as the usual culprit.
 - Spoke posture needs no new mechanics: `endpoint_public_access =
   false` (+ private true) is the private-only shape; the guards make
   it coherent.
@@ -297,17 +392,17 @@ A prominent callout (the OQ 12 resolution requires it):
   `prefix_list_id` rule, which is a live reference — the Gateway
   frontend-SG module gets the live version of this pattern).
 - The expanded union counts against the EKS 40-CIDR
-  public-endpoint limit (OQ 5's guard).
+  public-endpoint limit (guarded at plan, OQ 5a).
 - The recorded follow-up for live sync (out-of-band syncer + the
   ignored-fence posture decision) and why conditional
   `ignore_changes` cannot exist (static lifecycle arguments).
 
-## Detailed Design part 2: the node group module
+## Detailed Design part 3: the node group module
 
 ### The workload class input
 
-INV-0011 OQ 13 as amended (core default confirmed; fifth class from
-the split-seam resolution):
+INV-0011 OQ 13 as amended (core default confirmed; `analytics`
+confirmed at this review, OQ 1a):
 
 ```hcl
 variable "workload_class" {
@@ -329,11 +424,11 @@ variable "gvisor_enabled" {
 }
 ```
 
-(`analytics` pending OQ 1.) The closed enum is deliberate: typos fail
-at plan, the platform opinion of which classes exist lives here, and
-the enum is deliberately cheap to extend — one value + its baked rule,
-no structural change (the recorded answer to DESIGN-0001's
-"a label change, not a redesign" split promise).
+The closed enum is deliberate: typos fail at plan, the platform
+opinion of which classes exist lives here, and the enum is
+deliberately cheap to extend — one value + its baked rule, no
+structural change (the recorded answer to DESIGN-0001's "a label
+change, not a redesign" split promise).
 
 ### Per-class baked rules
 
@@ -408,21 +503,34 @@ NOT today's secure posture. Consequences, recorded honestly:
 
 ## Testing Strategy
 
-**Cluster plan suite additions (`tests/`,
-real-provider-fake-creds as today):**
+**Access entries module (`tests/` + `tests-localstack/`):**
 
-- Access entries: a three-entry hub-shaped run (the §4 trio) pinning
-  entry attributes and association scoping; validation failures via
-  `expect_failures` (non-STANDARD with groups, namespace scope
-  without namespaces, bad ARN); the SSO singleton pinned **by
-  address** unchanged (the zero-churn proof); the duplicate-principal
-  precondition.
+- Plan suite (the established eks-consumer pattern:
+  real-provider-fake-creds with `override_data` stubbing the eks
+  state read): a three-entry hub-shaped run (the §4 trio) pinning
+  entry attributes, association scoping, and the flattened
+  association addresses; validation failures via `expect_failures`
+  (non-STANDARD with groups, namespace scope without namespaces, bad
+  ARN, bad policy-ARN prefix); the SSO-collision precondition (state
+  stub carrying `sso_principal_arn`) plus its null-safe stale-state
+  run; the ADR-0020 key assertion.
+- Community apply: `fixtures/setup` seeds an eks state (the
+  addons-style bespoke fixture) or composes the real cluster module;
+  applies entries + associations where 4.4 supports the API —
+  access-entry parity on Community is the probe-worthy edge,
+  FINDINGS.md records it either way.
+
+**Cluster plan suite additions (`tests/`):**
+
 - Endpoint fence: default run pins `public_access_cidrs ==
   ["0.0.0.0/0"]` (the unbroken contract — this is the zero-diff
   replan invariant in test form); literal-CIDR run; prefix-list run
   with `override_data` stubbing the expansion; union + dedup run;
-  both guard failures; private-only spoke run; explicit
-  `bootstrap_cluster_creator_admin_permissions` pinned per OQ 4.
+  the three guard failures (no-endpoint, fence-without-public,
+  over-40); private-only spoke run.
+- `bootstrap_cluster_creator_admin_permissions` pinned explicitly
+  true; `sso_principal_arn` output on and off (null when SSO
+  disabled); the SSO singleton pinned **by address** unchanged.
 
 **Node group plan suite (`tests/`):** the per-class matrix —
 
@@ -433,33 +541,39 @@ real-provider-fake-creds as today):**
 - One run per remaining class (tainted, no gVisor), the
   `gvisor_enabled` override in both directions, enum rejection,
   `additional_taints`/`additional_labels` layering per class.
-- First user-data assertions per OQ 6.
+- User-data assertions (OQ 6a): decode the launch template's
+  `user_data` per class — the kubelet label fragment carries the
+  class, the register-with-taints fragment present/absent per class,
+  the gVisor MIME part present/absent per effective-gVisor. First
+  user-data coverage in the fleet, landing exactly when the template
+  becomes conditional.
 
-**LocalStack apply (`tests-localstack/`, Community 4.4):** the four
-EKS modules' existing Community applies extend — an access-entries
-apply run and a fence apply run where 4.4 supports the APIs;
-class-parameterized node-group apply (core + secure). FINDINGS.md
-records parity gaps (access-entry and `public_access_cidrs` fidelity
-on Community are the probe-worthy edges; the fleet discipline is
+**LocalStack apply (Community 4.4):** the existing EKS Community
+applies extend — a fence apply run where 4.4 supports
+`public_access_cidrs`; class-parameterized node-group apply (core +
+secure). FINDINGS.md records parity gaps (the fleet discipline is
 assert-what-round-trips, record the rest).
 
 ## Phases
 
-### Phase 1: Generic access entries
+### Phase 1: The access entries module
 
-- [ ] `access_entries` variable (shapes per OQs 2/3) + `for_each`
-      resources + flattened association map
-- [ ] Validations + duplicate-principal precondition
-- [ ] Plan additions incl. SSO-by-address regression
-- [ ] README §4 worked example (argocd-deployer / break-glass /
-      deploy role)
+- [ ] Scaffold `modules/eks/access-entries` (versions, tflint,
+      README skeleton, the six globals + `cluster_name`)
+- [ ] eks remote-state read (account-scoped key + `assume_role`)
+- [ ] `access_entries` map + flattened associations + validations
+- [ ] SSO-collision precondition (null-safe `try()` read)
+- [ ] Plan suite; `just changed` pickup verification; README §4
+      worked example (argocd-deployer / break-glass / deploy role)
 
-### Phase 2: Endpoint fence
+### Phase 2: Cluster changes
 
+- [ ] `sso_principal_arn` additive output
 - [ ] Fence variables + prefix-list data + union locals +
       `public_access_cidrs` wiring
-- [ ] Guards (at-least-one-endpoint, fence-without-public, OQ 5)
-- [ ] Explicit `bootstrap_cluster_creator_admin_permissions` per OQ 4
+- [ ] Guards (at-least-one-endpoint, fence-without-public, 40-CIDR)
+- [ ] Explicit `bootstrap_cluster_creator_admin_permissions = true`
+      + the stable-creator README contract (OQ 4)
 - [ ] Plan additions incl. the default-fence zero-diff pin; README
       warning callout
 
@@ -475,30 +589,38 @@ assert-what-round-trips, record the rest).
 
 - [ ] `gvisor_enabled` + effective-gVisor coalesce; gate site 4 (the
       install MIME part) + the runtime label + kubelet fragments
-- [ ] User-data assertions per OQ 6
+- [ ] User-data assertions (OQ 6a)
 - [ ] Override-direction plan runs
 
 ### Phase 5: Closure
 
-- [ ] LocalStack apply extensions + FINDINGS.md probes, run live
-- [ ] READMEs; CLAUDE.md eks section updates (the load-bearing
-      change-bar note, the class taxonomy, the default change)
+- [ ] LocalStack apply suites (new module fixture + extensions) +
+      FINDINGS.md probes, run live
+- [ ] READMEs; CLAUDE.md eks section updates (the new module, the
+      load-bearing change-bar note, the class taxonomy, the default
+      change); ADR-0020 consumer row for the new module
 - [ ] INV-0011 delivery note; `docz update` (+ mangle-set restore)
 - [ ] Conventional commits; PRs labeled `minor` with the
       default-change note prominent
 
-Success criteria: `just static` + both modules' plan gates green;
-every existing cluster-module run green unchanged; the node-group
-matrix green with the secure run asserting today's full posture
-byte-for-byte; live Community applies green; zero-diff replan
-demonstrated for a fence-default cluster.
+Success criteria: `just static` + all three modules' plan gates
+green; every existing cluster-module run green unchanged; the
+node-group matrix green with the secure run asserting today's full
+posture byte-for-byte; live Community applies green; zero-diff
+replan demonstrated for a fence-default cluster.
 
 ## Open Questions
 
+> **All resolved 2026-08-27: 1a, 2a (amended — own module), 3a,
+> 4 (Other — explicit true + the stable-creator contract), 5a, 6a.**
+> The Detailed Design above is written to the resolved shapes,
+> including the OQ 2 amendment (the `eks/access-entries` module) and
+> the OQ 4 operational contract.
+
 ### 1. What is the fifth class named?
 
-The INV recorded `analytics` as the recommendation, final call at
-this review (INV-0011 OQ 13 amendment).
+**Resolved: a.** `analytics` is final (also recorded in INV-0011
+OQ 13).
 
 - **a. (Recommended)** `analytics` — the split peels ClickHouse +
   Langfuse off `observability` (Loki stays with the o11y stack, the
@@ -513,6 +635,15 @@ this review (INV-0011 OQ 13 amendment).
 - Other: (your call)
 
 ### 2. What form do policy associations take?
+
+**Resolved: a, amended — the generic entries surface moves to a NEW
+`eks/access-entries` module** (operator direction at review:
+"any access entry updates dont touch the whole cluster"). Entry
+churn gets its own state, plan cadence, and blast radius; the
+cluster module's only access-surface change is the additive
+`sso_principal_arn` output feeding the cross-stack collision guard.
+Detailed Design part 1 carries the module; INV-0011 OQ 11 records
+the amendment.
 
 - **a. (Recommended)** Full policy ARN with a prefix validation
   (`arn:aws:eks::aws:cluster-access-policy/`). AWS grows the policy
@@ -529,6 +660,8 @@ this review (INV-0011 OQ 13 amendment).
 
 ### 3. What collection shape do access entries use?
 
+**Resolved: a.**
+
 - **a. (Recommended)** Map-of-maps: `access_entries` keyed by logical
   entry name, `policy_associations` keyed by logical association
   name, flattened to `"<entry>:<assoc>"` keys for the association
@@ -543,31 +676,38 @@ this review (INV-0011 OQ 13 amendment).
 
 ### 4. What happens to bootstrap creator admin?
 
-The argument is currently unset; the provider default `true` applies
-silently. Changing the value on an existing cluster **replaces the
-cluster**, so the choice is effectively create-time.
+**Resolved: Other — explicit `true` plus the stable-creator
+operational contract.** The operator's analysis: option a's
+"break-glass floor" only holds if the creating principal is stable.
+A cluster created from an operator workstation under an AWS SSO
+session binds the bootstrap admin entry to an `AWSReservedSSO_*`
+role — a rotating principal (permission-set changes re-mint the
+suffix), and admin tied to a person's session besides. The
+sanctioned path is therefore the **automation principal**: Atlantis
+(running on the existing primary cluster) under its pod-identity
+role — "which we can then just make sure to keep" — assuming the
+per-account deploy role (the platform DESIGN-0001 §4 path). The
+argument becomes explicitly `true`; the README states the contract
+(create via the stable path; an SSO-created bootstrap entry is
+disposable — superseded by the declared entries and deletable
+out-of-band); moving to `false` + an explicit deploy-role entry
+stays the recorded follow-up once the hub pattern burns in.
 
-- **a. (Recommended)** Set it **explicitly `true`** (the current
-  effective value — zero diff), documented as the deliberate floor:
-  the deploy role that creates the cluster retains implicit admin,
-  which is the break-glass guarantee during day-0 bring-up (a
-  mis-authored `access_entries` map cannot lock the fleet out of a
-  fresh cluster). Revisit toward `false` + an explicit deploy-role
-  entry once the hub pattern has burned in — recorded as a follow-up
-  posture decision, feasible any time before a given cluster is
-  created.
+- a. Set it explicitly `true` (the current effective value — zero
+  diff), documented as the deliberate floor. *(Adopted, with the
+  contract above.)*
 - b. Flip to `false` + an explicit deploy-role entry in
-  `access_entries` — fully declarative (every admissible principal
-  is visible in config), and with zero live consumers the
-  replacement cost is nil today; but it makes the day-0 path depend
-  on the newest, least-burned-in surface in the module, and a wrong
-  entry strands a fresh cluster (delete + recreate is the recovery).
-- c. Expose it as a variable defaulting `true` — maximum flexibility,
-  but a replacement-forcing knob with a silent-footgun default is a
-  surface without a consumer; postures, not knobs.
+  `access_entries` — fully declarative, but makes day-0 depend on
+  the newest surface in the fleet, and a wrong entry strands a fresh
+  cluster.
+- c. Expose it as a variable defaulting `true` — a
+  replacement-forcing knob with a silent-footgun default; postures,
+  not knobs.
 - Other: (your call)
 
 ### 5. Is the 40-CIDR union guarded at plan?
+
+**Resolved: a.**
 
 - **a. (Recommended)** Yes — a precondition:
   `length(local.public_access_cidrs) <= 40`, message naming both
@@ -583,8 +723,7 @@ cluster**, so the choice is effectively create-time.
 
 ### 6. Do user-data assertions land now?
 
-Nothing asserts user-data content today (INV-0011 F8); the class
-threading makes the template load-bearing in a new way.
+**Resolved: a.**
 
 - **a. (Recommended)** Yes — the per-class plan matrix asserts the
   rendered template (decode the launch template's `user_data`):
@@ -606,9 +745,10 @@ threading makes the template load-bearing in a new way.
 - **INV-0011** — the parent investigation: F7 (the SSO singleton,
   the missing CIDR hook, the silent bootstrap default), F8 (the five
   hardwired sites), F2 (provider probe: access entries,
-  `public_access_cidrs` set-of-strings, `access_config`), OQ 11a /
-  OQ 12 (operator shape, incl. the ignore-changes infeasibility) /
-  OQ 13 (as amended: core default confirmed, the five-class enum,
+  `public_access_cidrs` set-of-strings, `access_config`), OQ 11a as
+  amended (the `eks/access-entries` module) / OQ 12 (operator shape,
+  incl. the ignore-changes infeasibility) / OQ 13 as amended (core
+  default confirmed, the five-class enum with `analytics` final,
   the split-seam cut line), F1 batches 1–4 (the platform
   distillations this Background section summarizes).
 - Platform ADR-0011 (external) — Terraform + ArgoCD bootstrap as the
@@ -621,6 +761,9 @@ threading makes the template load-bearing in a new way.
 - DESIGN-0002 / IMPL-0001 (Q3, Q7, Q8, Q11), DESIGN-0015 — the
   cluster access surface heritage, the endpoint-default drift
   record, the subnet-tier rewire (sequenced separately).
+- DESIGN-0004 / IMPL-0004 — `eks/pod-identity-access`: the
+  per-cluster-surface-as-own-module precedent the access-entries
+  module follows; ADR-0020 — the eks consumer table it joins.
 - INV-0011 F1 batch 4 — the Gateway frontend-SG module (the LIVE
   prefix-list counterpart to this design's plan-time fence; queued
   separately).

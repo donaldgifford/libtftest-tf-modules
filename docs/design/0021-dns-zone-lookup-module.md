@@ -392,6 +392,9 @@ and the module README agree on the key shape verbatim.
 
 ## Open Questions
 
+> **All resolved 2026-08-27: 1a, 2a, 3a, 4a.** The Detailed Design
+> above is already written to the recommended shapes — no amendments.
+
 ### 1. What are the discovery inputs?
 
 - **a. (Recommended)** `zone_name` + `private_zone` (+ optional

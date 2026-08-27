@@ -314,6 +314,13 @@ green live; docs agree with the shipped surface verbatim.
 
 ## Open Questions
 
+> **All resolved 2026-08-27: 1a, 2a, 3a.** The guardrail is a
+> precondition on the secret resource, `value_mode` joins the pinned
+> output contract (seven outputs), and the external apply asserts
+> zero versions via the plural metadata-only data source. The
+> Detailed Design above is already written to the recommended
+> shapes — no amendments.
+
 ### 1. Where does the mode guardrail live?
 
 This module's `required_version = ">= 1.11"` floor makes
