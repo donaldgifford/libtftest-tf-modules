@@ -663,6 +663,91 @@ decision), and `acm/certificate` (parked until a Terraform consumer of
 cert ARNs exists — today the ARN consumer is chart-side). The IAM pair
 wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 
+**Queue revision (2026-08-28, operator-reviewed):** re-scoped after the
+post-merge gap review of platform DESIGN-0001 §5 coverage against the
+merged DESIGN-0021..0024 set:
+
+- The IAM pair condenses into **one generic `iam/role` module** —
+  `iam/deploy-role` and `iam/cross-account-role` have identical resource
+  surfaces (role + trust policy + managed attachments + inline
+  policies); the inputs define which pattern an instance is. The deploy
+  role already exists outside Terraform in the other accounts, so the
+  module's brownfield job is adoption via `import` blocks, not
+  greenfield creation.
+- The Gateway frontend security-group module generalizes into
+  **`network/security-group`** — a generic standalone ingress-allowlist
+  SG producer with standard outputs (cidr / prefix-list / referenced-SG
+  typed rules, granular rules only, never inline). The frontend-only
+  scope guardrail stands: resource-owning modules keep their own SGs,
+  and the LBC keeps backend + node-SG rules.
+- **`dns/zone` (create mode) is deprioritized** — the platform zone is
+  provided externally, so only the lookup (DESIGN-0021) is near-term;
+  the create sibling waits for a real delegation need.
+
+Near-term queue is therefore three items: the `dns/zone-lookup` IMPL
+(already designed), the `iam/role` DESIGN, and the
+`network/security-group` DESIGN.
+
+**Sequencing note (2026-08-28) — hub buildout can start in parallel:**
+none of the three queue items sits on the mgmt-cluster critical path;
+manually-built substrate adopts into the modules later. In order of how
+cleanly "later" works:
+
+- **Trivially deferrable — nothing to import, ever:** `dns/zone-lookup`
+  is zero-resource, so adopting it later is just adding a read stack.
+  Better: the external-dns / cert-manager pod-identity stacks can
+  hardcode the provided zone's ARN in their `inline_policies` JSON
+  today, and swapping to the remote-state read later produces a
+  zero-diff plan (same ARN, same rendered policy). No migration at all.
+- **Cleanly importable later — build manually now, adopt with `import`
+  blocks:** IAM roles: the existing deploy + cross-account roles import
+  cleanly into the future `iam/role` (role, managed attachments, and
+  inline policies all import individually; trust-policy diffs converge
+  in place, zero downtime — IAM is metadata). Frontend SGs: the SG and
+  each rule import individually into `network/security-group`, and rule
+  descriptions update in place; worst case is the module replacing a
+  rule to match its conventions (a brief window on a live ALB SG), so
+  the play is import-and-match-reality first, converge conventions
+  second. SM shells: create the git-cred/OIDC secrets manually and
+  import just the shell once external mode (DESIGN-0023) lands —
+  external mode manages no version resource, so the import is exactly
+  the shell and the operator-written value is untouched.
+
+Two real sequencing constraints exist, both from the
+designed-but-unbuilt work rather than the queue:
+
+1. **Node-group workload classes (DESIGN-0024 part 3) gate hub day-0 —
+   not deferrable.** A mgmt cluster built on today's
+   `managed-node-group` gets every node hardwired
+   `workload-class=secure:NO_SCHEDULE` + gVisor; the core baseline
+   (ArgoCD, ESO, ALB controller) tolerates nothing and expects
+   untainted `core` nodes — nothing schedules. `additional_labels`
+   cannot remove the hardwired taint, and tolerating it chart-side
+   puts the control plane under gVisor, exactly the posture the class
+   split exists to avoid. Recovery later is a launch-template bump plus
+   rolling node replacement (survivable on a young hub), but the clean
+   path is sequencing the DESIGN-0024 node-group phases before the hub
+   cluster stack applies. The cluster-side changes gate nothing (fence
+   defaults are today's behavior; the access-entries stack trails;
+   bootstrap admin covers access meanwhile).
+2. **The evidence bucket cannot be retrofitted.** `object_lock_enabled`
+   is create-time — a Loki bucket created now can never become the
+   evidence bucket (that is a new bucket + data copy). Either land the
+   S3 core + evidence work (DESIGN-0022) before the audit stream
+   matters, or knowingly accept a cutover window. The Thanos /
+   ClickHouse buckets are the opposite: create with `s3/bucket` at HEAD
+   today and add tiering later as a pure additive `lifecycle_rules`
+   change.
+
+Fastest buildout order: implement the node-group classes first (they do
+not depend on the cluster-side DESIGN-0024 phases), start the hub
+substrate + cluster stack against that, and let everything else — the
+dns lookup, the IAM and SG modules, external SM mode, even the evidence
+bucket if the cutover is accepted — land behind it and adopt what was
+built by hand. This is the fleet's own doctrine: brownfield import-first
+was baked into the create-or-adopt thinking from INV-0004, so the
+modules are designed to receive what the buildout creates manually.
+
 ## Open Questions
 
 > **All resolved 2026-08-14: 2a, 4a, 5a, 6a, 7a, 8a, 9a, 10a, 11a; 1, 3,
