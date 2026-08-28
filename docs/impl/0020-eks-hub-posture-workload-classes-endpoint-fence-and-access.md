@@ -508,7 +508,18 @@ conventions require.
 
 ## Open Questions
 
+> **All resolved 2026-08-28: 1a, 2a, 3a, 4a.** The phases above were
+> written to the recommended shapes, so no task edits follow from the
+> resolutions: the cadence is three PRs with the Phase-2 tag as the
+> hub-unblock milestone (task 2.7), user data is asserted on the
+> launch template attribute directly (task 2.4), the apply fixture is
+> the bespoke addons-style setup (task 5.1), and Community parity is
+> probe-first with a plan-smoke floor (tasks 5.1/5.4).
+
 ### 1. What is the PR and release cadence?
+
+**Resolved: a.** Three PRs; Phases 1 + 2 ride one node-group PR and
+release, and its tag at merge is the hub-unblock milestone.
 
 - **a. (Recommended)** Three PRs: **PR 1 = Phases 1 + 2 together**
   (one node-group minor release — Phase 1 alone is a half-threaded
@@ -531,6 +542,9 @@ conventions require.
 
 ### 2. How is rendered user data asserted?
 
+**Resolved: a.** Direct resource-attribute assertions; no test-only
+output enters the module contract.
+
 - **a. (Recommended)** Assert the launch template resource's
   `user_data` attribute directly in run-block conditions —
   `base64decode` the planned value, then per-fragment `strcontains`
@@ -546,6 +560,9 @@ conventions require.
 
 ### 3. What shape is the access entries apply fixture?
 
+**Resolved: a.** The bespoke addons-style `fixtures/setup`, with the
+second stale-state seed exercising the guard's degrade path.
+
 - **a. (Recommended)** The bespoke addons-style `fixtures/setup`: a
   minimal real `aws_eks_cluster` plus a seeded account-scoped eks
   state key carrying the consumer set + `sso_principal_arn` — the
@@ -560,6 +577,10 @@ conventions require.
 - Other: (your call)
 
 ### 4. What if Community lacks access entry parity?
+
+**Resolved: a.** Probe-first; assert what round-trips, keep a
+plan-smoke floor if the APIs are wholly absent, record the outcome in
+FINDINGS.md either way.
 
 - **a. (Recommended)** Probe first, then assert what round-trips: if
   4.4 supports the access-entry APIs partially, the apply suite
