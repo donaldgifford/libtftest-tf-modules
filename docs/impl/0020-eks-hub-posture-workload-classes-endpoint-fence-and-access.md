@@ -443,9 +443,17 @@ conventions require.
       4.4 supports `public_access_cidrs`; FINDINGS.md updated.
 - [x] 5.3 Node-group Community apply extension: class-parameterized
       runs (core + secure); FINDINGS.md updated.
-- [ ] 5.4 Run all touched Community applies live against the 4.4 pin
-      (`just tf test-localstack ...` per module) — token-free, per
-      the fleet constraint.
+- [ ] 5.4 Run all three touched apply suites live
+      (`just tf test-localstack ...` per module). **Corrected from the
+      original wording** ("against the 4.4 pin — token-free"): that is
+      not achievable and never was. EKS is Pro-only, so these suites
+      need a **Pro** container despite living in the
+      `tests-localstack/` directory. The directory name is a fleet
+      convention, not a statement about the container tier — CI's
+      `test-localstack` job launches `localstack/localstack-pro` with
+      the auth token for *both* apply tiers. The token-free 4.4
+      constraint binds the suites that can genuinely honour it (s3,
+      secretsmanager, network/vpc-lookup), not this one.
 - [x] 5.5 Doc closure: CLAUDE.md eks section (the new module, the
       ADR-0011 load-bearing change bar, the class taxonomy, the
       default change); the ADR-0020 consumer-table row for
@@ -476,6 +484,19 @@ conventions require.
 > done. This also leaves IMPL-0020 OQ 4 resolved by evidence rather
 > than by fallback: the Community-`plan_smoke` alternative is moot,
 > since the APIs are wholly absent from that tier.
+>
+> **Two closure paths, both operator-side.** (a) A local Pro container
+> — the commands below, against a running Pro instance. (b) **CI**: the
+> `test-localstack` job already launches
+> `localstack/localstack-pro:2026.07.2` with `secrets.
+> LOCALSTACK_AUTH_TOKEN` for the tier these suites sit in, and `just
+> changed` confirms all three are in the matrix (the brand-new module
+> included), so flipping `CI_RUN_LOCALSTACK_APPLY` to `true` would run
+> them. Path (b) is blocked on the separate, repo-external LocalStack
+> subscription issue that keeps the token from activating headless —
+> the same reason both apply tiers are off by default (IMPL-0016
+> Phase 6). Whichever path runs first, record the result and the Pro
+> version in each `FINDINGS.md`.
 >
 > To close the phase:
 >
