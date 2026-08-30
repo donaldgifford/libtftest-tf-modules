@@ -163,3 +163,45 @@ run "secure_class_apply" {
     error_message = "the applied secure launch template must carry the gVisor install part"
   }
 }
+
+# The independent-gating regression, applied.
+#
+# The ECR pull-through mirror config lives INSIDE the same shellscript
+# MIME part as the gVisor install, so gating that whole part on gVisor
+# (as DESIGN-0024 literally reads) would silently drop the mirror on
+# every non-gVisor class — nodes that boot fine and then pull from
+# upstream, which no assertion about gVisor would ever catch. The plan
+# suite pins the rendered text; this run proves EC2 actually accepts the
+# resulting multipart user data on a class with gVisor OFF, which is the
+# combination the bug would have broken.
+run "mirror_without_gvisor_apply" {
+  command = apply
+
+  variables {
+    nodegroup_name = "tftest-ng-mirror"
+    workload_class = "core"
+    containerd_pull_through_mirror = {
+      enabled          = true
+      cache_url_prefix = "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+      upstreams = [
+        { host = "docker.io", prefix = "docker-hub" },
+        { host = "quay.io", prefix = "quay" },
+      ]
+    }
+  }
+
+  assert {
+    condition     = strcontains(base64decode(aws_launch_template.node.user_data), "000000000000.dkr.ecr.us-east-1.amazonaws.com")
+    error_message = "the mirror config must reach the applied launch template on a non-gVisor class"
+  }
+
+  assert {
+    condition     = !strcontains(base64decode(aws_launch_template.node.user_data), "gvisor/releases")
+    error_message = "core must not carry the gVisor install part — if this passes with gVisor present, the two fragments are no longer independently gated"
+  }
+
+  assert {
+    condition     = !contains(keys(aws_eks_node_group.this.labels), "runtime")
+    error_message = "a node with no runsc installed must not advertise a runtime label"
+  }
+}
