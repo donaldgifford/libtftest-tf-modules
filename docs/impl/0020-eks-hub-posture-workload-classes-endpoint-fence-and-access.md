@@ -610,6 +610,35 @@ A grep scoped to the files a change "should" touch will confirm its own
 assumption; a success criterion asserting "grep-verified" is only as
 good as the grep's scope, and nothing re-ran it.
 
+### The Go libtftest suite this work broke
+
+`modules/eks/cluster/test/` is a **libtftest Go integration suite** —
+the fleet's only one outside `tools/` — and nothing in this IMPL's plan
+mentioned it. Its `outputs_contract` subtest asserts an **exact** output
+count, so Phase 3's additive `sso_principal_arn` output broke it:
+`output count = 9; want 8`.
+
+Nothing caught this. The suite is `//go:build integration` tagged and
+CI touches the module only through `security.yml`'s `govulncheck`
+matrix — no job compiles or runs it, `just static` does not cover Go,
+and it needs a LocalStack container besides. It would have failed the
+next time anyone ran it and looked like an unrelated regression.
+
+Fixed by adding the output to the expected list. **The exact-count
+assertion is correct and was left exact** — the eks state shape is a
+cross-module contract with five consumers (ADR-0020), so an output
+appearing by accident should fail a test. The lesson is the inverse of
+the usual one: the assertion did its job, and the gap was that no gate
+runs it. Also cleaned two pre-existing lint failures in
+`helpers_test.go` (gofmt alignment + `gci` import order) surfaced while
+verifying the fix.
+
+Two follow-ups worth considering, both fleet-scope rather than
+IMPL-0020: whether the Go suite should be compiled (`go vet -tags
+integration`) by a CI job that needs no container, and whether the
+additive-output convention should extend to it — this work treated
+"additive output" as automatically safe, and for this suite it was not.
+
 ### Open — the CHANGELOG task 5.7 names does not exist
 
 DESIGN-0024 requires the node-group default-change note in "the README

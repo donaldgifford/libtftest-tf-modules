@@ -151,10 +151,13 @@ resource "aws_iam_role" "break_glass" {
 # path both spellings collapse to one string and the live tier would
 # only prove the trivial case.
 #
-# The real reserved-SSO path is /aws-reserved/sso.amazonaws.com/<region>/,
-# which IAM will not let a fixture create — a neutral path stands in.
-# The guard's normalization is path-agnostic (it keeps the account and
-# the trailing name), so this proves the same thing.
+# A neutral path stands in for the real reserved-SSO one
+# (/aws-reserved/sso.amazonaws.com/<region>/). Not because that path is
+# unusable — eks/cluster's Go suite seeds a role under it directly
+# (test/sso_test.go, seedSSORole) — but because whether real IAM permits
+# CreateRole there is a question this fixture has no reason to depend
+# on. The guard's normalization keeps only the account and the trailing
+# name, so any path proves the same thing.
 resource "aws_iam_role" "sso_owned" {
   name               = "AWSReservedSSO_${var.cluster_name}_abcdef1234567890"
   path               = "/sso-emulated/"

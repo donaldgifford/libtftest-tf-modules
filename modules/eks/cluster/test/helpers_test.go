@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+
 	"github.com/donaldgifford/libtftest"
 	"github.com/donaldgifford/libtftest/harness"
 )
@@ -33,12 +34,12 @@ var (
 // data.terraform_remote_state.vpc resolves at terraform init.
 // Schema: terraform state file v4 with three outputs.
 type stubVPCState struct {
-	Version          int                 `json:"version"`
-	TerraformVersion string              `json:"terraform_version"`
-	Serial           int                 `json:"serial"`
-	Lineage          string              `json:"lineage"`
-	Outputs          map[string]stubVal  `json:"outputs"`
-	Resources        []map[string]any    `json:"resources"`
+	Version          int                `json:"version"`
+	TerraformVersion string             `json:"terraform_version"`
+	Serial           int                `json:"serial"`
+	Lineage          string             `json:"lineage"`
+	Outputs          map[string]stubVal `json:"outputs"`
+	Resources        []map[string]any   `json:"resources"`
 }
 
 type stubVal struct {
@@ -184,8 +185,8 @@ type plannedValues struct {
 
 // planJSON is the subset of `terraform show -json` we read.
 type planJSON struct {
-	PlannedValues plannedValues          `json:"planned_values"`
-	Configuration map[string]any         `json:"configuration"`
+	PlannedValues plannedValues           `json:"planned_values"`
+	Configuration map[string]any          `json:"configuration"`
 	OutputChanges map[string]outputChange `json:"output_changes"`
 }
 

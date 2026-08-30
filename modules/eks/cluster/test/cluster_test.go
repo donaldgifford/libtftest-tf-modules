@@ -129,6 +129,10 @@ func TestCluster_DefaultPlan(t *testing.T) {
 	})
 
 	t.Run("outputs_contract", func(t *testing.T) {
+		// This list is exact — the length check below makes any added
+		// output a deliberate edit here, which is the point: the eks
+		// state shape is a cross-module contract (ADR-0020) with five
+		// consumers, so an output cannot appear by accident.
 		want := []string{
 			"cluster_name",
 			"cluster_version",
@@ -138,6 +142,10 @@ func TestCluster_DefaultPlan(t *testing.T) {
 			"cluster_security_group_id",
 			"node_security_group_id",
 			"kms_key_arn",
+			// Additive in DESIGN-0024: the eks/access-entries stack
+			// reads this to refuse an entry the cluster stack already
+			// owns. Null when sso_access_enabled is false.
+			"sso_principal_arn",
 		}
 		got := outputsInConfig(plan)
 		gotSet := make(map[string]bool, len(got))

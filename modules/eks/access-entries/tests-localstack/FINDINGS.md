@@ -91,9 +91,13 @@ container is available:
    IAM returns (seeded into the state object) and the path-stripped one
    the collision run declares. The plan suite proves this against a
    synthetic stub; here the path-bearing side comes from IAM itself.
-   The real reserved-SSO path (`/aws-reserved/sso.amazonaws.com/…`) is
-   not creatable by a fixture, so a neutral path stands in — the
-   normalization is path-agnostic, so the proof is equivalent.
+   A neutral path stands in for the real reserved-SSO one
+   (`/aws-reserved/sso.amazonaws.com/…`) — not because that path is
+   unusable (`eks/cluster`'s Go suite seeds a role under it directly,
+   `test/sso_test.go`), but because whether real IAM permits
+   `CreateRole` there is a question this fixture has no reason to
+   depend on. The normalization keeps only the account and trailing
+   name, so any path proves the same thing.
 
 ### Pending — run and record
 
