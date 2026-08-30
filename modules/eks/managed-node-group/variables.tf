@@ -223,6 +223,12 @@ variable "workload_class" {
 # digests for the platform binaries. The default is a known-good pin
 # at IMPL-completion time; consumers may pin to a different release.
 
+variable "gvisor_enabled" {
+  description = "Nullable override for the gVisor runtime install + runtime=gvisor labeling + kubelet fragments. Null (default) = the class rule: enabled iff workload_class == \"secure\". Set true/false to override for the odd case (e.g. a sandboxed analytics pool, or a secure group whose sandboxing is handled elsewhere)."
+  type        = bool
+  default     = null
+}
+
 variable "gvisor_version" {
   description = "gVisor release identifier, e.g. \"release-20260101.0\". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010."
   type        = string

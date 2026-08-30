@@ -31,11 +31,30 @@ Tracked in git. As of this writing:
   `--node-labels` / `--register-with-taints` fragments (note the deliberate
   spelling split — kubelet wants `NoSchedule`, the EKS API wants
   `NO_SCHEDULE`), and the class-derived `node_labels` / `node_taints`
-  outputs. **Phase 1 is a deliberate intermediate and must not ship alone:**
-  gVisor is still installed unconditionally until Phase 2 gates it behind
-  `gvisor_enabled` / effective-gVisor, and the Phase 2 merge tag is the
-  hub-unblock milestone (the hub cluster cannot be built on a node group
-  whose every node is born secure-tainted).
+  outputs. Phase 2 completed the parameterization: `gvisor_enabled` (nullable
+  bool, `null` = the class rule) drives
+  `local.gvisor_effective = coalesce(var.gvisor_enabled, workload_class ==
+  "secure")`, which gates the gVisor install part, the `runtime=gvisor` label,
+  and the kubelet label fragment **together** — a node never advertises a
+  sandbox it didn't install, nor hides one it did. `local.kubelet_node_labels`
+  composes the `--node-labels` flag from the same rules as the resource labels
+  so the two label paths cannot drift (caller `additional_labels` still ride
+  the EKS API path only, as before). **Template gotcha found here:** the ECR
+  pull-through mirror config lives *inside* the gVisor shellscript MIME part,
+  so gating that whole part on gVisor (as DESIGN-0024 literally reads) would
+  silently drop the mirror on every non-gVisor class — the part now renders
+  when *either* is on, with the two fragments gated independently, one shared
+  `systemctl restart containerd`, and the runsc plugin assertion under the
+  gVisor gate. Tests: plan suite 6 → 22 runs, including
+  `tests/user_data.tftest.hcl` — the **fleet's first rendered-user-data
+  assertions** (base64decode of the launch template's `user_data` +
+  `strcontains` per fragment; no test-only output was added, per IMPL-0020
+  OQ 2a) covering all five classes, both `gvisor_enabled` override
+  directions, and the independent-mirror-gating regression.
+  **Phases 1–2 must ship as one release** (IMPL-0020 OQ 1a) — Phase 1 alone
+  is a half-threaded intermediate — and that release tag is the hub-unblock
+  milestone: the hub cluster cannot be built on a node group whose every node
+  is born secure-tainted.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's

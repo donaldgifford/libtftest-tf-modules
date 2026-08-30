@@ -130,10 +130,13 @@ run "default_plan" {
     error_message = "ami_type must come from var.architecture.ami_type (default AL2023_ARM_64_STANDARD)"
   }
 
-  # Node labels include the runtime + workload-class pair (ADR-0005).
+  # The runtime label rides effective gVisor, not the class — and the
+  # default class (core) does not sandbox, so the label must be absent
+  # rather than present-and-false. A node must never advertise a
+  # runtime it did not install (ADR-0005; DESIGN-0024 part 3).
   assert {
-    condition     = aws_eks_node_group.this.labels["runtime"] == "gvisor"
-    error_message = "runtime=gvisor label must be set"
+    condition     = !contains(keys(aws_eks_node_group.this.labels), "runtime")
+    error_message = "the default (core, gVisor-less) group must not carry a runtime label"
   }
   assert {
     condition     = aws_eks_node_group.this.labels["workload-class"] == "core"

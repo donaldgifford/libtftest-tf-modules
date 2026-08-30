@@ -18,7 +18,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| aws | ~> 6.2 |
+| aws | 6.62.0 |
 | terraform | n/a |
 
 ## Modules
@@ -59,6 +59,7 @@ No modules.
 | enable\_ssm | Attach AmazonSSMManagedInstanceCore to the node role for Session Manager break-glass access. Off by default per ADR-0012. | `bool` | `false` | no |
 | extra\_kubelet\_args | Extra kubelet command-line arguments appended at AL2023 nodeadm bootstrap. Empty by default. | `string` | `""` | no |
 | extra\_node\_policies | Additional managed-style IAM policy ARNs to attach to the node role. Reserved for opt-in ECR pull-through cache policy per ADR-0015. Default empty — no extra attachments unless the consumer's Terragrunt config explicitly opts in. Each ARN is attached via aws\_iam\_role\_policy\_attachment. | `list(string)` | `[]` | no |
+| gvisor\_enabled | Nullable override for the gVisor runtime install + runtime=gvisor labeling + kubelet fragments. Null (default) = the class rule: enabled iff workload\_class == "secure". Set true/false to override for the odd case (e.g. a sandboxed analytics pool, or a secure group whose sandboxing is handled elsewhere). | `bool` | `null` | no |
 | gvisor\_sha512 | SHA-512 digests for the gVisor binaries matching var.gvisor\_version and var.architecture.gvisor\_arch. Keys: "runsc", "containerd\_shim\_runsc\_v1". Renovate updates this map alongside gvisor\_version. Empty defaults are placeholders — wired to a real verification step in Phase 4. | ```object({ runsc = string containerd_shim_runsc_v1 = string })``` | ```{ "containerd_shim_runsc_v1": "", "runsc": "" }``` | no |
 | gvisor\_version | gVisor release identifier, e.g. "release-20260101.0". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010. | `string` | `"release-20260101.0"` | no |
 | instance\_types | Override list of instance types. Empty (default) falls back to var.architecture.default\_instance\_types. Instance-type-vs-architecture compatibility is asserted in Phase 5 / Phase 7. | `list(string)` | `[]` | no |

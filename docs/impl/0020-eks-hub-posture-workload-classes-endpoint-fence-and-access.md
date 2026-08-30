@@ -245,34 +245,51 @@ ending at the hub-unblock milestone.
 
 #### Tasks
 
-- [ ] 2.1 `gvisor_enabled` nullable bool variable (default `null`) +
+- [x] 2.1 `gvisor_enabled` nullable bool variable (default `null`) +
       `local.gvisor_effective = coalesce(var.gvisor_enabled,
       var.workload_class == "secure")`.
-- [ ] 2.2 Site 1 completion: the `runtime = "gvisor"` label rides
+- [x] 2.2 Site 1 completion: the `runtime = "gvisor"` label rides
       effective gVisor (merged into the label map only when on) — on
       both the resource labels and the kubelet label fragment. A
       gVisor-enabled analytics pool advertises the runtime; a
       gVisor-disabled secure pool must not lie.
-- [ ] 2.3 Site 4: gate the gVisor install MIME part in `user_data.tf`
+- [x] 2.3 Site 4: gate the gVisor install MIME part in `user_data.tf`
       (download + SHA-512 verify + containerd drop-in + restart +
       plugin assert) on effective gVisor — the whole part absent when
       off, via the same part-gating mechanism the ECR-mirror part
       uses; the template gains its `gvisor_enabled` input for the
       kubelet fragments.
-- [ ] 2.4 User-data assertions (DESIGN-0024 OQ 6a; mechanism per
+- [x] 2.4 User-data assertions (DESIGN-0024 OQ 6a; mechanism per
       OQ 2 below): per-class decode of the launch template's
       `user_data` — the kubelet label fragment carries the class, the
       register-with-taints fragment present/absent per class, the
       gVisor MIME part present/absent per effective gVisor.
-- [ ] 2.5 Override-direction runs: `gvisor_enabled = true` on a
+- [x] 2.5 Override-direction runs: `gvisor_enabled = true` on a
       non-secure class (part + runtime label present, class taint per
       class rule) and `false` on `secure` (part + runtime label
       absent, class taint intact).
-- [ ] 2.6 Module gates re-run; USAGE.md regen; README class table +
+- [x] 2.6 Module gates re-run; USAGE.md regen; README class table +
       default-change note.
 - [ ] 2.7 **Hub-unblock milestone:** merge + tag the node-group
       release (minor, default-change note prominent) per the OQ 1
       resolution — the hub buildout pins this tag.
+
+> **Implementation note (task 2.3) — the DESIGN's literal text would
+> have shipped a bug.** DESIGN-0024 part 3 says to gate the gVisor
+> shellscript part "the same part-gating mechanism the ECR-mirror part
+> already uses," which assumes the mirror is its own MIME part. It is
+> not: the mirror config is written *inside* the gVisor shellscript
+> part, and both write containerd config that the part's single
+> `systemctl restart containerd` picks up. Gating that whole part on
+> effective gVisor would therefore have silently dropped the
+> pull-through-cache mirror on every non-gVisor class — a bootstrap
+> regression invisible until pods failed to pull. **What shipped
+> instead:** the shellscript part renders when *either* gVisor or the
+> mirror is on, with the two fragments gated independently inside it;
+> the containerd restart is shared (both need it) and the runsc plugin
+> assertion stays under the gVisor gate. The
+> `mirror_renders_without_gvisor` run in `tests/user_data.tftest.hcl`
+> is the permanent regression for exactly this.
 
 #### Success Criteria
 
