@@ -516,15 +516,15 @@ conventions require.
 
 ## Testing Plan
 
-- [ ] Node-group plan matrix: core default + explicit secure + the
+- [x] Node-group plan matrix: core default + explicit secure + the
       three remaining classes + enum rejection + layering runs.
-- [ ] User-data assertions per class and per override direction (the
+- [x] User-data assertions per class and per override direction (the
       fleet's first rendered-template coverage).
-- [ ] Cluster plan additions: default-fence zero-diff pin, literal /
+- [x] Cluster plan additions: default-fence zero-diff pin, literal /
       prefix-list / union runs, three guard failures, private-only
       run, bootstrap pin, `sso_principal_arn` on/off, SSO singleton
       pinned by address.
-- [ ] Access-entries plan suite: hub-shaped trio, validation
+- [x] Access-entries plan suite: hub-shaped trio, validation
       failures, collision guard armed + stale, ADR-0020 key.
 - [ ] Community applies: access-entries fixture suite (parity
       probed), cluster fence run, node-group class runs — all live

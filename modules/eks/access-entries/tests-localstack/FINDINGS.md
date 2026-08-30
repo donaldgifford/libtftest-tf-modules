@@ -8,9 +8,13 @@ a workaround in HCL or files a sneakystack / libtftest backlog item.
 
 ## Environment
 
-- Suite authored 2026-08-30 (IMPL-0020 Phase 5). **Not yet run live** —
-  see Finding #1: it needs a LocalStack **Pro** container, whose auth
-  token is operator-held.
+- Suite authored 2026-08-30 (IMPL-0020 Phase 5). **Not yet run to
+  completion** — see Finding #1: it needs a LocalStack **Pro**
+  container, whose auth token is operator-held.
+- Structural validation done 2026-08-30 against token-free
+  `localstack/localstack:4.4`: the test file parses, the fixture module
+  resolves, and every non-EKS fixture resource applies. The suite stops
+  at `CreateCluster` with a 501.
 
 ## Findings
 
@@ -28,6 +32,25 @@ Probed directly on 2026-08-30 against the token-free Community image
   operation: The API for service 'eks' is either not included in your
   current license plan or has not yet been emulated by LocalStack.
   ```
+
+Reconfirmed by running this very suite against Community 4.4
+(`SERVICES=ec2,iam,s3,sts`): the fixture's VPC, both subnets, and all
+four IAM roles create **successfully**, and the run fails at exactly
+one resource —
+
+```text
+Error: creating EKS Cluster (tftest-ae-cluster): api error
+InternalFailure: The API for service 'eks' is either not included in
+your current license plan ...  StatusCode: 501
+```
+
+That is the stronger form of the evidence: not just a missing
+`ListClusters`, but a hard 501 on the `CreateCluster` this suite
+depends on. It also validates the non-EKS half of the fixture — every
+resource that does not depend on the cluster applied cleanly, so the
+outstanding unknowns are narrow: the two `aws_s3_object` state stubs
+(they interpolate `aws_eks_cluster.this.name`, so they were blocked by
+the same failure) and the module's own access-entry resources.
 
 This resolves **IMPL-0020 OQ 4** empirically. The APIs are wholly
 absent from Community, so the fallback the OQ anticipated (a
