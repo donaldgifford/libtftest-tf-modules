@@ -547,6 +547,37 @@ widening.** Validate an input object's *coherence*, not just its
 fields, and test a fallback against the resolved value rather than
 against the raw inputs that feed it.
 
+### Live-coverage sweep the review prompted
+
+The Phase 5 apply suites were authored *before* these fixes, so each
+was re-read against the question "would the live tier have caught
+this?". Three gaps closed — all in suites that still await a Pro
+container, so they are authored-not-run like the rest of Phase 5:
+
+- **`eks/access-entries`** — the collision run named the SSO principal
+  by the same string the stub state carried, so the live tier proved
+  only the trivial identical-spelling case. The fixture's SSO-owned
+  role now carries a `path`, giving it the two real spellings, and the
+  run declares the path-stripped one.
+- **`eks/cluster`** — `fenced_apply` passes literal CIDRs, so
+  `data.aws_ec2_managed_prefix_list` was never resolved outside an
+  `override_data` stub: the entire expansion path was unproven live.
+  The fixture now creates two real managed prefix lists (one
+  populated, one empty) behind two plan-only runs. This also asks the
+  emulator a question nothing else in the fleet does — whether it
+  serves managed prefix lists with `entries` populated.
+- **`eks/managed-node-group`** — the pull-through mirror is opt-in and
+  no apply run enabled it, so the mirror-on/gVisor-off combination
+  (exactly what the DESIGN-0024 part-gating deviation would have
+  broken, and invisibly: the nodes still boot) never reached EC2.
+  `mirror_without_gvisor_apply` closes it.
+
+The generalizable point: **a fix is not covered just because a
+regression exists at the tier where the logic lives.** Each of these
+had a green plan-suite regression while the live tier exercised a
+degenerate case — identical strings, one input path, an off-by-default
+feature.
+
 ---
 
 ## File Changes

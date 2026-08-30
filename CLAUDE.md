@@ -122,7 +122,19 @@ Tracked in git. As of this writing:
   permissive default plus a partially-specified input is a silent
   widening**, so validate the *coherence* of an input object, not just its
   fields, and test a fallback against the resolved value rather than the
-  raw inputs.
+  raw inputs. The review also prompted a **live-coverage sweep** of the
+  Phase 5 apply suites, which closed three gaps where a green plan-suite
+  regression sat over a degenerate live case: the access-entries collision
+  run compared two identical strings (its fixture role now carries a
+  `path`, so the two real ARN spellings exist); the cluster suite passed
+  only literal CIDRs, leaving `data.aws_ec2_managed_prefix_list` and the
+  whole expansion path unproven (its fixture now builds a populated **and**
+  an empty managed prefix list — which also asks the emulator, uniquely in
+  this fleet, whether it serves prefix-list `entries` at all); and the
+  node-group suite never enabled the opt-in mirror, so the
+  mirror-on/gVisor-off combination the template deviation would have broken
+  never reached EC2. **The lesson: a fix is not covered just because a
+  regression exists at the tier where the logic lives.**
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's
