@@ -15,19 +15,39 @@ backlog item.
 > [!NOTE]
 > **Pending re-run (IMPL-0020 Phase 5, authored 2026-08-30).** The
 > endpoint-fence assertions added to `default_apply`, and the new
-> `fenced_apply` run, have **not been executed live** — no Pro container
-> was available to the authoring session. Run
-> `just tf test-localstack eks/cluster` and record the result (and the
-> Pro version) here. The offline plan gate for the fence — including the
-> zero-diff default pin — is green at 12 runs and is unaffected either
-> way.
+> `fenced_apply`, `prefix_list_expands_against_a_real_list`, and
+> `rejects_a_real_prefix_list_that_expands_to_nothing` runs, have **not
+> been executed live** — no Pro container was available to the authoring
+> session. Run `just tf test-localstack eks/cluster` and record the
+> result (and the Pro version) here. The offline plan gate for the
+> fence — including the zero-diff default pin — is green at 13 runs and
+> is unaffected either way.
+>
+> **The open parity question these runs answer.** The fence has two
+> input paths and only one of them was covered live: `fenced_apply`
+> passes literal CIDRs, which never touch
+> `data.aws_ec2_managed_prefix_list`. The two plan-only runs added
+> alongside it exercise the expansion against **real** EC2 prefix lists
+> created by the fixture — one populated, one deliberately empty. They
+> are the first live answer to whether this emulator serves managed
+> prefix lists with their `entries` populated at all. If
+> `prefix_list_expands_against_a_real_list` fails on the
+> `192.0.2.0/24` assertion, the emulator returned the list without
+> entries: record that as a coverage gap and keep the plan suite (which
+> stubs the data source) as the gate for the expansion logic. The empty
+> list is the live shape of the fence-expands-to-nothing hazard the
+> security review surfaced — it must fail the plan, never fall through
+> to `0.0.0.0/0`.
 
 ## Test runs
 
 | Run | Command | Coverage |
 |-----|---------|----------|
-| `setup` | apply | Fixture: VPC + private subnets + S3 stub state the cluster reads via remote state |
+| `setup` | apply | Fixture: VPC + private subnets + two managed prefix lists (one populated, one empty) + S3 stub state the cluster reads via remote state |
 | `default_apply` | apply | Real `aws_eks_cluster` + IAM cluster role/attachments + module KMS key/alias (secrets envelope encryption) + node security group with ingress/egress rules + CloudWatch log group + EKS access entries |
+| `fenced_apply` | apply | The literal-CIDR fence reaching the EKS API as `public_access_cidrs`, replacing the world-open default |
+| `prefix_list_expands_against_a_real_list` | plan | `data.aws_ec2_managed_prefix_list` against a real populated list; union de-duplication across both input paths |
+| `rejects_a_real_prefix_list_that_expands_to_nothing` | plan | The fence-expands-to-nothing precondition against a real empty list |
 
 Run with `just tf test-localstack eks/cluster`.
 

@@ -75,6 +75,43 @@ resource "aws_subnet" "public" {
   }
 }
 
+#--------------------------------------------------------------
+# Managed prefix lists for the endpoint fence (DESIGN-0024 part 2)
+#--------------------------------------------------------------
+
+# The corp egress list. The module expands this at PLAN time through
+# data.aws_ec2_managed_prefix_list, so the apply suite can prove the
+# expansion against a real EC2 prefix list rather than an override_data
+# stub — including whether LocalStack populates `entries` at all.
+#
+# One entry deliberately duplicates a CIDR the suite also passes
+# literally, so the union's de-duplication is proven end to end.
+resource "aws_ec2_managed_prefix_list" "corp" {
+  name           = "tftest-fixture-corp-egress"
+  address_family = "IPv4"
+  max_entries    = 5
+
+  entry {
+    cidr        = "192.0.2.0/24"
+    description = "corp egress a"
+  }
+
+  entry {
+    cidr        = "198.51.100.0/24"
+    description = "corp egress b — also passed literally by the suite"
+  }
+}
+
+# An EMPTY prefix list: max_entries is required, but no entries exist.
+# This is the live shape of the fence-expands-to-nothing hazard — a list
+# emptied out-of-band, or simply not populated yet. The module must fail
+# the plan rather than fall through to 0.0.0.0/0.
+resource "aws_ec2_managed_prefix_list" "empty" {
+  name           = "tftest-fixture-empty"
+  address_family = "IPv4"
+  max_entries    = 1
+}
+
 resource "aws_s3_bucket" "state" {
   bucket        = var.remote_state_bucket
   force_destroy = true
@@ -121,4 +158,12 @@ output "private_subnet_ids" {
 
 output "public_subnet_ids" {
   value = aws_subnet.public[*].id
+}
+
+output "corp_prefix_list_id" {
+  value = aws_ec2_managed_prefix_list.corp.id
+}
+
+output "empty_prefix_list_id" {
+  value = aws_ec2_managed_prefix_list.empty.id
 }

@@ -200,3 +200,48 @@ run "fenced_apply" {
     error_message = "a configured fence must replace the world-open default at the API, not sit alongside it"
   }
 }
+
+# The prefix-list half of the fence, against a REAL EC2 prefix list.
+#
+# Plan-only on purpose. What is unproven live here is the *expansion* —
+# whether data.aws_ec2_managed_prefix_list resolves and populates
+# `entries` on this emulator — and that happens at plan. The EKS API's
+# handling of public_access_cidrs is already proven by fenced_apply
+# above, so applying a third cluster would buy nothing but minutes.
+run "prefix_list_expands_against_a_real_list" {
+  command = plan
+
+  variables {
+    name                                   = "tftest-plan-fenced-pl"
+    endpoint_public_access_cidrs           = ["203.0.113.0/24", "198.51.100.0/24"]
+    endpoint_public_access_prefix_list_ids = [run.setup.corp_prefix_list_id]
+  }
+
+  # The fixture list carries 192.0.2.0/24 and 198.51.100.0/24; the
+  # literals carry 203.0.113.0/24 and 198.51.100.0/24. Three distinct,
+  # not four — the de-duplication proven against real entries.
+  assert {
+    condition     = length(aws_eks_cluster.this.vpc_config[0].public_access_cidrs) == 3
+    error_message = "the union of literals and real prefix-list entries must de-duplicate to 3 CIDRs"
+  }
+
+  assert {
+    condition     = contains(aws_eks_cluster.this.vpc_config[0].public_access_cidrs, "192.0.2.0/24")
+    error_message = "an entry present only in the prefix list must reach the fence — if this fails, LocalStack served the list without entries"
+  }
+}
+
+# The fence-expands-to-nothing guard, live. A real prefix list with no
+# entries must fail the plan rather than fall through to the
+# empty-union default of 0.0.0.0/0, which would silently convert a
+# corp-only endpoint into a world-open one.
+run "rejects_a_real_prefix_list_that_expands_to_nothing" {
+  command = plan
+
+  variables {
+    name                                   = "tftest-plan-fenced-empty"
+    endpoint_public_access_prefix_list_ids = [run.setup.empty_prefix_list_id]
+  }
+
+  expect_failures = [aws_eks_cluster.this]
+}
