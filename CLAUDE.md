@@ -155,6 +155,18 @@ Tracked in git. As of this writing:
   `### RELEASE NOTES` block in the PR body via `pr-semver-bump`), so
   whether the fleet gains a changelog convention is a call that interacts
   with per-module tagging and the planned Go release CLI.
+  **`modules/eks/cluster/test/` is a libtftest Go integration suite** — the
+  fleet's only one outside `tools/` — and Phase 3's *additive*
+  `sso_principal_arn` output **broke it**: its `outputs_contract` subtest
+  asserts an **exact** output count (`want 8`, now 9). Nothing caught it.
+  The suite is `//go:build integration` tagged, CI touches the module only
+  via `security.yml`'s `govulncheck` matrix, `just static` does not cover
+  Go, and it needs a LocalStack container — **so no gate compiles or runs
+  it.** The exact-count assertion is right and stays exact (the eks state
+  shape is an ADR-0020 contract with five consumers; an accidental output
+  *should* fail). Two takeaways: **"additive output" is not automatically
+  safe** — grep for Go suites before assuming it — and a `go vet -tags
+  integration` job would catch this class without needing a container.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's
