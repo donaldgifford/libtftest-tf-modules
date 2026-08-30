@@ -434,19 +434,19 @@ conventions require.
 
 #### Tasks
 
-- [ ] 5.1 Access-entries Community apply suite
+- [x] 5.1 Access-entries Community apply suite
       (`tests-localstack/`): fixture per the OQ 3 resolution; probe
       access-entry API parity on token-free 4.4 first (OQ 4) and
       assert what round-trips; FINDINGS.md records the probe either
       way.
-- [ ] 5.2 Cluster Community apply extension: a fence apply run where
+- [x] 5.2 Cluster Community apply extension: a fence apply run where
       4.4 supports `public_access_cidrs`; FINDINGS.md updated.
-- [ ] 5.3 Node-group Community apply extension: class-parameterized
+- [x] 5.3 Node-group Community apply extension: class-parameterized
       runs (core + secure); FINDINGS.md updated.
 - [ ] 5.4 Run all touched Community applies live against the 4.4 pin
       (`just tf test-localstack ...` per module) — token-free, per
       the fleet constraint.
-- [ ] 5.5 Doc closure: CLAUDE.md eks section (the new module, the
+- [x] 5.5 Doc closure: CLAUDE.md eks section (the new module, the
       ADR-0011 load-bearing change bar, the class taxonomy, the
       default change); the ADR-0020 consumer-table row for
       `eks/access-entries`; the INV-0011 delivery note.
@@ -456,6 +456,30 @@ conventions require.
 - [ ] 5.7 Conventional commits throughout; PRs labeled `minor` with
       the node-group default-change note prominent in README and
       CHANGELOG (per the OQ 1 cadence).
+
+> **Phase 5 blocker (2026-08-30) — tasks 5.4, 5.6, 5.7 need the
+> operator.** 5.1–5.3 and 5.5 are done: the suites are authored, the
+> docs closed. **5.4 cannot be executed by the authoring session**:
+> EKS is Pro-only in LocalStack (probed on token-free Community 4.4 —
+> `eks` is absent from the health output and `list-clusters` returns
+> "The API for service 'eks' is either not included in your current
+> license plan"), and `LOCALSTACK_AUTH_TOKEN` is operator-held. Each
+> touched `FINDINGS.md` carries a pending-re-run note naming the
+> command. **5.6 is deliberately held** behind 5.4: flipping
+> DESIGN-0024 to Implemented and this doc to Completed would assert a
+> live-verified state that does not exist yet. **5.7's PR/merge/tag
+> half** is likewise the operator's — the conventional-commit half is
+> done. This also leaves IMPL-0020 OQ 4 resolved by evidence rather
+> than by fallback: the Community-`plan_smoke` alternative is moot,
+> since the APIs are wholly absent from that tier.
+>
+> To close the phase:
+>
+> ```sh
+> just tf test-localstack eks/managed-node-group
+> just tf test-localstack eks/cluster
+> just tf test-localstack eks/access-entries
+> ```
 
 #### Success Criteria
 

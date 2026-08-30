@@ -12,6 +12,16 @@ backlog item.
 - LocalStack Pro **2026.6.0** on `:4566`
 - Date: 2026-07-01 (first documented run for this module)
 
+> [!NOTE]
+> **Pending re-run (IMPL-0020 Phase 5, authored 2026-08-30).** The
+> endpoint-fence assertions added to `default_apply`, and the new
+> `fenced_apply` run, have **not been executed live** — no Pro container
+> was available to the authoring session. Run
+> `just tf test-localstack eks/cluster` and record the result (and the
+> Pro version) here. The offline plan gate for the fence — including the
+> zero-diff default pin — is green at 12 runs and is unaffected either
+> way.
+
 ## Test runs
 
 | Run | Command | Coverage |

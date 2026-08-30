@@ -13,6 +13,18 @@ backlog item.
   (`setup` + `default_apply`, **2 passed**), coverage unchanged
 - First captured on Pro 2026.5.0.dev121 (2026-05-15)
 
+> [!NOTE]
+> **Pending re-run (IMPL-0020 Phase 5, authored 2026-08-30).** The
+> workload-class assertions added to `default_apply` (now asserting the
+> **core** default: class label, no class taint) and the new
+> `secure_class_apply` run have **not been executed live** — no Pro
+> container was available to the authoring session. Run
+> `just tf test-localstack eks/managed-node-group` and record the result
+> here. Note the behavior change this suite now encodes: the default
+> apply is a **core** group, not the pre-DESIGN-0024 secure one. The
+> offline plan gate is green at 22 runs, including the fleet's first
+> rendered-user-data assertions.
+
 ## Findings
 
 ### Finding #1 — No coverage gaps in the AWS API surface this module touches (as of LocalStack Pro 2026.5.0)

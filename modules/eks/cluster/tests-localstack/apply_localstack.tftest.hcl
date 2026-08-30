@@ -164,4 +164,39 @@ run "default_apply" {
     condition     = aws_cloudwatch_log_group.cluster.retention_in_days == 30
     error_message = "CloudWatch log group should retain the configured 30d retention"
   }
+
+  # The default fence round-trips as the EKS default (IMPL-0020
+  # Phase 5). This is the applied half of the zero-diff invariant the
+  # plan suite pins: what the module now sends explicitly must be what
+  # the API was already storing implicitly.
+  assert {
+    condition     = contains(aws_eks_cluster.this.vpc_config[0].public_access_cidrs, "0.0.0.0/0")
+    error_message = "with no fence inputs the applied cluster must carry the 0.0.0.0/0 public_access_cidrs default"
+  }
+
+  assert {
+    condition     = aws_eks_cluster.this.access_config[0].bootstrap_cluster_creator_admin_permissions == true
+    error_message = "the explicit bootstrap_cluster_creator_admin_permissions must round-trip through the API"
+  }
+}
+
+# A configured fence, applied. Separate from default_apply so the
+# zero-diff default above stays an untouched baseline.
+run "fenced_apply" {
+  command = apply
+
+  variables {
+    name                         = "tftest-apply-fenced"
+    endpoint_public_access_cidrs = ["203.0.113.0/24", "198.51.100.10/32"]
+  }
+
+  assert {
+    condition     = length(aws_eks_cluster.this.vpc_config[0].public_access_cidrs) == 2
+    error_message = "the applied cluster must carry exactly the two fenced CIDRs"
+  }
+
+  assert {
+    condition     = !contains(aws_eks_cluster.this.vpc_config[0].public_access_cidrs, "0.0.0.0/0")
+    error_message = "a configured fence must replace the world-open default at the API, not sit alongside it"
+  }
 }

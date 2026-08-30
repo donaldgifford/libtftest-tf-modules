@@ -99,6 +99,7 @@ consumer read at plan time.
 | `eks/managed-node-group` | eks + vpc | `<acct>/<region>/eks/<cluster_name>/…`, `<acct>/<region>/vpc/<vpc_name>/…` | `eks/cluster`, `network/vpc-lookup` |
 | `eks/addons` | eks | `<acct>/<region>/eks/<cluster_name>/…` | `eks/cluster` |
 | `eks/pod-identity-access` | eks | `<acct>/<region>/eks/<cluster_name>/…` | `eks/cluster` |
+| `eks/access-entries` | eks | `<acct>/<region>/eks/<cluster_name>/…` | `eks/cluster` |
 | `rds/serverless` | vpc | `<acct>/<region>/vpc/<vpc_name>/…` | `network/vpc-lookup` |
 | `rds/cluster` | vpc | `<acct>/<region>/vpc/<vpc_name>/…` | `network/vpc-lookup` |
 | `rds/instance` | vpc | `<acct>/<region>/vpc/<vpc_name>/…` | `network/vpc-lookup` |

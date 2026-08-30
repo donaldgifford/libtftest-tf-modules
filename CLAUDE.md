@@ -55,6 +55,42 @@ Tracked in git. As of this writing:
   is a half-threaded intermediate — and that release tag is the hub-unblock
   milestone: the hub cluster cannot be built on a node group whose every node
   is born secure-tainted.
+  Phase 3 landed on `cluster`, all additive (every pre-existing plan run
+  passes unchanged — the zero-diff bar): the **public-endpoint fence**
+  (`endpoint_public_access_cidrs` + `endpoint_public_access_prefix_list_ids`,
+  unioned and de-duplicated into `local.public_access_cidrs`; an empty union
+  resolves to `["0.0.0.0/0"]`, the value EKS already applied implicitly, so
+  clusters setting neither input replan zero-diff — pinned as the suite's
+  first run). **Prefix-list expansion is plan-time only** (the EKS API takes
+  literal CIDRs; `network/security-group` per DESIGN-0026 is the live
+  counterpart) and conditional `ignore_changes` is impossible since
+  `lifecycle` args are static. Three plan guards: at-least-one-endpoint,
+  fence-on-a-disabled-public-endpoint, and the EKS 40-CIDR cap. Also
+  `bootstrap_cluster_creator_admin_permissions` explicit `true` (was the
+  silent provider default) carrying the **stable-creator contract** — the
+  entry binds permanently to whatever principal creates the cluster, so
+  applies run via Atlantis pod-identity → deploy role, never an ad-hoc SSO
+  session whose `AWSReservedSSO_*` suffix rotates — plus the additive
+  `sso_principal_arn` output (4 → 12 runs). Phase 4 added
+  **`modules/eks/access-entries`** (IMPL-0020), the fourth eks-state consumer
+  and the generic principal→cluster surface: `access_entries` map keyed by
+  *logical* name with associations flattened to `"<entry>:<assoc>"` keys (so
+  re-pointing a principal or adding an association never churns a sibling),
+  direct principal ARNs (spokes are separate accounts — the cluster's
+  in-account SSO regex can't reach them), six fail-closed validations, and a
+  **cross-stack collision guard** rejecting any entry naming the cluster
+  stack's `sso_principal_arn`; that read is `try()`-wrapped so a cluster state
+  predating the additive output degrades to no-guard instead of breaking every
+  plan (12 runs). It exists as its own stack precisely so access churn never
+  plans against the control-plane stack. **LocalStack finding (IMPL-0020
+  Phase 5):** EKS is **Pro-only** — probed directly on token-free Community
+  4.4, which answers `eks list-clusters` with "not included in your current
+  license plan" and omits `eks` from its health output entirely. So all four
+  eks modules' `tests-localstack/` suites need Pro (as their FINDINGS already
+  recorded), and IMPL-0020 OQ 4's Community-`plan_smoke` fallback is moot. The
+  Phase 5 apply-suite extensions (cluster fence runs, node-group class runs,
+  the new module's suite + its two-state fixture) are **authored but not yet
+  run live** — each FINDINGS.md carries a pending-re-run note.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's

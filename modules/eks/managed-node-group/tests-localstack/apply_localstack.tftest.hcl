@@ -119,4 +119,47 @@ run "default_apply" {
     condition     = aws_eks_node_group.this.capacity_type == "ON_DEMAND"
     error_message = "LocalStack EKS must reflect ON_DEMAND capacity type"
   }
+
+  # The default class applies untainted (IMPL-0020 Phase 5). This is
+  # the applied half of Gate 1: a hub built on the default must have
+  # somewhere for the tolerate-nothing platform baseline to land.
+  assert {
+    condition     = aws_eks_node_group.this.labels["workload-class"] == "core"
+    error_message = "the default class label must round-trip through the EKS API as core"
+  }
+  assert {
+    condition = length([
+      for t in aws_eks_node_group.this.taint : t if t.key == "workload-class"
+    ]) == 0
+    error_message = "the default (core) node group must apply with no workload-class taint"
+  }
+}
+
+# The secure class applied end-to-end: label, taint, and gVisor all on.
+# Keeps the pre-DESIGN-0024 posture proven at apply, not just at plan.
+run "secure_class_apply" {
+  command = apply
+
+  variables {
+    nodegroup_name = "tftest-ng-secure"
+    workload_class = "secure"
+  }
+
+  assert {
+    condition     = aws_eks_node_group.this.labels["workload-class"] == "secure" && aws_eks_node_group.this.labels["runtime"] == "gvisor"
+    error_message = "the secure class must apply with both the class and runtime labels"
+  }
+
+  assert {
+    condition = length([
+      for t in aws_eks_node_group.this.taint :
+      t if t.key == "workload-class" && t.value == "secure" && t.effect == "NO_SCHEDULE"
+    ]) == 1
+    error_message = "the secure class taint must round-trip through the EKS API"
+  }
+
+  assert {
+    condition     = strcontains(base64decode(aws_launch_template.node.user_data), "gvisor/releases")
+    error_message = "the applied secure launch template must carry the gVisor install part"
+  }
 }

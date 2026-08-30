@@ -663,6 +663,27 @@ decision), and `acm/certificate` (parked until a Terraform consumer of
 cert ARNs exists — today the ARN consumer is chart-side). The IAM pair
 wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 
+**EKS delivery (2026-08-30, IMPL-0020):** the hub posture work is
+built — F7 and F8 are both closed. `managed-node-group` carries the
+five-class `workload_class` enum (`core` default; the five hardwired
+sites threaded) plus the `gvisor_enabled` override, with the fleet's
+first rendered-user-data assertions (plan suite 6 → 22 runs).
+`eks/cluster` carries the additive endpoint fence, its three guards,
+the explicit bootstrap posture with the stable-creator contract, and
+the additive `sso_principal_arn` output (4 → 12 runs, every
+pre-existing run unchanged — the zero-diff bar held). The new
+**`eks/access-entries`** module is the fourth eks-state consumer
+(12 runs). Two things found in the building that the DESIGN did not
+anticipate: gating the gVisor MIME part as written would have silently
+dropped the ECR pull-through mirror on every non-gVisor class (the two
+now gate independently), and **EKS is Pro-only in LocalStack** —
+probed directly on token-free Community 4.4, which answers
+`ListClusters` with a license error — so IMPL-0020 OQ 4's
+Community-`plan_smoke` fallback is moot and the new module's apply
+suite carries the same Pro requirement its three siblings already do.
+The live apply runs across the three modules remain **pending an
+operator Pro container**; all three plan gates are green.
+
 **Queue revision (2026-08-28, operator-reviewed):** re-scoped after the
 post-merge gap review of platform DESIGN-0001 §5 coverage against the
 merged DESIGN-0021..0024 set:
