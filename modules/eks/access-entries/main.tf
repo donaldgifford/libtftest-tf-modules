@@ -49,8 +49,10 @@ locals {
   # compare would let the path-stripped form slip past the guard.
   # Reduce both to "<account>/<name>", lowercased — IAM role names are
   # case-insensitive for uniqueness.
-  sso_principal_key = local.sso_principal_arn == null ? null : lower(
-    "${split(":", local.sso_principal_arn)[4]}/${reverse(split("/", local.sso_principal_arn))[0]}"
+  sso_principal_key = (
+    local.sso_principal_arn == null
+    ? null
+    : lower("${split(":", local.sso_principal_arn)[4]}/${reverse(split("/", local.sso_principal_arn))[0]}")
   )
 
   entry_principal_keys = {
