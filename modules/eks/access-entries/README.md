@@ -82,6 +82,27 @@ Both maps are keyed by **logical name**, and associations flatten to
 a principal (an SSO permission set re-mints its role suffix; a deploy role is
 recreated) or adding an association never churns a sibling.
 
+### Scoping, and the trap the module closes
+
+`access_scope.type` defaults to `"cluster"`. That makes the *namespaces-only*
+form a silent widening — it reads as a scoped grant but discards the list:
+
+```hcl
+# REJECTED at plan. Reads as "team-a only"; would grant cluster-wide.
+access_scope = { namespaces = ["team-a"] }
+
+# Correct — say both halves.
+access_scope = { type = "namespace", namespaces = ["team-a"] }
+```
+
+The module fails the plan rather than quietly widening. The inverse (namespace
+scope with an empty list, which grants nothing) is rejected too.
+
+**One principal, one entry.** Two logical keys naming the same
+`principal_arn` are rejected: a principal's effective access is the *union* of
+its associations, so a duplicate elsewhere in the map can silently widen a
+tightly scoped entry — and it collides at apply besides.
+
 ## Cross-stack collision guard
 
 `eks/cluster` owns the SSO principal's access entry. Because the two surfaces
@@ -90,7 +111,12 @@ stacks own one AWS resource — which AWS reports only at apply, and which turns
 into a permanent fight over that entry's policies.
 
 This module reads the cluster's `sso_principal_arn` output and **fails at plan**
-if any entry names it.
+if any entry names it. The comparison is **path- and case-insensitive**: IAM
+returns reserved SSO roles path-bearing
+(`role/aws-reserved/sso.amazonaws.com/<region>/AWSReservedSSO_…`) while
+access-entry configs conventionally use the path-stripped spelling, and both
+name the same principal. A raw string compare would let the second spelling
+through.
 
 > [!NOTE]
 > `sso_principal_arn` is an additive output from DESIGN-0024. A cluster stack

@@ -39,7 +39,11 @@ Tracked in git. As of this writing:
   sandbox it didn't install, nor hides one it did. `local.kubelet_node_labels`
   composes the `--node-labels` flag from the same rules as the resource labels
   so the two label paths cannot drift (caller `additional_labels` still ride
-  the EKS API path only, as before). **Template gotcha found here:** the ECR
+  the EKS API path only — and because that path merges last and wins, the
+  three module-managed keys `workload-class` / `runtime` /
+  `kubernetes.io/arch` are **reserved**, rejected at validation; without
+  that, a caller could set `runtime=gvisor` on a node whose bootstrap never
+  installed runsc). **Template gotcha found here:** the ECR
   pull-through mirror config lives *inside* the gVisor shellscript MIME part,
   so gating that whole part on gVisor (as DESIGN-0024 literally reads) would
   silently drop the mirror on every non-gVisor class — the part now renders
@@ -50,7 +54,8 @@ Tracked in git. As of this writing:
   assertions** (base64decode of the launch template's `user_data` +
   `strcontains` per fragment; no test-only output was added, per IMPL-0020
   OQ 2a) covering all five classes, both `gvisor_enabled` override
-  directions, and the independent-mirror-gating regression.
+  directions, and the independent-mirror-gating regression (24 runs after
+  the security review below).
   **Phases 1–2 must ship as one release** (IMPL-0020 OQ 1a) — Phase 1 alone
   is a half-threaded intermediate — and that release tag is the hub-unblock
   milestone: the hub cluster cannot be built on a node group whose every node
@@ -64,8 +69,11 @@ Tracked in git. As of this writing:
   first run). **Prefix-list expansion is plan-time only** (the EKS API takes
   literal CIDRs; `network/security-group` per DESIGN-0026 is the live
   counterpart) and conditional `ignore_changes` is impossible since
-  `lifecycle` args are static. Three plan guards: at-least-one-endpoint,
-  fence-on-a-disabled-public-endpoint, and the EKS 40-CIDR cap. Also
+  `lifecycle` args are static. Four plan guards: at-least-one-endpoint,
+  fence-on-a-disabled-public-endpoint, the EKS 40-CIDR cap, and
+  fence-requested-but-expands-to-nothing (the last from the security review
+  below — it is what stops the empty-union → `0.0.0.0/0` fallback from
+  firing on a fence the operator *did* ask for). Also
   `bootstrap_cluster_creator_admin_permissions` explicit `true` (was the
   silent provider default) carrying the **stable-creator contract** — the
   entry binds permanently to whatever principal creates the cluster, so
@@ -77,12 +85,22 @@ Tracked in git. As of this writing:
   *logical* name with associations flattened to `"<entry>:<assoc>"` keys (so
   re-pointing a principal or adding an association never churns a sibling),
   direct principal ARNs (spokes are separate accounts — the cluster's
-  in-account SSO regex can't reach them), six fail-closed validations, and a
+  in-account SSO regex can't reach them), eight fail-closed validations, and a
   **cross-stack collision guard** rejecting any entry naming the cluster
   stack's `sso_principal_arn`; that read is `try()`-wrapped so a cluster state
   predating the additive output degrades to no-guard instead of breaking every
-  plan (12 runs). It exists as its own stack precisely so access churn never
-  plans against the control-plane stack. **LocalStack finding (IMPL-0020
+  plan (15 runs). It exists as its own stack precisely so access churn never
+  plans against the control-plane stack. **The scoping trap it closes:**
+  `access_scope.type` defaults to `"cluster"`, so the namespaces-only form
+  `access_scope = { namespaces = [...] }` reads as a scoped grant but
+  discards the list and grants cluster-wide — rejected at plan, as is the
+  inverse (namespace scope, empty list) and any principal named by two
+  logical keys (effective access is the union, so a duplicate silently
+  widens the tighter entry). The collision guard compares **normalized**
+  `<account>/<name>` lowercased, not raw ARNs: `data.aws_iam_roles` returns
+  reserved SSO roles path-bearing while access-entry configs use the
+  path-stripped spelling, and a raw compare lets that second spelling
+  through. **LocalStack finding (IMPL-0020
   Phase 5):** EKS is **Pro-only** — probed directly on token-free Community
   4.4, which answers `eks list-clusters` with "not included in your current
   license plan" and omits `eks` from its health output entirely. So all four
@@ -91,6 +109,20 @@ Tracked in git. As of this writing:
   Phase 5 apply-suite extensions (cluster fence runs, node-group class runs,
   the new module's suite + its two-state fixture) are **authored but not yet
   run live** — each FINDINGS.md carries a pending-re-run note.
+  **Adversarial security review (IMPL-0020, `iac-security`)** closed five
+  real holes in the as-built code — two HIGH (the namespaces-only silent
+  cluster-wide grant; the emptied-prefix-list fence falling through to
+  `0.0.0.0/0`), three MEDIUM (forged `runtime=gvisor` label; the
+  path-spelling evasion of the collision guard; duplicate principals) —
+  each with a regression run, all detailed above and in IMPL-0020. Two
+  findings were **rejected as deliberate**: the `try()` fail-open degrade
+  (worst case is an apply-time `ResourceInUseException`, never a grant)
+  and `kubernetes_groups` accepting `system:masters` (the module's point).
+  The two HIGHs share a shape worth carrying into future modules — **a
+  permissive default plus a partially-specified input is a silent
+  widening**, so validate the *coherence* of an input object, not just its
+  fields, and test a fallback against the resolved value rather than the
+  raw inputs.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's

@@ -255,6 +255,34 @@ run "layering_on_core" {
 # The enum is closed on purpose: the platform owns which classes
 # exist, so a caller string typo fails at plan instead of silently
 # minting an unschedulable class.
+# additional_labels merges last and wins on collision, but only on the
+# EKS-API label path — the kubelet fragment is composed from the class
+# rules alone. Overriding a managed key would make a node advertise
+# something its bootstrap never applied; runtime=gvisor on a node with
+# no runsc is exactly the lie the effective-gVisor rule exists to
+# prevent, so the managed keys are reserved.
+run "rejects_additional_labels_overriding_the_runtime_key" {
+  command = plan
+
+  variables {
+    workload_class    = "analytics"
+    additional_labels = { "runtime" = "gvisor" }
+  }
+
+  expect_failures = [var.additional_labels]
+}
+
+run "rejects_additional_labels_overriding_the_class_key" {
+  command = plan
+
+  variables {
+    workload_class    = "core"
+    additional_labels = { "workload-class" = "secure" }
+  }
+
+  expect_failures = [var.additional_labels]
+}
+
 run "rejects_unknown_class" {
   command = plan
 

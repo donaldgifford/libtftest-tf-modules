@@ -94,6 +94,18 @@ resource "aws_eks_cluster" "this" {
       condition     = length(local.public_access_cidrs) <= 40
       error_message = "The public-endpoint fence resolves to ${length(local.public_access_cidrs)} CIDRs, over the EKS limit of 40. Trim endpoint_public_access_cidrs or endpoint_public_access_prefix_list_ids — an expanded managed prefix list is the usual culprit."
     }
+
+    # An asked-for fence that resolves to nothing must NOT fall through
+    # to the 0.0.0.0/0 default. That default exists only to preserve
+    # the pre-existing implicit behavior when no fence was requested;
+    # reaching it from a non-empty input means a prefix list expanded
+    # to zero entries (emptied out-of-band, or created but not yet
+    # populated), which would silently convert a restricted endpoint
+    # into a world-open one on the next routine apply.
+    precondition {
+      condition     = (length(var.endpoint_public_access_cidrs) == 0 && length(var.endpoint_public_access_prefix_list_ids) == 0) || length(local.fence_union) > 0
+      error_message = "A public-endpoint fence was configured but resolves to zero CIDRs — every managed prefix list in endpoint_public_access_prefix_list_ids expanded empty. Refusing to fall back to 0.0.0.0/0: populate the prefix list(s), add literal CIDRs, or clear both fence inputs to accept the open default deliberately."
+    }
   }
 
   depends_on = [

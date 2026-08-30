@@ -148,6 +148,32 @@ variable "access_entries" {
     ]))
     error_message = "A policy association with access_scope.type = \"namespace\" must list at least one namespace (use \"cluster\" scope for cluster-wide grants)."
   }
+
+  # The inverse, and the more dangerous one: access_scope.type defaults
+  # to "cluster", so writing only the namespaces half —
+  # access_scope = { namespaces = ["team-a"] } — reads like a scoped
+  # grant but silently discards the list and grants cluster-wide. Fail
+  # instead of quietly widening.
+  validation {
+    condition = alltrue(flatten([
+      for k, e in var.access_entries : [
+        for ak, a in e.policy_associations :
+        a.access_scope.type == "namespace" || length(a.access_scope.namespaces) == 0
+      ]
+    ]))
+    error_message = "A policy association lists namespaces but its access_scope.type is \"cluster\" (the default), which would silently discard them and grant cluster-wide access. Set access_scope.type = \"namespace\" explicitly, or drop the namespaces."
+  }
+
+  # One principal, one entry. Duplicates collide at apply
+  # (ResourceInUseException), and — worse for review — a principal's
+  # effective grant is the union of its associations, so a tightly
+  # scoped entry can be silently widened by a second entry elsewhere in
+  # the same map. Compared case-insensitively: IAM treats role names as
+  # case-insensitive for uniqueness.
+  validation {
+    condition     = length(distinct([for k, e in var.access_entries : lower(e.principal_arn)])) == length(var.access_entries)
+    error_message = "Two or more access_entries name the same principal_arn. One principal must have exactly one entry — a principal's effective access is the union of all its associations, so duplicates both fail at apply and hide the true grant from review."
+  }
 }
 
 variable "tags" {

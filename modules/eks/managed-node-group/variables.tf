@@ -292,9 +292,20 @@ variable "containerd_pull_through_mirror" {
 #--------------------------------------------------------------
 
 variable "additional_labels" {
-  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class / arch labels."
+  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class / arch labels. The module-managed keys are reserved: they are derived from workload_class and effective gVisor and are also written into the kubelet bootstrap flags, so overriding them here would desynchronize the two label paths."
   type        = map(string)
   default     = {}
+
+  # This merge wins on key collision, and only the EKS-API label path
+  # sees it — the kubelet --node-labels fragment is composed from the
+  # class rules alone. Overriding a managed key would therefore make a
+  # node advertise something its bootstrap never applied: notably
+  # runtime=gvisor on a node with no runsc installed, which is exactly
+  # the lie local.gvisor_effective exists to prevent.
+  validation {
+    condition     = length(setintersection(keys(var.additional_labels), ["workload-class", "runtime", "kubernetes.io/arch"])) == 0
+    error_message = "additional_labels must not set the module-managed keys workload-class, runtime, or kubernetes.io/arch. Use var.workload_class, var.gvisor_enabled, and var.architecture — those drive both the EKS-API labels and the kubelet bootstrap flags together, which a raw label override would desynchronize."
+  }
 }
 
 variable "additional_taints" {

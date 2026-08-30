@@ -493,6 +493,58 @@ conventions require.
 
 ---
 
+## Security review (2026-08-30)
+
+An adversarial review of the access-control and network-fence surfaces
+(the `iac-security` agent, one finding verified by standalone apply)
+found five real holes in the as-built code, spanning Phases 1–4. All
+are fixed with a regression run each; the three plan suites went
+22 / 12 / 12 → 24 / 13 / 15.
+
+1. **Silent cluster-wide grant (HIGH).** `access_scope.type` defaults
+   to `"cluster"`, so the namespaces-only form
+   `access_scope = { namespaces = ["team-a"] }` read as a scoped grant
+   but discarded the list and granted cluster-wide. The module
+   validated the *inverse* mistake only. Now rejected at plan.
+2. **Fence expanding to nothing fell through to world-open (HIGH).**
+   `fence_union` empty → `["0.0.0.0/0"]`. That fallback is correct for
+   *no fence requested*, but a fence built only from prefix lists that
+   expand empty (emptied out-of-band by anyone holding
+   `ec2:ModifyManagedPrefixList`, or simply not yet populated) reached
+   it too — converting a corp-only endpoint to world-open on the next
+   routine apply. The existing guard tested the raw inputs, not the
+   union, so it stayed quiet. A new fourth precondition closes it.
+3. **`additional_labels` could forge `runtime=gvisor` (MEDIUM).** The
+   merge wins on collision and only the EKS-API label path sees it, so
+   a caller could advertise a sandbox the bootstrap never installed —
+   the exact lie `local.gvisor_effective` exists to prevent, and a
+   direct contradiction of the "cannot drift" comment. The three
+   module-managed keys are now reserved.
+4. **Collision guard evaded by ARN spelling (MEDIUM).**
+   `data.aws_iam_roles` returns reserved SSO roles *path-bearing*,
+   while access-entry configs conventionally use the path-stripped
+   form — same principal, different string, raw compare missed it.
+   Now normalized to `<account>/<name>`, lowercased. The plan suite's
+   stub was corrected to the realistic path-bearing form, which makes
+   the existing guard run the evasion regression.
+5. **No principal uniqueness across entries (MEDIUM-LOW).** Two keys
+   could name one principal: collides at apply, and hides the true
+   grant from review since effective access is the union. Rejected.
+
+Deliberately **not** changed: the `try()` fail-open degrade path
+(documented tradeoff — worst case is an apply-time
+`ResourceInUseException`, never a privilege grant) and
+`kubernetes_groups` accepting `system:masters` (the module's intended
+RBAC capability — a validation-surface asymmetry, not a defect).
+
+The two HIGH findings share a shape worth carrying forward: **a
+permissive default plus a partially-specified input is a silent
+widening.** Validate an input object's *coherence*, not just its
+fields, and test a fallback against the resolved value rather than
+against the raw inputs that feed it.
+
+---
+
 ## File Changes
 
 | File | Action | Description |

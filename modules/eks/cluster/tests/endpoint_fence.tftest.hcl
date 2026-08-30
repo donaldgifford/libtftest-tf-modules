@@ -213,6 +213,30 @@ run "rejects_fence_on_a_disabled_public_endpoint" {
   expect_failures = [aws_eks_cluster.this]
 }
 
+# The dangerous fall-through: a fence WAS asked for, but every prefix
+# list expanded empty (emptied out-of-band by anyone holding
+# ec2:ModifyManagedPrefixList, or simply not yet populated). Without
+# this guard the union is [] and the module silently resolves to the
+# 0.0.0.0/0 default, converting a corp-only endpoint into a world-open
+# one on the next routine apply.
+run "rejects_fence_that_expands_to_nothing" {
+  command = plan
+
+  variables {
+    endpoint_public_access_prefix_list_ids = ["pl-empty"]
+  }
+
+  override_data {
+    target = data.aws_ec2_managed_prefix_list.fence["pl-empty"]
+    values = {
+      id      = "pl-empty"
+      entries = []
+    }
+  }
+
+  expect_failures = [aws_eks_cluster.this]
+}
+
 run "rejects_fence_over_the_forty_cidr_limit" {
   command = plan
 

@@ -37,6 +37,26 @@ locals {
   # erroring — the README tells the operator to re-apply the cluster
   # stack to arm it.
   sso_principal_arn = try(data.terraform_remote_state.eks.outputs.sso_principal_arn, null)
+
+  # Identity key for comparing principals, because one IAM role has two
+  # legitimate ARN spellings. data.aws_iam_roles (the cluster module's
+  # SSO lookup) returns reserved SSO roles path-bearing:
+  #   arn:aws:iam::<acct>:role/aws-reserved/sso.amazonaws.com/<region>/AWSReservedSSO_Admin_abc
+  # while the conventional spelling in access-entry configs strips the
+  # path:
+  #   arn:aws:iam::<acct>:role/AWSReservedSSO_Admin_abc
+  # Those are the same principal to AWS but different strings, so a raw
+  # compare would let the path-stripped form slip past the guard.
+  # Reduce both to "<account>/<name>", lowercased — IAM role names are
+  # case-insensitive for uniqueness.
+  sso_principal_key = local.sso_principal_arn == null ? null : lower(
+    "${split(":", local.sso_principal_arn)[4]}/${reverse(split("/", local.sso_principal_arn))[0]}"
+  )
+
+  entry_principal_keys = {
+    for k, e in var.access_entries :
+    k => lower("${split(":", e.principal_arn)[4]}/${reverse(split("/", e.principal_arn))[0]}")
+  }
 }
 
 resource "aws_eks_access_entry" "this" {
@@ -55,8 +75,8 @@ resource "aws_eks_access_entry" "this" {
     # resource — an apply-time ResourceInUseException, and a fight over
     # its policies forever after.
     precondition {
-      condition     = local.sso_principal_arn == null || each.value.principal_arn != local.sso_principal_arn
-      error_message = "access_entries[\"${each.key}\"] names the principal that eks/cluster already binds via its SSO access entry (${coalesce(local.sso_principal_arn, "n/a")}). One principal, one owning stack: drop this entry, or disable sso_access_enabled on the cluster and declare the principal here."
+      condition     = local.sso_principal_key == null || local.entry_principal_keys[each.key] != local.sso_principal_key
+      error_message = "access_entries[\"${each.key}\"] names the principal that eks/cluster already binds via its SSO access entry (${coalesce(local.sso_principal_arn, "n/a")}). Compared path- and case-insensitively, so an unqualified spelling of the same role is caught too. One principal, one owning stack: drop this entry, or disable sso_access_enabled on the cluster and declare the principal here."
     }
   }
 }

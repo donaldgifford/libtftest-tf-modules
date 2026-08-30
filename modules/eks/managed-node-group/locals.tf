@@ -36,10 +36,15 @@ locals {
   )
 
   # The kubelet --node-labels fragment, composed from the same rules as
-  # runtime_labels above so the two label paths cannot drift. Scope
-  # matches the pre-DESIGN-0024 behavior: the module-managed labels
-  # only — var.additional_labels ride the EKS API path
-  # (aws_eks_node_group.labels), not the bootstrap flags.
+  # runtime_labels above. Scope matches the pre-DESIGN-0024 behavior:
+  # the module-managed labels only — var.additional_labels ride the EKS
+  # API path (aws_eks_node_group.labels), not the bootstrap flags.
+  #
+  # The two paths cannot drift because both derive from the same rules
+  # AND var.additional_labels is barred from setting the managed keys
+  # (see its validation) — that merge wins on collision, so without the
+  # guard a caller could advertise runtime=gvisor on a node whose
+  # bootstrap never installed runsc.
   kubelet_node_labels = join(",", concat(
     ["workload-class=${var.workload_class}"],
     local.gvisor_effective ? ["runtime=gvisor"] : [],
