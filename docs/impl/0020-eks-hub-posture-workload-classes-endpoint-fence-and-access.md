@@ -370,35 +370,35 @@ surface, plan suite as the gate.
 
 #### Tasks
 
-- [ ] 4.1 Scaffold `modules/eks/access-entries` per DESIGN-0024
+- [x] 4.1 Scaffold `modules/eks/access-entries` per DESIGN-0024
       part 1's layout: `versions.tf` (aws `~> 6.2`), `.tflint.hcl` +
       `.terraform-docs.yml` from the sibling consumers, README
       skeleton, `variables.tf` with `cluster_name` + the six
       Terragrunt globals.
-- [ ] 4.2 `data.tf`: the eks remote-state read at the account-scoped
+- [x] 4.2 `data.tf`: the eks remote-state read at the account-scoped
       ADR-0020 key
       (`<account_name>/<region>/eks/<cluster_name>/terraform.tfstate`)
       with the standard `assume_role` block; read at the use site per
       ADR-0001.
-- [ ] 4.3 `main.tf`: the `access_entries` map(object) (DESIGN-0024
+- [x] 4.3 `main.tf`: the `access_entries` map(object) (DESIGN-0024
       part 1 verbatim — principal ARN, type, groups, user_name,
       `policy_associations` map with `access_scope`), one
       `aws_eks_access_entry.this` per entry (`for_each` on the map),
       one `aws_eks_access_policy_association.this` per flattened
       `"<entry>:<association>"` key.
-- [ ] 4.4 Validations: non-STANDARD types reject
+- [x] 4.4 Validations: non-STANDARD types reject
       groups/user_name/associations (the EKS API's rule, named in the
       message); `principal_arn` IAM role/user ARN shape, no
       wildcards; namespace scope requires a non-empty `namespaces`;
       `policy_arn` prefix-validated
       `arn:aws:eks::aws:cluster-access-policy/`.
-- [ ] 4.5 The cross-stack SSO collision guard: a precondition
+- [x] 4.5 The cross-stack SSO collision guard: a precondition
       rejecting any entry whose principal equals the state's
       `sso_principal_arn`, `try()`-null-safe so a stale cluster state
       (predating the Phase 3 output) degrades to no-guard — the
       README carries the "re-apply the cluster stack to arm the
       guard" note.
-- [ ] 4.6 `outputs.tf` (`access_entry_arns`, `principal_arns` —
+- [x] 4.6 `outputs.tf` (`access_entry_arns`, `principal_arns` —
       pointer-only maps) + the README: the platform §4 worked-example
       trio (argocd-deployer assumed-role → deploy group; break-glass
       SSO → `AmazonEKSClusterAdminPolicy` cluster scope; the deploy
@@ -406,14 +406,14 @@ surface, plan suite as the gate.
       section, and the day-0 ordering note (entries stack applies
       after the cluster stack; the bootstrap admin is the floor in
       between).
-- [ ] 4.7 Plan suite (`tests/`, real-provider-fake-creds +
+- [x] 4.7 Plan suite (`tests/`, real-provider-fake-creds +
       `override_data` on the eks state read): the three-entry
       hub-shaped run pinning entry attributes, association scoping,
       and the flattened association addresses; the validation
       `expect_failures` set (4.4's four cases); the collision guard
       armed (state stub carrying `sso_principal_arn`) and the
       null-safe stale-state run; the ADR-0020 composed-key assertion.
-- [ ] 4.8 `just changed` pickup verification (the new module appears
+- [x] 4.8 `just changed` pickup verification (the new module appears
       in the plan matrix for its diff) + `just tf all
       eks/access-entries`.
 
