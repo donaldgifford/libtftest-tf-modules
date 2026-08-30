@@ -10,6 +10,12 @@
 # IMPL-0005 Q8. When enabled, the rendered template adds a
 # /etc/containerd/certs.d/<host>/hosts.toml entry per configured
 # upstream, redirecting pulls through the cache URL prefix.
+#
+# workload_class + taint_enabled carry the class into the kubelet
+# flags (DESIGN-0024 part 3, F8 site 3). Note the spelling split the
+# template preserves: kubelet's --register-with-taints wants
+# "NoSchedule" while the EKS API (aws_eks_node_group.taint.effect)
+# wants "NO_SCHEDULE" — same taint, two spellings, both required.
 
 locals {
   user_data_body = templatefile(
@@ -19,6 +25,8 @@ locals {
       cluster_endpoint        = data.terraform_remote_state.eks.outputs.cluster_endpoint
       cluster_ca_data         = data.terraform_remote_state.eks.outputs.cluster_ca_data
       k8s_arch                = var.architecture.k8s_arch
+      workload_class          = var.workload_class
+      taint_enabled           = local.class_taint_enabled
       gvisor_arch             = var.architecture.gvisor_arch
       gvisor_version          = var.gvisor_version
       runsc_sha512            = var.gvisor_sha512.runsc

@@ -192,6 +192,30 @@ variable "extra_node_policies" {
 }
 
 #--------------------------------------------------------------
+# Workload class (DESIGN-0024 part 3)
+#--------------------------------------------------------------
+#
+# The platform class taxonomy (platform DESIGN-0001 §2) parameterized:
+# this single input drives the workload-class label, the matching
+# NO_SCHEDULE taint, and (Phase 4) the gVisor default. Before
+# DESIGN-0024 the module hardwired the "secure" class in five places;
+# the default is now "core" — a deliberate default-behavior change
+# made while the module had zero live consumers (INV-0011 OQ 13).
+
+variable "workload_class" {
+  description = "Platform workload class for this node group. Drives the workload-class label (always), the workload-class=<class>:NO_SCHEDULE taint (every class EXCEPT core — core is the untainted default landing zone), and the gVisor default (secure only). The class taxonomy is the platform's (DESIGN-0001 section 2); new classes are deliberate one-line enum additions here, never free-form."
+  type        = string
+  default     = "core"
+
+  validation {
+    condition     = contains(["core", "observability", "analytics", "temporal", "secure"], var.workload_class)
+    error_message = "workload_class must be one of core, observability, analytics, temporal, secure (the platform class taxonomy; adding a class is a module change, not a caller string)."
+  }
+
+  nullable = false
+}
+
+#--------------------------------------------------------------
 # gVisor (ADR-0005 / ADR-0010)
 #--------------------------------------------------------------
 #
@@ -262,13 +286,13 @@ variable "containerd_pull_through_mirror" {
 #--------------------------------------------------------------
 
 variable "additional_labels" {
-  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class labels."
+  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class / arch labels."
   type        = map(string)
   default     = {}
 }
 
 variable "additional_taints" {
-  description = "Extra taints to apply on top of the always-on workload-class=secure:NO_SCHEDULE taint."
+  description = "Extra taints to apply on top of the class taint (workload-class=<var.workload_class>:NO_SCHEDULE, emitted for every class except the untainted core)."
   type = list(object({
     key    = string
     value  = string

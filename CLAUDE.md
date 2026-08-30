@@ -12,6 +12,30 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+  **Hub posture work in flight (IMPL-0020 / DESIGN-0024)** — these modules are
+  now load-bearing platform components per the platform's ADR-0011, so their
+  change bar (zero-diff replans, plan-test invariants) is platform policy.
+  Phase 1 landed on `managed-node-group`: the five hardwired "secure" sites
+  (INV-0011 F8) are parameterized into a closed five-value `workload_class`
+  enum — `{core, observability, analytics, temporal, secure}`, the platform
+  class taxonomy (platform DESIGN-0001 §2). **The default is now `core`, a
+  deliberate default-behavior change** (INV-0011 OQ 13, taken while the
+  module had zero live consumers): the class label is always emitted, and
+  the `workload-class=<class>:NO_SCHEDULE` taint fires for every class
+  *except* `core` — core is the untainted landing zone the platform baseline
+  (ArgoCD, ESO, ALB controller) needs, since those tolerate nothing. A
+  default invocation is therefore NOT the old secure posture; the explicit
+  `secure` run in `tests/workload_class.tftest.hcl` is the regression that
+  keeps that posture pinned. Threaded sites: `locals.runtime_labels`,
+  `main.tf`'s `dynamic "taint"`, the user-data template's kubelet
+  `--node-labels` / `--register-with-taints` fragments (note the deliberate
+  spelling split — kubelet wants `NoSchedule`, the EKS API wants
+  `NO_SCHEDULE`), and the class-derived `node_labels` / `node_taints`
+  outputs. **Phase 1 is a deliberate intermediate and must not ship alone:**
+  gVisor is still installed unconditionally until Phase 2 gates it behind
+  `gvisor_enabled` / effective-gVisor, and the Phase 2 merge tag is the
+  hub-unblock milestone (the hub cluster cannot be built on a node group
+  whose every node is born secure-tainted).
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's

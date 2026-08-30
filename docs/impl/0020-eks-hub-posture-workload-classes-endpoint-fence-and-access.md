@@ -1,7 +1,7 @@
 ---
 id: IMPL-0020
 title: "EKS hub posture workload classes endpoint fence and access entries"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # IMPL 0020: EKS hub posture workload classes endpoint fence and access entries
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -183,22 +183,22 @@ numbering is DESIGN-0024 part 3's.
 
 #### Tasks
 
-- [ ] 1.1 `workload_class` variable in
+- [x] 1.1 `workload_class` variable in
       `modules/eks/managed-node-group/variables.tf`: five-value closed
       enum (`core` / `observability` / `analytics` / `temporal` /
       `secure`), default `"core"`, `nullable = false`, validation
       message naming the platform taxonomy (DESIGN-0024 part 3
       verbatim); per-class rule locals in `locals.tf` (class label
       always; class taint iff `workload_class != "core"`).
-- [ ] 1.2 Site 1 (labels): `"workload-class" = var.workload_class` in
+- [x] 1.2 Site 1 (labels): `"workload-class" = var.workload_class` in
       the locals label map — always present. (The `runtime` label's
       conditionalization is Phase 2's, with the effective-gVisor
       coalesce it depends on.)
-- [ ] 1.3 Site 2 (taint block): the static `main.tf` taint becomes a
+- [x] 1.3 Site 2 (taint block): the static `main.tf` taint becomes a
       `dynamic "taint"` gated on `workload_class != "core"`, emitting
       `workload-class=<class>:NO_SCHEDULE`; `additional_taints`
       layering unchanged.
-- [ ] 1.4 Site 3, class half (user-data template):
+- [x] 1.4 Site 3, class half (user-data template):
       `templates/user_data.sh.tftpl` gains `workload_class` and
       `taint_enabled` inputs — the kubelet node-label fragment always
       carries `workload-class=<class>`, and
@@ -206,11 +206,11 @@ numbering is DESIGN-0024 part 3's.
       renders only for tainted classes (kubelet spells it
       `NoSchedule`, the API side stays `NO_SCHEDULE` — the existing
       spelling split, now templated with a why-comment).
-- [ ] 1.5 Site 5 (outputs + descriptions): `outputs.node_taints`
+- [x] 1.5 Site 5 (outputs + descriptions): `outputs.node_taints`
       derives from the class rule (empty class taint for `core`);
       rewrite the two variable descriptions that bake
       "workload-class=secure" wording class-neutral.
-- [ ] 1.6 Per-class plan matrix in `tests/`: the **core default** run
+- [x] 1.6 Per-class plan matrix in `tests/`: the **core default** run
       (untainted, no class taint in outputs, labels correct) AND the
       **explicit secure** run pinning today's full label+taint
       posture (the operator-required regression — "needs to be
@@ -219,7 +219,7 @@ numbering is DESIGN-0024 part 3's.
       layering per class. Existing runs that pinned the secure
       default are rewritten into the matrix (the pin moves to the
       explicit-secure run).
-- [ ] 1.7 `just tf all eks/managed-node-group` + `terraform-docs`
+- [x] 1.7 `just tf all eks/managed-node-group` + `terraform-docs`
       regen (USAGE.md).
 
 #### Success Criteria

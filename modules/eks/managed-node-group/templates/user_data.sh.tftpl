@@ -16,8 +16,10 @@ spec:
     config:
       maxPods: 110
     flags:
-      - "--node-labels=workload-class=secure,runtime=gvisor,kubernetes.io/arch=${k8s_arch}"
-      - "--register-with-taints=workload-class=secure:NoSchedule"
+      - "--node-labels=workload-class=${workload_class},runtime=gvisor,kubernetes.io/arch=${k8s_arch}"
+%{ if taint_enabled ~}
+      - "--register-with-taints=workload-class=${workload_class}:NoSchedule"
+%{ endif ~}
 %{ if extra_kubelet_args != "" ~}
       - "${extra_kubelet_args}"
 %{ endif ~}
