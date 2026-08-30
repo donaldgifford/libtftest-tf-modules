@@ -313,11 +313,11 @@ consumer replans zero-diff.
 
 #### Tasks
 
-- [ ] 3.1 `sso_principal_arn` additive output: the regex-resolved SSO
+- [x] 3.1 `sso_principal_arn` additive output: the regex-resolved SSO
       role ARN when `sso_access_enabled`, else `null` — published
       into the eks state alongside the existing outputs (feeds the
       Phase 4 collision guard).
-- [ ] 3.2 Fence surface (DESIGN-0024 part 2 verbatim):
+- [x] 3.2 Fence surface (DESIGN-0024 part 2 verbatim):
       `endpoint_public_access_cidrs` +
       `endpoint_public_access_prefix_list_ids` variables (both
       default `[]`), `data.aws_ec2_managed_prefix_list.fence`
@@ -325,20 +325,20 @@ consumer replans zero-diff.
       plan-time expansion), `local.public_access_cidrs` (empty union
       → `["0.0.0.0/0"]`), and `vpc_config.public_access_cidrs`
       wiring.
-- [ ] 3.3 Guards: at-least-one-endpoint precondition
+- [x] 3.3 Guards: at-least-one-endpoint precondition
       (`endpoint_private_access || endpoint_public_access`);
       fence-without-public fails at plan (either fence input
       non-empty while the public endpoint is off); the 40-CIDR
       precondition (`length(local.public_access_cidrs) <= 40`,
       message naming both fence inputs and prefix-list expansion as
       the usual culprit).
-- [ ] 3.4 Explicit `bootstrap_cluster_creator_admin_permissions =
+- [x] 3.4 Explicit `bootstrap_cluster_creator_admin_permissions =
       true` in `access_config` (zero diff — the current effective
       value) + the stable-creator README contract (OQ 4 resolution:
       create via the automation path; an SSO-created bootstrap entry
       is disposable; `false` + an explicit deploy-role entry is the
       recorded follow-up posture).
-- [ ] 3.5 Plan additions: the **default-fence zero-diff pin**
+- [x] 3.5 Plan additions: the **default-fence zero-diff pin**
       (`public_access_cidrs == ["0.0.0.0/0"]` — the replan invariant
       in test form); literal-CIDR run; prefix-list run with
       `override_data` stubbing the expansion; union + dedup run; the
@@ -346,7 +346,7 @@ consumer replans zero-diff.
       spoke run; bootstrap pinned explicitly true;
       `sso_principal_arn` on and off (null when SSO disabled); the
       SSO singleton pinned **by address** unchanged.
-- [ ] 3.6 README warning callout (plan-time-only expansion vs an SG's
+- [x] 3.6 README warning callout (plan-time-only expansion vs an SG's
       live prefix-list reference; the 40-CIDR budget; the live-sync
       follow-up and why conditional `ignore_changes` cannot exist) +
       module gates re-run + USAGE.md regen.

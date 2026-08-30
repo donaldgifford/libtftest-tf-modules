@@ -45,3 +45,14 @@ output "kms_key_arn" {
   description = "KMS CMK ARN used for cluster secret envelope encryption. Non-null in both module-managed and external-key modes. Also exported for managed-node-group EBS encryption."
   value       = local.kms_key_arn
 }
+
+# Additive per DESIGN-0024 part 2: the eks/access-entries module reads
+# this to reject any generic entry that would collide with the SSO
+# entry this module owns. Two stacks declaring one principal's access
+# entry is an apply-time conflict; publishing the ARN turns it into a
+# plan-time precondition failure over there. Null when SSO access is
+# disabled — the consumer's guard is null-safe.
+output "sso_principal_arn" {
+  description = "IAM role ARN of the resolved SSO permission-set principal that owns this cluster's SSO access entry, or null when sso_access_enabled is false. Consumed by eks/access-entries as its cross-stack collision guard."
+  value       = var.sso_access_enabled ? one(data.aws_iam_roles.sso[0].arns) : null
+}

@@ -110,6 +110,14 @@ run "sso_enabled" {
     condition     = aws_eks_access_entry.sso[0].principal_arn == "arn:aws:iam::000000000000:role/AWSReservedSSO_Developer_abcdef1234567890"
     error_message = "SSO access entry principal_arn must resolve from data.aws_iam_roles.sso[0].arns"
   }
+  # The cross-stack collision guard's feed (DESIGN-0024 part 2): the
+  # eks/access-entries module rejects any generic entry naming this
+  # principal, since two stacks owning one principal's entry collides
+  # at apply. Must match the entry's own principal exactly.
+  assert {
+    condition     = output.sso_principal_arn == aws_eks_access_entry.sso[0].principal_arn
+    error_message = "sso_principal_arn output must publish the same principal the SSO entry binds, so the consumer's guard compares like for like"
+  }
   assert {
     condition     = aws_eks_access_policy_association.sso[0].policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
     error_message = "SSO access policy association policy_arn must reference var.sso_cluster_policy"

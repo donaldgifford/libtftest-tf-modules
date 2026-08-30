@@ -13,4 +13,22 @@ locals {
     var.kms_key_arn,
     try(aws_kms_key.cluster[0].arn, null),
   )
+
+  # The public-endpoint fence (DESIGN-0024 part 2). Literal CIDRs plus
+  # the plan-time expansion of any managed prefix lists — the EKS API
+  # takes literal CIDRs only, so the list is a snapshot at plan, NOT a
+  # live reference the way an SG prefix_list_id rule is (README carries
+  # the warning; network/security-group is the live counterpart).
+  fence_union = distinct(concat(
+    var.endpoint_public_access_cidrs,
+    flatten([
+      for pl in data.aws_ec2_managed_prefix_list.fence :
+      [for e in pl.entries : e.cidr]
+    ]),
+  ))
+
+  # An empty union means "no fence configured" and resolves to the EKS
+  # default. Setting it explicitly matches what is already in state for
+  # every existing cluster, so the fence lands zero-diff.
+  public_access_cidrs = length(local.fence_union) > 0 ? local.fence_union : ["0.0.0.0/0"]
 }
