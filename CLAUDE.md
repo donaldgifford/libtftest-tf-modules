@@ -135,6 +135,26 @@ Tracked in git. As of this writing:
   mirror-on/gVisor-off combination the template deviation would have broken
   never reached EC2. **The lesson: a fix is not covered just because a
   regression exists at the tier where the logic lives.**
+  A follow-on **design-conformance audit** (DESIGN-0024 read end-to-end
+  against the shipped code) found the functional surface complete — every
+  variable, output, guard, OQ resolution and Non-Goal accounted for — and
+  four gaps entirely outside it: `launch_template.tf` still described every
+  node group as "secure" regardless of class (it predates DESIGN-0024 and
+  was never swept, which **falsified Phase 1's "grep-verified" success
+  criterion** — the grep covered variables/locals/main/outputs.tf only);
+  the cluster README documented three fence guards when there are four,
+  omitting the one that can fail a previously-succeeding plan; two stale
+  README claims (run counts, and an EKS-consumer list missing
+  `access-entries` itself); and the reserved `additional_labels` keys were
+  prose-undocumented. **The pattern worth carrying: the tested surface
+  held, and everything that drifted was what tests don't check — a grep
+  scoped to the files a change "should" touch confirms its own
+  assumption.** Still open and **operator-side**: DESIGN-0024 and IMPL
+  task 5.7 both require the default-change note in a **CHANGELOG that
+  does not exist** anywhere in this repo (release notes come from a
+  `### RELEASE NOTES` block in the PR body via `pr-semver-bump`), so
+  whether the fleet gains a changelog convention is a call that interacts
+  with per-module tagging and the planned Go release CLI.
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's
