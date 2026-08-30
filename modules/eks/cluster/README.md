@@ -18,10 +18,21 @@ The effective fence is the **de-duplicated union** of both. An empty union
 resolves to `["0.0.0.0/0"]` — exactly the value EKS already applies implicitly,
 so a cluster that sets neither input replans with **zero diff**.
 
-Three guards fail at plan rather than at apply: at least one endpoint must be
+Four guards fail at plan rather than at apply: at least one endpoint must be
 enabled; fence inputs set while the public endpoint is off are rejected (a
-fence on a disabled endpoint is a misconfiguration, not a silent no-op); and
-the union must stay within the EKS limit of 40 CIDRs.
+fence on a disabled endpoint is a misconfiguration, not a silent no-op); the
+union must stay within the EKS limit of 40 CIDRs; and **a fence that was
+configured but resolves to zero CIDRs is refused** rather than falling back to
+`0.0.0.0/0`.
+
+That fourth guard is the one worth understanding, because it can fail a plan
+that used to succeed. The empty-union → `0.0.0.0/0` fallback above is correct
+for *no fence requested*. But a fence built only from prefix lists that expand
+to nothing — a list emptied out-of-band by anyone holding
+`ec2:ModifyManagedPrefixList`, or simply not populated yet — reached that same
+fallback, which would quietly convert a corp-only endpoint into a world-open
+one on the next routine apply. If you hit this, the prefix list is empty: fix
+the list, or drop the fence input deliberately.
 
 > [!WARNING]
 > **Prefix-list expansion is plan-time only.** Unlike a security-group rule's
@@ -89,9 +100,12 @@ terraform init -backend=false
 terraform test
 ```
 
-Runtime: ~1.2s. 4 run blocks (default plan, KMS external, SSO
-disabled, SSO enabled). Uses `override_data` to stub
-`data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`.
+Runtime: ~1.2s. 13 run blocks across four files: the default plan, KMS
+external, SSO disabled/enabled, and `endpoint_fence.tftest.hcl` — the fence
+matrix (the zero-diff default pin, literal CIDRs, prefix-list expansion, the
+de-duplicated union, the private-only spoke posture, and all four guards).
+Uses `override_data` to stub `data.terraform_remote_state.vpc`,
+`data.aws_caller_identity.current`, and `data.aws_ec2_managed_prefix_list`.
 
 **Opt-in mode: apply-against-LocalStack** (`tests-localstack/*.tftest.hcl`).
 The gap-discovery mode per RFC-0001 — `command = apply` against
@@ -152,7 +166,7 @@ directory must be):
 
 `cluster_name` is both the live-repo folder name and the key every EKS
 consumer (`managed-node-group`, `addons`, `pod-identity-access`,
-`efs/filesystem`) composes to find this cluster's state. A mismatch fails
+`access-entries`, `efs/filesystem`) composes to find this cluster's state. A mismatch fails
 the consumer plan with `Unable to find remote state` (the error names
 neither bucket nor key — diff against this contract). The key template is
 pinned by a plan assertion in `tests/default.tftest.hcl`; see ADR-0020 for

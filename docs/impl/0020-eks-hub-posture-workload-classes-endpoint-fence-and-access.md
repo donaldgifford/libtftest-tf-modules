@@ -228,7 +228,9 @@ numbering is DESIGN-0024 part 3's.
   label + taint surface exactly as the pre-change hardwired posture;
   the core-default run produces no class taint.
 - No literal secure-class strings remain outside the enum validation
-  and the per-class locals (grep-verified).
+  and the per-class locals (grep-verified — but see the correction
+  below: the original grep was scoped too narrowly and this criterion
+  read as met while one site was still hardwired).
 - `just static` green for the module (fmt / validate / tflint /
   docs).
 - **Deliberately NOT yet hub-ready:** the gVisor install part is
@@ -567,6 +569,62 @@ permissive default plus a partially-specified input is a silent
 widening.** Validate an input object's *coherence*, not just its
 fields, and test a fallback against the resolved value rather than
 against the raw inputs that feed it.
+
+## Design-conformance audit (2026-08-30)
+
+A second pass read DESIGN-0024 end to end against the shipped code,
+asking only "what does the design specify that the code does not do?".
+Every functional surface is present with the design's names, defaults
+and validations — no missing or renamed variable, output, resource,
+guard, or test; all six design OQs landed in code; every Non-Goal
+honoured; every deferral explicit. Four gaps, all outside the
+functional surface:
+
+1. **A hardwired `secure` string survived Phase 1** (code).
+   `launch_template.tf` described every node group as
+   `"<name> secure node group"` regardless of class, so a `core` group
+   was labelled "secure" in the EC2 console. The file predates
+   DESIGN-0024 and was never swept — and this **falsified the Phase 1
+   success criterion** above, which claims grep-verified removal of
+   literal secure-class strings. The original grep covered
+   `variables.tf` / `locals.tf` / `main.tf` / `outputs.tf` and missed
+   `launch_template.tf` entirely. Now class-derived, with two
+   assertions in `tests/workload_class.tftest.hcl` pinning it, and the
+   sweep re-run across every `*.tf` and `*.tftpl` in the module.
+2. **The cluster README documented three guards; there are four.** The
+   fence-expands-to-nothing precondition from the security review was
+   undocumented — and it is the one guard that can fail a plan that
+   previously succeeded, so an operator hitting it had nothing to read.
+   Documented with the reason and the fix.
+3. **Two stale cluster-README claims.** "4 run blocks" (actual: 13
+   across four files; the whole fence matrix was unlisted), and the
+   EKS-state-consumer list omitted `access-entries` — the very module
+   this IMPL adds. ADR-0020's table already carried the row.
+4. **`additional_labels`' reserved keys were undocumented in prose.**
+   Discoverable via the variable description and `USAGE.md`, but the
+   node-group README never mentioned them. Added as a table.
+
+The pattern across 1–4: **the functional surface was well covered by
+tests, and everything that drifted was the part tests do not check.**
+A grep scoped to the files a change "should" touch will confirm its own
+assumption; a success criterion asserting "grep-verified" is only as
+good as the grep's scope, and nothing re-ran it.
+
+### Open — the CHANGELOG task 5.7 names does not exist
+
+DESIGN-0024 requires the node-group default-change note in "the README
+**and CHANGELOG** both", and task 5.7 carries that forward. The README
+half is done. **There is no CHANGELOG anywhere in this repo** — no
+root or per-module file, no `cliff.toml`, and `release.yml` holds only
+`bump-version`. Release notes today come from a `### RELEASE NOTES`
+block in the PR body (`pr-semver-bump`, `require-release-notes:
+false`). So 5.7 cannot be closed as written without first deciding
+whether this repo gains a changelog convention — which is a fleet-wide
+call (it interacts with the per-module semver tagging and the planned
+Go release CLI), not an IMPL-0020 decision. Flagged for the operator;
+the pragmatic close is to put the default-change note in the PR's
+release-notes block and treat the design's "CHANGELOG" as satisfied by
+that.
 
 ### Live-coverage sweep the review prompted
 

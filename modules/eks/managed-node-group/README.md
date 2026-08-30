@@ -50,6 +50,25 @@ claim a sandbox it does not have.
 > explicit-secure runs in `tests/workload_class.tftest.hcl` and
 > `tests/user_data.tftest.hcl`.
 
+### Reserved label keys
+
+`additional_labels` merges on top of the class-derived labels and wins on
+collision, but it reaches the **EKS API label path only** — the kubelet
+`--node-labels` fragment in user data is composed from the class rules alone.
+Overriding a module-managed key would therefore make a node advertise something
+its bootstrap never applied. `runtime=gvisor` on a node with no `runsc` is
+exactly the lie the effective-gVisor rule exists to prevent, so three keys are
+reserved and rejected at plan:
+
+| Reserved key | Set instead by |
+|---|---|
+| `workload-class` | `var.workload_class` |
+| `runtime` | the effective gVisor value (`var.gvisor_enabled` or the class rule) |
+| `kubernetes.io/arch` | `var.architecture` |
+
+`additional_taints` has no such restriction: taints layer alongside the class
+taint rather than replacing it, so there is nothing to forge.
+
 ## Out-of-band: the gVisor `RuntimeClass`
 
 This module **does not** create the gVisor `RuntimeClass`. Per

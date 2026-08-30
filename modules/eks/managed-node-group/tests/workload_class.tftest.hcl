@@ -88,6 +88,20 @@ run "class_core" {
     condition     = output.node_labels["workload-class"] == "core"
     error_message = "node_labels output must carry the class"
   }
+
+  # The launch template description is operator-facing (it is what the
+  # EC2 console shows) and was the one site the Phase 1 sweep missed —
+  # it read "secure node group" on every class. Pinned so the class
+  # parameterization stays complete.
+  assert {
+    condition     = strcontains(aws_launch_template.node.description, "core workload class")
+    error_message = "the launch template description must name the actual class"
+  }
+
+  assert {
+    condition     = !strcontains(aws_launch_template.node.description, "secure")
+    error_message = "a core node group's launch template must not describe itself as secure"
+  }
 }
 
 # secure — the pre-DESIGN-0024 hardwired posture, now explicit. This
