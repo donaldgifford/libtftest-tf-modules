@@ -463,9 +463,13 @@ conventions require.
 > EKS is Pro-only in LocalStack (probed on token-free Community 4.4 —
 > `eks` is absent from the health output and `list-clusters` returns
 > "The API for service 'eks' is either not included in your current
-> license plan"), and `LOCALSTACK_AUTH_TOKEN` is operator-held. Each
-> touched `FINDINGS.md` carries a pending-re-run note naming the
-> command. **5.6 is deliberately held** behind 5.4: flipping
+> license plan"), and `LOCALSTACK_AUTH_TOKEN` is operator-held.
+> Re-verified in the environment before this note was finalized:
+> Docker is running but has no LocalStack container,
+> `LOCALSTACK_AUTH_TOKEN` is unset, and `lstk` has no stored
+> credentials (no config at `~/.config/lstk/config.toml`) — `lstk
+> login` is interactive. Each touched `FINDINGS.md` carries a
+> pending-re-run note naming the command. **5.6 is deliberately held** behind 5.4: flipping
 > DESIGN-0024 to Implemented and this doc to Completed would assert a
 > live-verified state that does not exist yet. **5.7's PR/merge/tag
 > half** is likewise the operator's — the conventional-commit half is

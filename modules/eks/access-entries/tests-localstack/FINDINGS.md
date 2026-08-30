@@ -85,6 +85,15 @@ container is available:
    the reason the bespoke fixture was chosen over composing the real
    cluster module). A pre-DESIGN-0024 cluster state must degrade to
    no-guard, and that is asserted against a real read.
+4. **The guard's ARN normalization against a real IAM role.** The
+   fixture's SSO-owned role carries a `path`, so it has the two
+   legitimate spellings the guard must reconcile: the path-bearing ARN
+   IAM returns (seeded into the state object) and the path-stripped one
+   the collision run declares. The plan suite proves this against a
+   synthetic stub; here the path-bearing side comes from IAM itself.
+   The real reserved-SSO path (`/aws-reserved/sso.amazonaws.com/…`) is
+   not creatable by a fixture, so a neutral path stands in — the
+   normalization is path-agnostic, so the proof is equivalent.
 
 ### Pending — run and record
 

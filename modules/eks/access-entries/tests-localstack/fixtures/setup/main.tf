@@ -143,8 +143,21 @@ resource "aws_iam_role" "break_glass" {
 
 # Stands in for the principal the cluster stack's SSO entry owns. The
 # apply suite points an entry at this to prove the guard rejects it.
+#
+# Deliberately given a PATH, so the role has the two legitimate ARN
+# spellings the guard must reconcile: the path-bearing one IAM returns
+# (seeded into the stub state, as data.aws_iam_roles would) and the
+# path-stripped one access-entry configs conventionally use. Without a
+# path both spellings collapse to one string and the live tier would
+# only prove the trivial case.
+#
+# The real reserved-SSO path is /aws-reserved/sso.amazonaws.com/<region>/,
+# which IAM will not let a fixture create — a neutral path stands in.
+# The guard's normalization is path-agnostic (it keeps the account and
+# the trailing name), so this proves the same thing.
 resource "aws_iam_role" "sso_owned" {
   name               = "AWSReservedSSO_${var.cluster_name}_abcdef1234567890"
+  path               = "/sso-emulated/"
   assume_role_policy = data.aws_iam_policy_document.assume_by_account.json
 }
 
@@ -216,6 +229,19 @@ output "break_glass_role_arn" {
   value = aws_iam_role.break_glass.arn
 }
 
+# The path-bearing spelling — what IAM returns, and what the stub state
+# above carries as sso_principal_arn.
 output "sso_owned_role_arn" {
   value = aws_iam_role.sso_owned.arn
+}
+
+# The same role, path stripped: the spelling an operator would paste
+# into an access_entries map. Two strings, one principal — the guard
+# must still reject it.
+output "sso_owned_role_arn_path_stripped" {
+  value = replace(
+    aws_iam_role.sso_owned.arn,
+    ":role${aws_iam_role.sso_owned.path}",
+    ":role/",
+  )
 }

@@ -143,15 +143,23 @@ run "apply_entries" {
 }
 
 # The guard against a REAL remote-state read: the fixture's stub names
-# sso_owned_role_arn as the cluster stack's SSO principal, so declaring
-# it here must fail the plan phase of this apply.
+# the SSO-owned role as the cluster stack's principal, so declaring it
+# here must fail the plan phase of this apply.
+#
+# Note the PATH-STRIPPED spelling. The state object carries the
+# path-bearing ARN IAM actually returns, so this run names the same
+# principal by a different string — the live proof of the guard's
+# normalization. A raw compare would let it through and the entry would
+# collide at apply instead, which is the failure mode the guard exists
+# to convert into a plan error. (Plan-only, so the stripped ARN is
+# never sent to the API.)
 run "collision_guard_rejects_the_cluster_stacks_principal" {
   command = plan
 
   variables {
     access_entries = {
       sso_admin = {
-        principal_arn = run.setup.sso_owned_role_arn
+        principal_arn = run.setup.sso_owned_role_arn_path_stripped
       }
     }
   }
