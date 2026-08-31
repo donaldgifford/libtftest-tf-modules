@@ -610,6 +610,49 @@ A grep scoped to the files a change "should" touch will confirm its own
 assumption; a success criterion asserting "grep-verified" is only as
 good as the grep's scope, and nothing re-ran it.
 
+### Verifying the fail-closed tests fail for the *right* reason
+
+`expect_failures` asserts only that a given checkable object errored —
+**not which of its rules fired.** With eight validations on
+`var.access_entries` and four preconditions on `aws_eks_cluster.this`,
+every one of these runs could have been passing off a neighbouring
+rule, and the suite would look identically green. That is not a
+hypothetical: the security review's HIGH #2 existed precisely because a
+guard that *looked* covered was testing the wrong thing.
+
+Both surfaces were checked, and all pass honestly.
+
+**The eight `var.access_entries` validations** — each offending input
+was re-run without `expect_failures` so Terraform printed the actual
+message. Eight distinct messages, each the intended rule; the two
+security-review additions (namespaces-without-explicit-scope,
+duplicate-principals) fire on their own rules rather than piggybacking:
+
+| Run | Message that fired |
+|---|---|
+| wildcard principal | exact-ARN, no wildcards |
+| malformed ARN | exact-ARN (same rule, second case) |
+| groups on non-STANDARD | non-STANDARD types carry no groups |
+| unknown type | type enum |
+| IAM policy ARN | must be a cluster-access-policy ARN |
+| namespace scope, no namespaces | must list ≥1 namespace |
+| namespaces, no explicit scope | **would silently grant cluster-wide** |
+| duplicate principals | one principal, one entry |
+
+**The cluster's fourth precondition** was proven by **mutation**: with
+that one condition neutered and the other three left armed,
+`rejects_fence_that_expands_to_nothing` fails with *"Missing expected
+failure"* — no other guard catches an emptied prefix list. Exactly one
+test failed (11 passed / 1 failed / 1 skipped), so the guard is
+exercised by that run alone and nothing else silently depends on it.
+
+Worth reusing: **a passing `expect_failures` run is evidence the object
+errored, not evidence your rule works.** Removing the rule and
+confirming the test goes red is the cheap way to tell the difference.
+(Terraform rejects a constant `condition`, so neuter with an
+always-true expression that still references config —
+`length(var.x) >= 0`.)
+
 ### The Go libtftest suite this work broke
 
 `modules/eks/cluster/test/` is a **libtftest Go integration suite** —

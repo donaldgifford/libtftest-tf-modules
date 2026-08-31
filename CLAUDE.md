@@ -167,6 +167,20 @@ Tracked in git. As of this writing:
   *should* fail). Two takeaways: **"additive output" is not automatically
   safe** — grep for Go suites before assuming it — and a `go vet -tags
   integration` job would catch this class without needing a container.
+  **`expect_failures` verification (IMPL-0020):** that block asserts only
+  that a checkable object errored, **not which rule fired** — so with 8
+  validations on `var.access_entries` and 4 preconditions on
+  `aws_eks_cluster.this`, a run can pass off a *neighbouring* rule and look
+  identically green. All were checked and pass honestly: the eight
+  validations were re-run without `expect_failures` to read the actual
+  message (eight distinct, each the intended rule), and the cluster's new
+  fourth precondition was proven by **mutation** — neuter it, and
+  `rejects_fence_that_expands_to_nothing` goes red with "Missing expected
+  failure", confirming no other guard catches an emptied prefix list.
+  **Reusable rule: a passing `expect_failures` run is evidence the object
+  errored, not evidence your rule works.** Terraform rejects a constant
+  `condition`, so mutate with an always-true expression that still
+  references config (`length(var.x) >= 0`).
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's
