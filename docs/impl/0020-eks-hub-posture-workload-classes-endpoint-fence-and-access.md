@@ -536,13 +536,18 @@ conventions require.
 
 #### Success Criteria
 
-- All live Community applies green; every FINDINGS.md records its
-  parity outcome (assert-what-round-trips, record the rest).
+- All three live apply suites green (**Pro** container — the original
+  "Community" wording repeated task 5.4's error; EKS is Pro-only);
+  every FINDINGS.md records its parity outcome
+  (assert-what-round-trips, record the rest). **Deferred with 5.4
+  (operator, 2026-09-01)** — this criterion is met when the follow-up
+  runs, not by the release.
 - `just static` + all three modules' plan gates green; zero-diff
   replan demonstrated for a fence-default cluster (the default-fence
-  pin + every pre-existing run unchanged).
+  pin + every pre-existing run unchanged). ✅
 - All docs merged; DESIGN-0024 reads Implemented; the INV-0011
-  delivery note closes the loop.
+  delivery note closes the loop. DESIGN flip + delivery note done;
+  "merged" lands with PR #106.
 
 ---
 
@@ -785,14 +790,16 @@ feature.
 - [x] User-data assertions per class and per override direction (the
       fleet's first rendered-template coverage).
 - [x] Cluster plan additions: default-fence zero-diff pin, literal /
-      prefix-list / union runs, three guard failures, private-only
+      prefix-list / union runs, four guard failures, private-only
       run, bootstrap pin, `sso_principal_arn` on/off, SSO singleton
       pinned by address.
 - [x] Access-entries plan suite: hub-shaped trio, validation
       failures, collision guard armed + stale, ADR-0020 key.
-- [ ] Community applies: access-entries fixture suite (parity
-      probed), cluster fence run, node-group class runs — all live
-      against token-free 4.4.
+- [ ] Live applies: access-entries fixture suite (parity probed),
+      cluster fence + prefix-list runs, node-group class + mirror
+      runs. Needs a **Pro** container (the original "token-free 4.4"
+      wording was task 5.4's error — EKS is absent from Community);
+      deferred with 5.4 (operator, 2026-09-01).
 
 ## Dependencies
 
