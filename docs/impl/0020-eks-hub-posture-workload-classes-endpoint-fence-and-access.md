@@ -481,7 +481,16 @@ conventions require.
       open. Completed flips when the release lands.
 - [ ] 5.7 Conventional commits throughout; PRs labeled `minor` with
       the node-group default-change note prominent in README and
-      CHANGELOG (per the OQ 1 cadence).
+      CHANGELOG (per the OQ 1 cadence). **PR open (2026-09-01):**
+      [#106](https://github.com/donaldgifford/libtftest-tf-modules/pull/106),
+      labeled `minor`, default-change note leading both the body and
+      the `### RELEASE NOTES` block (the repo's changelog mechanism —
+      no CHANGELOG file exists; see the audit note). **Cadence
+      deviation recorded there:** OQ 1a's three sequential PRs
+      collapsed to one — the phases landed on one branch with
+      cross-cutting security-review/audit commits, so this PR's tag is
+      the hub-unblock milestone (subsumes task 2.7). Unchecked until
+      the operator merges and the tag lands.
 
 > **Phase 5 blocker (2026-08-30) — tasks 5.4, 5.6, 5.7 need the
 > operator.** 5.1–5.3 and 5.5 are done: the suites are authored, the
