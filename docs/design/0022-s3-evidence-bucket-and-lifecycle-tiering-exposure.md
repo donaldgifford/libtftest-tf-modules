@@ -139,6 +139,16 @@ purpose-module ruling, the F6 probe discipline, the wrapper-module
 gotchas), `access-logs-bucket` (the variant-suite precedent and the
 `log_retention_days` → fixed-id core rule mapping).
 
+> **Sequencing (2026-09-01, post-`v0.21.0`).** The hub buildout is
+> unblocked — IMPL-0020 shipped as `v0.21.0`, clearing the INV-0011
+> sequencing note's Gate 1 — and Loki is the planned fast-follow.
+> That makes this DESIGN the **next S3 work in line**: Object Lock is
+> create-time (Gate 2), so the Loki archive bucket must be *born*
+> through `evidence-bucket`, or the platform knowingly accepts a
+> later new-bucket-plus-copy cutover. The evidence work no longer
+> has slack behind it; its IMPL should precede the Loki stack
+> landing.
+
 ## Detailed Design
 
 ### Change map
@@ -183,8 +193,26 @@ variable "object_lock" {
     condition     = !(var.object_lock.days != null && var.object_lock.years != null)
     error_message = "object_lock.days and object_lock.years are mutually exclusive (the S3 API takes exactly one)."
   }
+
+  validation {
+    condition     = var.object_lock.enabled || (var.object_lock.days == null && var.object_lock.years == null)
+    error_message = "object_lock.days/years are set but object_lock.enabled is false — the retention would be silently discarded. Set enabled = true or remove the duration."
+  }
 }
 ```
+
+> **Coherence validation (post-IMPL-0020 review, 2026-09-01).** The
+> third validation is new: without it, `object_lock = { days = 400 }`
+> — the natural way to write "retain 400 days" while forgetting
+> `enabled = true` — reads as evidence retention but configures
+> nothing: `enabled` defaults `false`, the config resource
+> count-gates away, and the caller's intent is silently discarded.
+> This is byte-for-byte the shape of IMPL-0020's HIGH access-scope
+> finding (**a permissive default plus a partially-specified input is
+> a silent widening** — here a silent *weakening*): validate the
+> coherence of an input object, not just its fields. The evidence
+> module pins `enabled = true` so its callers cannot hit this, but
+> the core surface must fail closed on its own.
 
 Wiring in `bucket.tf`:
 
@@ -345,8 +373,14 @@ All plan suites use the family's `mock_provider` pattern.
 - Object lock: default run pins `object_lock_enabled = false` and
   zero config resources (the existing-bucket no-op guarantee);
   enabled run pins the resource + mode/days; versioning-coupling
-  precondition and days-xor-years validation via `expect_failures`;
-  lock-enabled-no-retention run (config resource count 0).
+  precondition, days-xor-years validation, and the
+  retention-set-but-disabled coherence rejection via
+  `expect_failures`; lock-enabled-no-retention run (config resource
+  count 0). **Verification discipline (post-IMPL-0020 review,
+  2026-09-01):** three validations and a precondition now stack on
+  this surface, so each `expect_failures` run must be proven to fail
+  on its *own* rule (message-probe or mutation, per the CLAUDE.md
+  recipe) — the IMPL doc carries it as a task.
 - Lifecycle: transition + noncurrent-transition rendering,
   storage-class validation, and the F5 gap closures (noncurrent
   expiration, `enabled = false`, `prefix`).
@@ -407,6 +441,10 @@ output contract.
       brownfield note (no `token` path)
 - [ ] CLAUDE.md family section update; INV-0011 delivery note;
       `docz update` (+ mangle-set restore)
+- [ ] `just readme` — the module table gains the `evidence-bucket`
+      row, and its drift gate is a **separate CI job**
+      (`readme-check`) that `just static` does not cover; IMPL-0020
+      shipped with this stale until caught by hand
 - [ ] Conventional commits; PR labeled `minor`
 
 Success criteria: `just static` + full s3 family plan fan-out green;
