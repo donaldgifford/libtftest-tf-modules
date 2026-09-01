@@ -51,5 +51,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0017 | RDS master secret rotation default and manage-false guardrail | Completed | 2026-07-29 | Donald Gifford | [0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md](0017-rds-master-secret-rotation-default-and-manage-false-guardrail.md) |
 | IMPL-0018 | S3 module family internal core and initial bucket modules | Completed | 2026-08-02 | Donald Gifford | [0018-s3-module-family-internal-core-and-initial-bucket-modules.md](0018-s3-module-family-internal-core-and-initial-bucket-modules.md) |
 | IMPL-0019 | Secrets Manager secret producer module | Completed | 2026-08-11 | Donald Gifford | [0019-secrets-manager-secret-producer-module.md](0019-secrets-manager-secret-producer-module.md) |
-| IMPL-0020 | EKS hub posture workload classes endpoint fence and access entries | In Progress | 2026-08-28 | Donald Gifford | [0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md](0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md) |
+| IMPL-0020 | EKS hub posture workload classes endpoint fence and access entries | Completed | 2026-08-28 | Donald Gifford | [0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md](0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md) |
 <!-- END DOCZ AUTO-GENERATED -->

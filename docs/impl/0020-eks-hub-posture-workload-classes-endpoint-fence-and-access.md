@@ -1,7 +1,7 @@
 ---
 id: IMPL-0020
 title: "EKS hub posture workload classes endpoint fence and access entries"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # IMPL 0020: EKS hub posture workload classes endpoint fence and access entries
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -278,9 +278,12 @@ ending at the hub-unblock milestone.
       absent, class taint intact).
 - [x] 2.6 Module gates re-run; USAGE.md regen; README class table +
       default-change note.
-- [ ] 2.7 **Hub-unblock milestone:** merge + tag the node-group
-      release (minor, default-change note prominent) per the OQ 1
-      resolution — the hub buildout pins this tag.
+- [x] 2.7 **Hub-unblock milestone: `v0.21.0` (2026-09-01).** PR #106
+      merged; `pr-semver-bump` cut the minor tag with the
+      default-change note leading the release notes. The cadence
+      collapsed from OQ 1a's three PRs to one (recorded at 5.7), so
+      this tag carries all three modules — **the hub buildout pins
+      `v0.21.0`**.
 
 > **Implementation note (task 2.3) — the DESIGN's literal text would
 > have shipped a bug.** DESIGN-0024 part 3 says to gate the gVisor
@@ -479,18 +482,18 @@ conventions require.
       not the design's). This doc stays **In Progress**, not Completed:
       it tracks delivery, and 5.4 (deferred) + 5.7's PR/tag half remain
       open. Completed flips when the release lands.
-- [ ] 5.7 Conventional commits throughout; PRs labeled `minor` with
+- [x] 5.7 Conventional commits throughout; PRs labeled `minor` with
       the node-group default-change note prominent in README and
-      CHANGELOG (per the OQ 1 cadence). **PR open (2026-09-01):**
-      [#106](https://github.com/donaldgifford/libtftest-tf-modules/pull/106),
-      labeled `minor`, default-change note leading both the body and
-      the `### RELEASE NOTES` block (the repo's changelog mechanism —
-      no CHANGELOG file exists; see the audit note). **Cadence
-      deviation recorded there:** OQ 1a's three sequential PRs
-      collapsed to one — the phases landed on one branch with
-      cross-cutting security-review/audit commits, so this PR's tag is
-      the hub-unblock milestone (subsumes task 2.7). Unchecked until
-      the operator merges and the tag lands.
+      CHANGELOG (per the OQ 1 cadence). **Done (2026-09-01):**
+      [#106](https://github.com/donaldgifford/libtftest-tf-modules/pull/106)
+      merged, `v0.21.0` cut, and the `refresh-readme` job updated the
+      module table (all three eks modules read `v0.21.0`). The
+      default-change note led both the PR body and the
+      `### RELEASE NOTES` block (the repo's changelog mechanism — no
+      CHANGELOG file exists; see the audit note). **Cadence deviation:**
+      OQ 1a's three sequential PRs collapsed to one — the phases landed
+      on one branch with cross-cutting security-review/audit commits,
+      so this one tag is the hub-unblock milestone (closes task 2.7).
 
 > **Phase 5 blocker (2026-08-30) — tasks 5.4, 5.6, 5.7 need the
 > operator.** 5.1–5.3 and 5.5 are done: the suites are authored, the

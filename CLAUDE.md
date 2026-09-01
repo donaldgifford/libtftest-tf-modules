@@ -12,7 +12,10 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
-  **Hub posture work in flight (IMPL-0020 / DESIGN-0024)** — these modules are
+  **Hub posture shipped as `v0.21.0` (IMPL-0020 / DESIGN-0024, PR #106
+  merged 2026-09-01)** — the hub-unblock milestone tag the management-cluster
+  buildout pins; one minor tag carries all three modules (OQ 1a's three-PR
+  cadence collapsed to one branch, recorded in the IMPL). These modules are
   now load-bearing platform components per the platform's ADR-0011, so their
   change bar (zero-diff replans, plan-test invariants) is platform policy.
   Phase 1 landed on `managed-node-group`: the five hardwired "secure" sites
@@ -109,11 +112,11 @@ Tracked in git. As of this writing:
   Phase 5 apply-suite extensions (cluster fence runs, node-group class runs,
   the new module's suite + its two-state fixture) are **authored but not yet
   run live** — each FINDINGS.md carries a pending-re-run note, and the
-  operator **deferred the live runs (2026-09-01)**: the release does not
-  block on them; they follow when a Pro container is available.
-  DESIGN-0024 is flipped **Implemented** under that deferral (the design's
-  every surface is in code, plan-gated, conformance-audited); IMPL-0020
-  stays In Progress until the PR/tag half of 5.7 lands.
+  operator **deferred the live runs (2026-09-01)**: the release did not
+  block on them. **They are the one open follow-up from IMPL-0020**
+  (task 5.4, needs a Pro container — `just tf test-localstack
+  eks/{managed-node-group,cluster,access-entries}`). DESIGN-0024 reads
+  Implemented, IMPL-0020 Completed.
   **Adversarial security review (IMPL-0020, `iac-security`)** closed five
   real holes in the as-built code — two HIGH (the namespaces-only silent
   cluster-wide grant; the emptied-prefix-list fence falling through to
