@@ -192,12 +192,42 @@ variable "extra_node_policies" {
 }
 
 #--------------------------------------------------------------
+# Workload class (DESIGN-0024 part 3)
+#--------------------------------------------------------------
+#
+# The platform class taxonomy (platform DESIGN-0001 §2) parameterized:
+# this single input drives the workload-class label, the matching
+# NO_SCHEDULE taint, and (Phase 4) the gVisor default. Before
+# DESIGN-0024 the module hardwired the "secure" class in five places;
+# the default is now "core" — a deliberate default-behavior change
+# made while the module had zero live consumers (INV-0011 OQ 13).
+
+variable "workload_class" {
+  description = "Platform workload class for this node group. Drives the workload-class label (always), the workload-class=<class>:NO_SCHEDULE taint (every class EXCEPT core — core is the untainted default landing zone), and the gVisor default (secure only). The class taxonomy is the platform's (DESIGN-0001 section 2); new classes are deliberate one-line enum additions here, never free-form."
+  type        = string
+  default     = "core"
+
+  validation {
+    condition     = contains(["core", "observability", "analytics", "temporal", "secure"], var.workload_class)
+    error_message = "workload_class must be one of core, observability, analytics, temporal, secure (the platform class taxonomy; adding a class is a module change, not a caller string)."
+  }
+
+  nullable = false
+}
+
+#--------------------------------------------------------------
 # gVisor (ADR-0005 / ADR-0010)
 #--------------------------------------------------------------
 #
 # Renovate pins both the release identifier and the matching SHA-512
 # digests for the platform binaries. The default is a known-good pin
 # at IMPL-completion time; consumers may pin to a different release.
+
+variable "gvisor_enabled" {
+  description = "Nullable override for the gVisor runtime install + runtime=gvisor labeling + kubelet fragments. Null (default) = the class rule: enabled iff workload_class == \"secure\". Set true/false to override for the odd case (e.g. a sandboxed analytics pool, or a secure group whose sandboxing is handled elsewhere)."
+  type        = bool
+  default     = null
+}
 
 variable "gvisor_version" {
   description = "gVisor release identifier, e.g. \"release-20260101.0\". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010."
@@ -262,13 +292,24 @@ variable "containerd_pull_through_mirror" {
 #--------------------------------------------------------------
 
 variable "additional_labels" {
-  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class labels."
+  description = "Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class / arch labels. The module-managed keys are reserved: they are derived from workload_class and effective gVisor and are also written into the kubelet bootstrap flags, so overriding them here would desynchronize the two label paths."
   type        = map(string)
   default     = {}
+
+  # This merge wins on key collision, and only the EKS-API label path
+  # sees it — the kubelet --node-labels fragment is composed from the
+  # class rules alone. Overriding a managed key would therefore make a
+  # node advertise something its bootstrap never applied: notably
+  # runtime=gvisor on a node with no runsc installed, which is exactly
+  # the lie local.gvisor_effective exists to prevent.
+  validation {
+    condition     = length(setintersection(keys(var.additional_labels), ["workload-class", "runtime", "kubernetes.io/arch"])) == 0
+    error_message = "additional_labels must not set the module-managed keys workload-class, runtime, or kubernetes.io/arch. Use var.workload_class, var.gvisor_enabled, and var.architecture — those drive both the EKS-API labels and the kubelet bootstrap flags together, which a raw label override would desynchronize."
+  }
 }
 
 variable "additional_taints" {
-  description = "Extra taints to apply on top of the always-on workload-class=secure:NO_SCHEDULE taint."
+  description = "Extra taints to apply on top of the class taint (workload-class=<var.workload_class>:NO_SCHEDULE, emitted for every class except the untainted core)."
   type = list(object({
     key    = string
     value  = string

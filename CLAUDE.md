@@ -12,6 +12,180 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+  **Hub posture work in flight (IMPL-0020 / DESIGN-0024)** — these modules are
+  now load-bearing platform components per the platform's ADR-0011, so their
+  change bar (zero-diff replans, plan-test invariants) is platform policy.
+  Phase 1 landed on `managed-node-group`: the five hardwired "secure" sites
+  (INV-0011 F8) are parameterized into a closed five-value `workload_class`
+  enum — `{core, observability, analytics, temporal, secure}`, the platform
+  class taxonomy (platform DESIGN-0001 §2). **The default is now `core`, a
+  deliberate default-behavior change** (INV-0011 OQ 13, taken while the
+  module had zero live consumers): the class label is always emitted, and
+  the `workload-class=<class>:NO_SCHEDULE` taint fires for every class
+  *except* `core` — core is the untainted landing zone the platform baseline
+  (ArgoCD, ESO, ALB controller) needs, since those tolerate nothing. A
+  default invocation is therefore NOT the old secure posture; the explicit
+  `secure` run in `tests/workload_class.tftest.hcl` is the regression that
+  keeps that posture pinned. Threaded sites: `locals.runtime_labels`,
+  `main.tf`'s `dynamic "taint"`, the user-data template's kubelet
+  `--node-labels` / `--register-with-taints` fragments (note the deliberate
+  spelling split — kubelet wants `NoSchedule`, the EKS API wants
+  `NO_SCHEDULE`), and the class-derived `node_labels` / `node_taints`
+  outputs. Phase 2 completed the parameterization: `gvisor_enabled` (nullable
+  bool, `null` = the class rule) drives
+  `local.gvisor_effective = coalesce(var.gvisor_enabled, workload_class ==
+  "secure")`, which gates the gVisor install part, the `runtime=gvisor` label,
+  and the kubelet label fragment **together** — a node never advertises a
+  sandbox it didn't install, nor hides one it did. `local.kubelet_node_labels`
+  composes the `--node-labels` flag from the same rules as the resource labels
+  so the two label paths cannot drift (caller `additional_labels` still ride
+  the EKS API path only — and because that path merges last and wins, the
+  three module-managed keys `workload-class` / `runtime` /
+  `kubernetes.io/arch` are **reserved**, rejected at validation; without
+  that, a caller could set `runtime=gvisor` on a node whose bootstrap never
+  installed runsc). **Template gotcha found here:** the ECR
+  pull-through mirror config lives *inside* the gVisor shellscript MIME part,
+  so gating that whole part on gVisor (as DESIGN-0024 literally reads) would
+  silently drop the mirror on every non-gVisor class — the part now renders
+  when *either* is on, with the two fragments gated independently, one shared
+  `systemctl restart containerd`, and the runsc plugin assertion under the
+  gVisor gate. Tests: plan suite 6 → 22 runs, including
+  `tests/user_data.tftest.hcl` — the **fleet's first rendered-user-data
+  assertions** (base64decode of the launch template's `user_data` +
+  `strcontains` per fragment; no test-only output was added, per IMPL-0020
+  OQ 2a) covering all five classes, both `gvisor_enabled` override
+  directions, and the independent-mirror-gating regression (24 runs after
+  the security review below).
+  **Phases 1–2 must ship as one release** (IMPL-0020 OQ 1a) — Phase 1 alone
+  is a half-threaded intermediate — and that release tag is the hub-unblock
+  milestone: the hub cluster cannot be built on a node group whose every node
+  is born secure-tainted.
+  Phase 3 landed on `cluster`, all additive (every pre-existing plan run
+  passes unchanged — the zero-diff bar): the **public-endpoint fence**
+  (`endpoint_public_access_cidrs` + `endpoint_public_access_prefix_list_ids`,
+  unioned and de-duplicated into `local.public_access_cidrs`; an empty union
+  resolves to `["0.0.0.0/0"]`, the value EKS already applied implicitly, so
+  clusters setting neither input replan zero-diff — pinned as the suite's
+  first run). **Prefix-list expansion is plan-time only** (the EKS API takes
+  literal CIDRs; `network/security-group` per DESIGN-0026 is the live
+  counterpart) and conditional `ignore_changes` is impossible since
+  `lifecycle` args are static. Four plan guards: at-least-one-endpoint,
+  fence-on-a-disabled-public-endpoint, the EKS 40-CIDR cap, and
+  fence-requested-but-expands-to-nothing (the last from the security review
+  below — it is what stops the empty-union → `0.0.0.0/0` fallback from
+  firing on a fence the operator *did* ask for). Also
+  `bootstrap_cluster_creator_admin_permissions` explicit `true` (was the
+  silent provider default) carrying the **stable-creator contract** — the
+  entry binds permanently to whatever principal creates the cluster, so
+  applies run via Atlantis pod-identity → deploy role, never an ad-hoc SSO
+  session whose `AWSReservedSSO_*` suffix rotates — plus the additive
+  `sso_principal_arn` output (4 → 12 runs). Phase 4 added
+  **`modules/eks/access-entries`** (IMPL-0020), the fourth eks-state consumer
+  and the generic principal→cluster surface: `access_entries` map keyed by
+  *logical* name with associations flattened to `"<entry>:<assoc>"` keys (so
+  re-pointing a principal or adding an association never churns a sibling),
+  direct principal ARNs (spokes are separate accounts — the cluster's
+  in-account SSO regex can't reach them), eight fail-closed validations, and a
+  **cross-stack collision guard** rejecting any entry naming the cluster
+  stack's `sso_principal_arn`; that read is `try()`-wrapped so a cluster state
+  predating the additive output degrades to no-guard instead of breaking every
+  plan (15 runs). It exists as its own stack precisely so access churn never
+  plans against the control-plane stack. **The scoping trap it closes:**
+  `access_scope.type` defaults to `"cluster"`, so the namespaces-only form
+  `access_scope = { namespaces = [...] }` reads as a scoped grant but
+  discards the list and grants cluster-wide — rejected at plan, as is the
+  inverse (namespace scope, empty list) and any principal named by two
+  logical keys (effective access is the union, so a duplicate silently
+  widens the tighter entry). The collision guard compares **normalized**
+  `<account>/<name>` lowercased, not raw ARNs: `data.aws_iam_roles` returns
+  reserved SSO roles path-bearing while access-entry configs use the
+  path-stripped spelling, and a raw compare lets that second spelling
+  through. **LocalStack finding (IMPL-0020
+  Phase 5):** EKS is **Pro-only** — probed directly on token-free Community
+  4.4, which answers `eks list-clusters` with "not included in your current
+  license plan" and omits `eks` from its health output entirely. So all four
+  eks modules' `tests-localstack/` suites need Pro (as their FINDINGS already
+  recorded), and IMPL-0020 OQ 4's Community-`plan_smoke` fallback is moot. The
+  Phase 5 apply-suite extensions (cluster fence runs, node-group class runs,
+  the new module's suite + its two-state fixture) are **authored but not yet
+  run live** — each FINDINGS.md carries a pending-re-run note, and the
+  operator **deferred the live runs (2026-09-01)**: the release does not
+  block on them; they follow when a Pro container is available.
+  DESIGN-0024 is flipped **Implemented** under that deferral (the design's
+  every surface is in code, plan-gated, conformance-audited); IMPL-0020
+  stays In Progress until the PR/tag half of 5.7 lands.
+  **Adversarial security review (IMPL-0020, `iac-security`)** closed five
+  real holes in the as-built code — two HIGH (the namespaces-only silent
+  cluster-wide grant; the emptied-prefix-list fence falling through to
+  `0.0.0.0/0`), three MEDIUM (forged `runtime=gvisor` label; the
+  path-spelling evasion of the collision guard; duplicate principals) —
+  each with a regression run, all detailed above and in IMPL-0020. Two
+  findings were **rejected as deliberate**: the `try()` fail-open degrade
+  (worst case is an apply-time `ResourceInUseException`, never a grant)
+  and `kubernetes_groups` accepting `system:masters` (the module's point).
+  The two HIGHs share a shape worth carrying into future modules — **a
+  permissive default plus a partially-specified input is a silent
+  widening**, so validate the *coherence* of an input object, not just its
+  fields, and test a fallback against the resolved value rather than the
+  raw inputs. The review also prompted a **live-coverage sweep** of the
+  Phase 5 apply suites, which closed three gaps where a green plan-suite
+  regression sat over a degenerate live case: the access-entries collision
+  run compared two identical strings (its fixture role now carries a
+  `path`, so the two real ARN spellings exist); the cluster suite passed
+  only literal CIDRs, leaving `data.aws_ec2_managed_prefix_list` and the
+  whole expansion path unproven (its fixture now builds a populated **and**
+  an empty managed prefix list — which also asks the emulator, uniquely in
+  this fleet, whether it serves prefix-list `entries` at all); and the
+  node-group suite never enabled the opt-in mirror, so the
+  mirror-on/gVisor-off combination the template deviation would have broken
+  never reached EC2. **The lesson: a fix is not covered just because a
+  regression exists at the tier where the logic lives.**
+  A follow-on **design-conformance audit** (DESIGN-0024 read end-to-end
+  against the shipped code) found the functional surface complete — every
+  variable, output, guard, OQ resolution and Non-Goal accounted for — and
+  four gaps entirely outside it: `launch_template.tf` still described every
+  node group as "secure" regardless of class (it predates DESIGN-0024 and
+  was never swept, which **falsified Phase 1's "grep-verified" success
+  criterion** — the grep covered variables/locals/main/outputs.tf only);
+  the cluster README documented three fence guards when there are four,
+  omitting the one that can fail a previously-succeeding plan; two stale
+  README claims (run counts, and an EKS-consumer list missing
+  `access-entries` itself); and the reserved `additional_labels` keys were
+  prose-undocumented. **The pattern worth carrying: the tested surface
+  held, and everything that drifted was what tests don't check — a grep
+  scoped to the files a change "should" touch confirms its own
+  assumption.** Still open and **operator-side**: DESIGN-0024 and IMPL
+  task 5.7 both require the default-change note in a **CHANGELOG that
+  does not exist** anywhere in this repo (release notes come from a
+  `### RELEASE NOTES` block in the PR body via `pr-semver-bump`), so
+  whether the fleet gains a changelog convention is a call that interacts
+  with per-module tagging and the planned Go release CLI.
+  **`modules/eks/cluster/test/` is a libtftest Go integration suite** — the
+  fleet's only one outside `tools/` — and Phase 3's *additive*
+  `sso_principal_arn` output **broke it**: its `outputs_contract` subtest
+  asserts an **exact** output count (`want 8`, now 9). Nothing caught it.
+  The suite is `//go:build integration` tagged, CI touches the module only
+  via `security.yml`'s `govulncheck` matrix, `just static` does not cover
+  Go, and it needs a LocalStack container — **so no gate compiles or runs
+  it.** The exact-count assertion is right and stays exact (the eks state
+  shape is an ADR-0020 contract with five consumers; an accidental output
+  *should* fail). Two takeaways: **"additive output" is not automatically
+  safe** — grep for Go suites before assuming it — and a `go vet -tags
+  integration` job would catch this class without needing a container.
+  **`expect_failures` verification (IMPL-0020):** that block asserts only
+  that a checkable object errored, **not which rule fired** — so with 8
+  validations on `var.access_entries` and 4 preconditions on
+  `aws_eks_cluster.this`, a run can pass off a *neighbouring* rule and look
+  identically green. All were checked and pass honestly: the eight
+  validations were re-run without `expect_failures` to read the actual
+  message (eight distinct, each the intended rule), and the cluster's new
+  fourth precondition was proven by **mutation** — neuter it, and
+  `rejects_fence_that_expands_to_nothing` goes red with "Missing expected
+  failure", confirming no other guard catches an emptied prefix list.
+  **Reusable rule: a passing `expect_failures` run is evidence the object
+  errored, not evidence your rule works.** Terraform rejects a constant
+  `condition`, so mutate with an always-true expression that still
+  references config (`length(var.x) >= 0`).
 - **`modules/ecr/`** — `pull-through-cache` (IMPL-0005, implemented; previously
   lived at `modules/eks/ecr-pull-through-cache` and was relocated when
   DESIGN-0006 surfaced a second ECR module; the conftest credential gate's

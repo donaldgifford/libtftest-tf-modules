@@ -1,7 +1,7 @@
 ---
 id: IMPL-0020
 title: "EKS hub posture workload classes endpoint fence and access entries"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # IMPL 0020: EKS hub posture workload classes endpoint fence and access entries
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -35,6 +35,12 @@ created: 2026-08-28
   - [Phase 5: LocalStack applies and closure](#phase-5-localstack-applies-and-closure)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
+- [Security review (2026-08-30)](#security-review-2026-08-30)
+- [Design-conformance audit (2026-08-30)](#design-conformance-audit-2026-08-30)
+  - [Verifying the fail-closed tests fail for the right reason](#verifying-the-fail-closed-tests-fail-for-the-right-reason)
+  - [The Go libtftest suite this work broke](#the-go-libtftest-suite-this-work-broke)
+  - [Open — the CHANGELOG task 5.7 names does not exist](#open--the-changelog-task-57-names-does-not-exist)
+  - [Live-coverage sweep the review prompted](#live-coverage-sweep-the-review-prompted)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -183,22 +189,22 @@ numbering is DESIGN-0024 part 3's.
 
 #### Tasks
 
-- [ ] 1.1 `workload_class` variable in
+- [x] 1.1 `workload_class` variable in
       `modules/eks/managed-node-group/variables.tf`: five-value closed
       enum (`core` / `observability` / `analytics` / `temporal` /
       `secure`), default `"core"`, `nullable = false`, validation
       message naming the platform taxonomy (DESIGN-0024 part 3
       verbatim); per-class rule locals in `locals.tf` (class label
       always; class taint iff `workload_class != "core"`).
-- [ ] 1.2 Site 1 (labels): `"workload-class" = var.workload_class` in
+- [x] 1.2 Site 1 (labels): `"workload-class" = var.workload_class` in
       the locals label map — always present. (The `runtime` label's
       conditionalization is Phase 2's, with the effective-gVisor
       coalesce it depends on.)
-- [ ] 1.3 Site 2 (taint block): the static `main.tf` taint becomes a
+- [x] 1.3 Site 2 (taint block): the static `main.tf` taint becomes a
       `dynamic "taint"` gated on `workload_class != "core"`, emitting
       `workload-class=<class>:NO_SCHEDULE`; `additional_taints`
       layering unchanged.
-- [ ] 1.4 Site 3, class half (user-data template):
+- [x] 1.4 Site 3, class half (user-data template):
       `templates/user_data.sh.tftpl` gains `workload_class` and
       `taint_enabled` inputs — the kubelet node-label fragment always
       carries `workload-class=<class>`, and
@@ -206,11 +212,11 @@ numbering is DESIGN-0024 part 3's.
       renders only for tainted classes (kubelet spells it
       `NoSchedule`, the API side stays `NO_SCHEDULE` — the existing
       spelling split, now templated with a why-comment).
-- [ ] 1.5 Site 5 (outputs + descriptions): `outputs.node_taints`
+- [x] 1.5 Site 5 (outputs + descriptions): `outputs.node_taints`
       derives from the class rule (empty class taint for `core`);
       rewrite the two variable descriptions that bake
       "workload-class=secure" wording class-neutral.
-- [ ] 1.6 Per-class plan matrix in `tests/`: the **core default** run
+- [x] 1.6 Per-class plan matrix in `tests/`: the **core default** run
       (untainted, no class taint in outputs, labels correct) AND the
       **explicit secure** run pinning today's full label+taint
       posture (the operator-required regression — "needs to be
@@ -219,7 +225,7 @@ numbering is DESIGN-0024 part 3's.
       layering per class. Existing runs that pinned the secure
       default are rewritten into the matrix (the pin moves to the
       explicit-secure run).
-- [ ] 1.7 `just tf all eks/managed-node-group` + `terraform-docs`
+- [x] 1.7 `just tf all eks/managed-node-group` + `terraform-docs`
       regen (USAGE.md).
 
 #### Success Criteria
@@ -228,7 +234,9 @@ numbering is DESIGN-0024 part 3's.
   label + taint surface exactly as the pre-change hardwired posture;
   the core-default run produces no class taint.
 - No literal secure-class strings remain outside the enum validation
-  and the per-class locals (grep-verified).
+  and the per-class locals (grep-verified — but see the correction
+  below: the original grep was scoped too narrowly and this criterion
+  read as met while one site was still hardwired).
 - `just static` green for the module (fmt / validate / tflint /
   docs).
 - **Deliberately NOT yet hub-ready:** the gVisor install part is
@@ -245,34 +253,51 @@ ending at the hub-unblock milestone.
 
 #### Tasks
 
-- [ ] 2.1 `gvisor_enabled` nullable bool variable (default `null`) +
+- [x] 2.1 `gvisor_enabled` nullable bool variable (default `null`) +
       `local.gvisor_effective = coalesce(var.gvisor_enabled,
       var.workload_class == "secure")`.
-- [ ] 2.2 Site 1 completion: the `runtime = "gvisor"` label rides
+- [x] 2.2 Site 1 completion: the `runtime = "gvisor"` label rides
       effective gVisor (merged into the label map only when on) — on
       both the resource labels and the kubelet label fragment. A
       gVisor-enabled analytics pool advertises the runtime; a
       gVisor-disabled secure pool must not lie.
-- [ ] 2.3 Site 4: gate the gVisor install MIME part in `user_data.tf`
+- [x] 2.3 Site 4: gate the gVisor install MIME part in `user_data.tf`
       (download + SHA-512 verify + containerd drop-in + restart +
       plugin assert) on effective gVisor — the whole part absent when
       off, via the same part-gating mechanism the ECR-mirror part
       uses; the template gains its `gvisor_enabled` input for the
       kubelet fragments.
-- [ ] 2.4 User-data assertions (DESIGN-0024 OQ 6a; mechanism per
+- [x] 2.4 User-data assertions (DESIGN-0024 OQ 6a; mechanism per
       OQ 2 below): per-class decode of the launch template's
       `user_data` — the kubelet label fragment carries the class, the
       register-with-taints fragment present/absent per class, the
       gVisor MIME part present/absent per effective gVisor.
-- [ ] 2.5 Override-direction runs: `gvisor_enabled = true` on a
+- [x] 2.5 Override-direction runs: `gvisor_enabled = true` on a
       non-secure class (part + runtime label present, class taint per
       class rule) and `false` on `secure` (part + runtime label
       absent, class taint intact).
-- [ ] 2.6 Module gates re-run; USAGE.md regen; README class table +
+- [x] 2.6 Module gates re-run; USAGE.md regen; README class table +
       default-change note.
 - [ ] 2.7 **Hub-unblock milestone:** merge + tag the node-group
       release (minor, default-change note prominent) per the OQ 1
       resolution — the hub buildout pins this tag.
+
+> **Implementation note (task 2.3) — the DESIGN's literal text would
+> have shipped a bug.** DESIGN-0024 part 3 says to gate the gVisor
+> shellscript part "the same part-gating mechanism the ECR-mirror part
+> already uses," which assumes the mirror is its own MIME part. It is
+> not: the mirror config is written *inside* the gVisor shellscript
+> part, and both write containerd config that the part's single
+> `systemctl restart containerd` picks up. Gating that whole part on
+> effective gVisor would therefore have silently dropped the
+> pull-through-cache mirror on every non-gVisor class — a bootstrap
+> regression invisible until pods failed to pull. **What shipped
+> instead:** the shellscript part renders when *either* gVisor or the
+> mirror is on, with the two fragments gated independently inside it;
+> the containerd restart is shared (both need it) and the runsc plugin
+> assertion stays under the gVisor gate. The
+> `mirror_renders_without_gvisor` run in `tests/user_data.tftest.hcl`
+> is the permanent regression for exactly this.
 
 #### Success Criteria
 
@@ -296,11 +321,11 @@ consumer replans zero-diff.
 
 #### Tasks
 
-- [ ] 3.1 `sso_principal_arn` additive output: the regex-resolved SSO
+- [x] 3.1 `sso_principal_arn` additive output: the regex-resolved SSO
       role ARN when `sso_access_enabled`, else `null` — published
       into the eks state alongside the existing outputs (feeds the
       Phase 4 collision guard).
-- [ ] 3.2 Fence surface (DESIGN-0024 part 2 verbatim):
+- [x] 3.2 Fence surface (DESIGN-0024 part 2 verbatim):
       `endpoint_public_access_cidrs` +
       `endpoint_public_access_prefix_list_ids` variables (both
       default `[]`), `data.aws_ec2_managed_prefix_list.fence`
@@ -308,20 +333,20 @@ consumer replans zero-diff.
       plan-time expansion), `local.public_access_cidrs` (empty union
       → `["0.0.0.0/0"]`), and `vpc_config.public_access_cidrs`
       wiring.
-- [ ] 3.3 Guards: at-least-one-endpoint precondition
+- [x] 3.3 Guards: at-least-one-endpoint precondition
       (`endpoint_private_access || endpoint_public_access`);
       fence-without-public fails at plan (either fence input
       non-empty while the public endpoint is off); the 40-CIDR
       precondition (`length(local.public_access_cidrs) <= 40`,
       message naming both fence inputs and prefix-list expansion as
       the usual culprit).
-- [ ] 3.4 Explicit `bootstrap_cluster_creator_admin_permissions =
+- [x] 3.4 Explicit `bootstrap_cluster_creator_admin_permissions =
       true` in `access_config` (zero diff — the current effective
       value) + the stable-creator README contract (OQ 4 resolution:
       create via the automation path; an SSO-created bootstrap entry
       is disposable; `false` + an explicit deploy-role entry is the
       recorded follow-up posture).
-- [ ] 3.5 Plan additions: the **default-fence zero-diff pin**
+- [x] 3.5 Plan additions: the **default-fence zero-diff pin**
       (`public_access_cidrs == ["0.0.0.0/0"]` — the replan invariant
       in test form); literal-CIDR run; prefix-list run with
       `override_data` stubbing the expansion; union + dedup run; the
@@ -329,7 +354,7 @@ consumer replans zero-diff.
       spoke run; bootstrap pinned explicitly true;
       `sso_principal_arn` on and off (null when SSO disabled); the
       SSO singleton pinned **by address** unchanged.
-- [ ] 3.6 README warning callout (plan-time-only expansion vs an SG's
+- [x] 3.6 README warning callout (plan-time-only expansion vs an SG's
       live prefix-list reference; the 40-CIDR budget; the live-sync
       follow-up and why conditional `ignore_changes` cannot exist) +
       module gates re-run + USAGE.md regen.
@@ -353,35 +378,35 @@ surface, plan suite as the gate.
 
 #### Tasks
 
-- [ ] 4.1 Scaffold `modules/eks/access-entries` per DESIGN-0024
+- [x] 4.1 Scaffold `modules/eks/access-entries` per DESIGN-0024
       part 1's layout: `versions.tf` (aws `~> 6.2`), `.tflint.hcl` +
       `.terraform-docs.yml` from the sibling consumers, README
       skeleton, `variables.tf` with `cluster_name` + the six
       Terragrunt globals.
-- [ ] 4.2 `data.tf`: the eks remote-state read at the account-scoped
+- [x] 4.2 `data.tf`: the eks remote-state read at the account-scoped
       ADR-0020 key
       (`<account_name>/<region>/eks/<cluster_name>/terraform.tfstate`)
       with the standard `assume_role` block; read at the use site per
       ADR-0001.
-- [ ] 4.3 `main.tf`: the `access_entries` map(object) (DESIGN-0024
+- [x] 4.3 `main.tf`: the `access_entries` map(object) (DESIGN-0024
       part 1 verbatim — principal ARN, type, groups, user_name,
       `policy_associations` map with `access_scope`), one
       `aws_eks_access_entry.this` per entry (`for_each` on the map),
       one `aws_eks_access_policy_association.this` per flattened
       `"<entry>:<association>"` key.
-- [ ] 4.4 Validations: non-STANDARD types reject
+- [x] 4.4 Validations: non-STANDARD types reject
       groups/user_name/associations (the EKS API's rule, named in the
       message); `principal_arn` IAM role/user ARN shape, no
       wildcards; namespace scope requires a non-empty `namespaces`;
       `policy_arn` prefix-validated
       `arn:aws:eks::aws:cluster-access-policy/`.
-- [ ] 4.5 The cross-stack SSO collision guard: a precondition
+- [x] 4.5 The cross-stack SSO collision guard: a precondition
       rejecting any entry whose principal equals the state's
       `sso_principal_arn`, `try()`-null-safe so a stale cluster state
       (predating the Phase 3 output) degrades to no-guard — the
       README carries the "re-apply the cluster stack to arm the
       guard" note.
-- [ ] 4.6 `outputs.tf` (`access_entry_arns`, `principal_arns` —
+- [x] 4.6 `outputs.tf` (`access_entry_arns`, `principal_arns` —
       pointer-only maps) + the README: the platform §4 worked-example
       trio (argocd-deployer assumed-role → deploy group; break-glass
       SSO → `AmazonEKSClusterAdminPolicy` cluster scope; the deploy
@@ -389,14 +414,14 @@ surface, plan suite as the gate.
       section, and the day-0 ordering note (entries stack applies
       after the cluster stack; the bootstrap admin is the floor in
       between).
-- [ ] 4.7 Plan suite (`tests/`, real-provider-fake-creds +
+- [x] 4.7 Plan suite (`tests/`, real-provider-fake-creds +
       `override_data` on the eks state read): the three-entry
       hub-shaped run pinning entry attributes, association scoping,
       and the flattened association addresses; the validation
       `expect_failures` set (4.4's four cases); the collision guard
       armed (state stub carrying `sso_principal_arn`) and the
       null-safe stale-state run; the ADR-0020 composed-key assertion.
-- [ ] 4.8 `just changed` pickup verification (the new module appears
+- [x] 4.8 `just changed` pickup verification (the new module appears
       in the plan matrix for its diff) + `just tf all
       eks/access-entries`.
 
@@ -417,38 +442,323 @@ conventions require.
 
 #### Tasks
 
-- [ ] 5.1 Access-entries Community apply suite
+- [x] 5.1 Access-entries Community apply suite
       (`tests-localstack/`): fixture per the OQ 3 resolution; probe
       access-entry API parity on token-free 4.4 first (OQ 4) and
       assert what round-trips; FINDINGS.md records the probe either
       way.
-- [ ] 5.2 Cluster Community apply extension: a fence apply run where
+- [x] 5.2 Cluster Community apply extension: a fence apply run where
       4.4 supports `public_access_cidrs`; FINDINGS.md updated.
-- [ ] 5.3 Node-group Community apply extension: class-parameterized
+- [x] 5.3 Node-group Community apply extension: class-parameterized
       runs (core + secure); FINDINGS.md updated.
-- [ ] 5.4 Run all touched Community applies live against the 4.4 pin
-      (`just tf test-localstack ...` per module) — token-free, per
-      the fleet constraint.
-- [ ] 5.5 Doc closure: CLAUDE.md eks section (the new module, the
+- [ ] 5.4 **DEFERRED by operator decision (2026-09-01)** — the release
+      does not block on the live applies; they run as a follow-up when
+      a Pro container is available (either closure path below). The
+      suites stay authored, each `FINDINGS.md` keeps its
+      pending-re-run note, and this task stays unchecked until the
+      runs happen. Original task: run all three touched apply suites
+      live (`just tf test-localstack ...` per module). **Corrected
+      from the original wording** ("against the 4.4 pin — token-free"):
+      that is not achievable and never was. EKS is Pro-only, so these
+      suites need a **Pro** container despite living in the
+      `tests-localstack/` directory. The directory name is a fleet
+      convention, not a statement about the container tier — CI's
+      `test-localstack` job launches `localstack/localstack-pro` with
+      the auth token for *both* apply tiers. The token-free 4.4
+      constraint binds the suites that can genuinely honour it (s3,
+      secretsmanager, network/vpc-lookup), not this one.
+- [x] 5.5 Doc closure: CLAUDE.md eks section (the new module, the
       ADR-0011 load-bearing change bar, the class taxonomy, the
       default change); the ADR-0020 consumer-table row for
       `eks/access-entries`; the INV-0011 delivery note.
-- [ ] 5.6 docz status flips (DESIGN-0024 → Implemented; this doc →
-      Completed) + `docz update` + the 14-file mangle-set restore +
-      `just docs lint`.
+- [x] 5.6 docz status flips + `docz update` + the mangle-set restore +
+      `just docs lint`. **Resolved under the 5.4 deferral (2026-09-01):**
+      DESIGN-0024 → Implemented (the design *is* implemented — every
+      surface it specifies is in code, plan-gated, and
+      conformance-audited; live-apply verification is 5.4's concern,
+      not the design's). This doc stays **In Progress**, not Completed:
+      it tracks delivery, and 5.4 (deferred) + 5.7's PR/tag half remain
+      open. Completed flips when the release lands.
 - [ ] 5.7 Conventional commits throughout; PRs labeled `minor` with
       the node-group default-change note prominent in README and
-      CHANGELOG (per the OQ 1 cadence).
+      CHANGELOG (per the OQ 1 cadence). **PR open (2026-09-01):**
+      [#106](https://github.com/donaldgifford/libtftest-tf-modules/pull/106),
+      labeled `minor`, default-change note leading both the body and
+      the `### RELEASE NOTES` block (the repo's changelog mechanism —
+      no CHANGELOG file exists; see the audit note). **Cadence
+      deviation recorded there:** OQ 1a's three sequential PRs
+      collapsed to one — the phases landed on one branch with
+      cross-cutting security-review/audit commits, so this PR's tag is
+      the hub-unblock milestone (subsumes task 2.7). Unchecked until
+      the operator merges and the tag lands.
+
+> **Phase 5 blocker (2026-08-30) — tasks 5.4, 5.6, 5.7 need the
+> operator.** 5.1–5.3 and 5.5 are done: the suites are authored, the
+> docs closed. **5.4 cannot be executed by the authoring session**:
+> EKS is Pro-only in LocalStack (probed on token-free Community 4.4 —
+> `eks` is absent from the health output and `list-clusters` returns
+> "The API for service 'eks' is either not included in your current
+> license plan"), and `LOCALSTACK_AUTH_TOKEN` is operator-held.
+> Re-verified in the environment before this note was finalized:
+> Docker is running but has no LocalStack container,
+> `LOCALSTACK_AUTH_TOKEN` is unset, and `lstk` has no stored
+> credentials (no config at `~/.config/lstk/config.toml`) — `lstk
+> login` is interactive. Each touched `FINDINGS.md` carries a
+> pending-re-run note naming the command. **Update (2026-09-01): the
+> operator deferred 5.4** — the release proceeds without the live
+> applies, which run as a follow-up. That resolved 5.6 (see the task
+> note): DESIGN-0024 flipped to Implemented; this doc stays In
+> Progress until the release lands. **5.7's PR/merge/tag half** is
+> the operator's — the conventional-commit half is done. This also leaves IMPL-0020 OQ 4 resolved by evidence rather
+> than by fallback: the Community-`plan_smoke` alternative is moot,
+> since the APIs are wholly absent from that tier.
+>
+> **Two closure paths, both operator-side.** (a) A local Pro container
+> — the commands below, against a running Pro instance. (b) **CI**: the
+> `test-localstack` job already launches
+> `localstack/localstack-pro:2026.07.2` with `secrets.
+> LOCALSTACK_AUTH_TOKEN` for the tier these suites sit in, and `just
+> changed` confirms all three are in the matrix (the brand-new module
+> included), so flipping `CI_RUN_LOCALSTACK_APPLY` to `true` would run
+> them. Path (b) is blocked on the separate, repo-external LocalStack
+> subscription issue that keeps the token from activating headless —
+> the same reason both apply tiers are off by default (IMPL-0016
+> Phase 6). Whichever path runs first, record the result and the Pro
+> version in each `FINDINGS.md`.
+>
+> To close the phase:
+>
+> ```sh
+> just tf test-localstack eks/managed-node-group
+> just tf test-localstack eks/cluster
+> just tf test-localstack eks/access-entries
+> ```
 
 #### Success Criteria
 
-- All live Community applies green; every FINDINGS.md records its
-  parity outcome (assert-what-round-trips, record the rest).
+- All three live apply suites green (**Pro** container — the original
+  "Community" wording repeated task 5.4's error; EKS is Pro-only);
+  every FINDINGS.md records its parity outcome
+  (assert-what-round-trips, record the rest). **Deferred with 5.4
+  (operator, 2026-09-01)** — this criterion is met when the follow-up
+  runs, not by the release.
 - `just static` + all three modules' plan gates green; zero-diff
   replan demonstrated for a fence-default cluster (the default-fence
-  pin + every pre-existing run unchanged).
+  pin + every pre-existing run unchanged). ✅
 - All docs merged; DESIGN-0024 reads Implemented; the INV-0011
-  delivery note closes the loop.
+  delivery note closes the loop. DESIGN flip + delivery note done;
+  "merged" lands with PR #106.
+
+---
+
+## Security review (2026-08-30)
+
+An adversarial review of the access-control and network-fence surfaces
+(the `iac-security` agent, one finding verified by standalone apply)
+found five real holes in the as-built code, spanning Phases 1–4. All
+are fixed with a regression run each; the three plan suites went
+22 / 12 / 12 → 24 / 13 / 15.
+
+1. **Silent cluster-wide grant (HIGH).** `access_scope.type` defaults
+   to `"cluster"`, so the namespaces-only form
+   `access_scope = { namespaces = ["team-a"] }` read as a scoped grant
+   but discarded the list and granted cluster-wide. The module
+   validated the *inverse* mistake only. Now rejected at plan.
+2. **Fence expanding to nothing fell through to world-open (HIGH).**
+   `fence_union` empty → `["0.0.0.0/0"]`. That fallback is correct for
+   *no fence requested*, but a fence built only from prefix lists that
+   expand empty (emptied out-of-band by anyone holding
+   `ec2:ModifyManagedPrefixList`, or simply not yet populated) reached
+   it too — converting a corp-only endpoint to world-open on the next
+   routine apply. The existing guard tested the raw inputs, not the
+   union, so it stayed quiet. A new fourth precondition closes it.
+3. **`additional_labels` could forge `runtime=gvisor` (MEDIUM).** The
+   merge wins on collision and only the EKS-API label path sees it, so
+   a caller could advertise a sandbox the bootstrap never installed —
+   the exact lie `local.gvisor_effective` exists to prevent, and a
+   direct contradiction of the "cannot drift" comment. The three
+   module-managed keys are now reserved.
+4. **Collision guard evaded by ARN spelling (MEDIUM).**
+   `data.aws_iam_roles` returns reserved SSO roles *path-bearing*,
+   while access-entry configs conventionally use the path-stripped
+   form — same principal, different string, raw compare missed it.
+   Now normalized to `<account>/<name>`, lowercased. The plan suite's
+   stub was corrected to the realistic path-bearing form, which makes
+   the existing guard run the evasion regression.
+5. **No principal uniqueness across entries (MEDIUM-LOW).** Two keys
+   could name one principal: collides at apply, and hides the true
+   grant from review since effective access is the union. Rejected.
+
+Deliberately **not** changed: the `try()` fail-open degrade path
+(documented tradeoff — worst case is an apply-time
+`ResourceInUseException`, never a privilege grant) and
+`kubernetes_groups` accepting `system:masters` (the module's intended
+RBAC capability — a validation-surface asymmetry, not a defect).
+
+The two HIGH findings share a shape worth carrying forward: **a
+permissive default plus a partially-specified input is a silent
+widening.** Validate an input object's *coherence*, not just its
+fields, and test a fallback against the resolved value rather than
+against the raw inputs that feed it.
+
+## Design-conformance audit (2026-08-30)
+
+A second pass read DESIGN-0024 end to end against the shipped code,
+asking only "what does the design specify that the code does not do?".
+Every functional surface is present with the design's names, defaults
+and validations — no missing or renamed variable, output, resource,
+guard, or test; all six design OQs landed in code; every Non-Goal
+honoured; every deferral explicit. Four gaps, all outside the
+functional surface:
+
+1. **A hardwired `secure` string survived Phase 1** (code).
+   `launch_template.tf` described every node group as
+   `"<name> secure node group"` regardless of class, so a `core` group
+   was labelled "secure" in the EC2 console. The file predates
+   DESIGN-0024 and was never swept — and this **falsified the Phase 1
+   success criterion** above, which claims grep-verified removal of
+   literal secure-class strings. The original grep covered
+   `variables.tf` / `locals.tf` / `main.tf` / `outputs.tf` and missed
+   `launch_template.tf` entirely. Now class-derived, with two
+   assertions in `tests/workload_class.tftest.hcl` pinning it, and the
+   sweep re-run across every `*.tf` and `*.tftpl` in the module.
+2. **The cluster README documented three guards; there are four.** The
+   fence-expands-to-nothing precondition from the security review was
+   undocumented — and it is the one guard that can fail a plan that
+   previously succeeded, so an operator hitting it had nothing to read.
+   Documented with the reason and the fix.
+3. **Two stale cluster-README claims.** "4 run blocks" (actual: 13
+   across four files; the whole fence matrix was unlisted), and the
+   EKS-state-consumer list omitted `access-entries` — the very module
+   this IMPL adds. ADR-0020's table already carried the row.
+4. **`additional_labels`' reserved keys were undocumented in prose.**
+   Discoverable via the variable description and `USAGE.md`, but the
+   node-group README never mentioned them. Added as a table.
+
+The pattern across 1–4: **the functional surface was well covered by
+tests, and everything that drifted was the part tests do not check.**
+A grep scoped to the files a change "should" touch will confirm its own
+assumption; a success criterion asserting "grep-verified" is only as
+good as the grep's scope, and nothing re-ran it.
+
+### Verifying the fail-closed tests fail for the *right* reason
+
+`expect_failures` asserts only that a given checkable object errored —
+**not which of its rules fired.** With eight validations on
+`var.access_entries` and four preconditions on `aws_eks_cluster.this`,
+every one of these runs could have been passing off a neighbouring
+rule, and the suite would look identically green. That is not a
+hypothetical: the security review's HIGH #2 existed precisely because a
+guard that *looked* covered was testing the wrong thing.
+
+Both surfaces were checked, and all pass honestly.
+
+**The eight `var.access_entries` validations** — each offending input
+was re-run without `expect_failures` so Terraform printed the actual
+message. Eight distinct messages, each the intended rule; the two
+security-review additions (namespaces-without-explicit-scope,
+duplicate-principals) fire on their own rules rather than piggybacking:
+
+| Run | Message that fired |
+|---|---|
+| wildcard principal | exact-ARN, no wildcards |
+| malformed ARN | exact-ARN (same rule, second case) |
+| groups on non-STANDARD | non-STANDARD types carry no groups |
+| unknown type | type enum |
+| IAM policy ARN | must be a cluster-access-policy ARN |
+| namespace scope, no namespaces | must list ≥1 namespace |
+| namespaces, no explicit scope | **would silently grant cluster-wide** |
+| duplicate principals | one principal, one entry |
+
+**The cluster's fourth precondition** was proven by **mutation**: with
+that one condition neutered and the other three left armed,
+`rejects_fence_that_expands_to_nothing` fails with *"Missing expected
+failure"* — no other guard catches an emptied prefix list. Exactly one
+test failed (11 passed / 1 failed / 1 skipped), so the guard is
+exercised by that run alone and nothing else silently depends on it.
+
+Worth reusing: **a passing `expect_failures` run is evidence the object
+errored, not evidence your rule works.** Removing the rule and
+confirming the test goes red is the cheap way to tell the difference.
+(Terraform rejects a constant `condition`, so neuter with an
+always-true expression that still references config —
+`length(var.x) >= 0`.)
+
+### The Go libtftest suite this work broke
+
+`modules/eks/cluster/test/` is a **libtftest Go integration suite** —
+the fleet's only one outside `tools/` — and nothing in this IMPL's plan
+mentioned it. Its `outputs_contract` subtest asserts an **exact** output
+count, so Phase 3's additive `sso_principal_arn` output broke it:
+`output count = 9; want 8`.
+
+Nothing caught this. The suite is `//go:build integration` tagged and
+CI touches the module only through `security.yml`'s `govulncheck`
+matrix — no job compiles or runs it, `just static` does not cover Go,
+and it needs a LocalStack container besides. It would have failed the
+next time anyone ran it and looked like an unrelated regression.
+
+Fixed by adding the output to the expected list. **The exact-count
+assertion is correct and was left exact** — the eks state shape is a
+cross-module contract with five consumers (ADR-0020), so an output
+appearing by accident should fail a test. The lesson is the inverse of
+the usual one: the assertion did its job, and the gap was that no gate
+runs it. Also cleaned two pre-existing lint failures in
+`helpers_test.go` (gofmt alignment + `gci` import order) surfaced while
+verifying the fix.
+
+Two follow-ups worth considering, both fleet-scope rather than
+IMPL-0020: whether the Go suite should be compiled (`go vet -tags
+integration`) by a CI job that needs no container, and whether the
+additive-output convention should extend to it — this work treated
+"additive output" as automatically safe, and for this suite it was not.
+
+### Open — the CHANGELOG task 5.7 names does not exist
+
+DESIGN-0024 requires the node-group default-change note in "the README
+**and CHANGELOG** both", and task 5.7 carries that forward. The README
+half is done. **There is no CHANGELOG anywhere in this repo** — no
+root or per-module file, no `cliff.toml`, and `release.yml` holds only
+`bump-version`. Release notes today come from a `### RELEASE NOTES`
+block in the PR body (`pr-semver-bump`, `require-release-notes:
+false`). So 5.7 cannot be closed as written without first deciding
+whether this repo gains a changelog convention — which is a fleet-wide
+call (it interacts with the per-module semver tagging and the planned
+Go release CLI), not an IMPL-0020 decision. Flagged for the operator;
+the pragmatic close is to put the default-change note in the PR's
+release-notes block and treat the design's "CHANGELOG" as satisfied by
+that.
+
+### Live-coverage sweep the review prompted
+
+The Phase 5 apply suites were authored *before* these fixes, so each
+was re-read against the question "would the live tier have caught
+this?". Three gaps closed — all in suites that still await a Pro
+container, so they are authored-not-run like the rest of Phase 5:
+
+- **`eks/access-entries`** — the collision run named the SSO principal
+  by the same string the stub state carried, so the live tier proved
+  only the trivial identical-spelling case. The fixture's SSO-owned
+  role now carries a `path`, giving it the two real spellings, and the
+  run declares the path-stripped one.
+- **`eks/cluster`** — `fenced_apply` passes literal CIDRs, so
+  `data.aws_ec2_managed_prefix_list` was never resolved outside an
+  `override_data` stub: the entire expansion path was unproven live.
+  The fixture now creates two real managed prefix lists (one
+  populated, one empty) behind two plan-only runs. This also asks the
+  emulator a question nothing else in the fleet does — whether it
+  serves managed prefix lists with `entries` populated.
+- **`eks/managed-node-group`** — the pull-through mirror is opt-in and
+  no apply run enabled it, so the mirror-on/gVisor-off combination
+  (exactly what the DESIGN-0024 part-gating deviation would have
+  broken, and invisibly: the nodes still boot) never reached EC2.
+  `mirror_without_gvisor_apply` closes it.
+
+The generalizable point: **a fix is not covered just because a
+regression exists at the tier where the logic lives.** Each of these
+had a green plan-suite regression while the live tier exercised a
+degenerate case — identical strings, one input path, an off-by-default
+feature.
 
 ---
 
@@ -475,19 +785,21 @@ conventions require.
 
 ## Testing Plan
 
-- [ ] Node-group plan matrix: core default + explicit secure + the
+- [x] Node-group plan matrix: core default + explicit secure + the
       three remaining classes + enum rejection + layering runs.
-- [ ] User-data assertions per class and per override direction (the
+- [x] User-data assertions per class and per override direction (the
       fleet's first rendered-template coverage).
-- [ ] Cluster plan additions: default-fence zero-diff pin, literal /
-      prefix-list / union runs, three guard failures, private-only
+- [x] Cluster plan additions: default-fence zero-diff pin, literal /
+      prefix-list / union runs, four guard failures, private-only
       run, bootstrap pin, `sso_principal_arn` on/off, SSO singleton
       pinned by address.
-- [ ] Access-entries plan suite: hub-shaped trio, validation
+- [x] Access-entries plan suite: hub-shaped trio, validation
       failures, collision guard armed + stale, ADR-0020 key.
-- [ ] Community applies: access-entries fixture suite (parity
-      probed), cluster fence run, node-group class runs — all live
-      against token-free 4.4.
+- [ ] Live applies: access-entries fixture suite (parity probed),
+      cluster fence + prefix-list runs, node-group class + mirror
+      runs. Needs a **Pro** container (the original "token-free 4.4"
+      wording was task 5.4's error — EKS is absent from Community);
+      deferred with 5.4 (operator, 2026-09-01).
 
 ## Dependencies
 

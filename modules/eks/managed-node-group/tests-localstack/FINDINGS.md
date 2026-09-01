@@ -13,6 +13,29 @@ backlog item.
   (`setup` + `default_apply`, **2 passed**), coverage unchanged
 - First captured on Pro 2026.5.0.dev121 (2026-05-15)
 
+> [!NOTE]
+> **Pending re-run (IMPL-0020 Phase 5, authored 2026-08-30).** The
+> workload-class assertions added to `default_apply` (now asserting the
+> **core** default: class label, no class taint) and the new
+> `secure_class_apply` and `mirror_without_gvisor_apply` runs have **not
+> been executed live** — no Pro container was available to the authoring
+> session. Run `just tf test-localstack eks/managed-node-group` and
+> record the result here. Note the behavior change this suite now
+> encodes: the default apply is a **core** group, not the
+> pre-DESIGN-0024 secure one. The offline plan gate is green at 24 runs,
+> including the fleet's first rendered-user-data assertions.
+>
+> **What `mirror_without_gvisor_apply` is for.** The ECR pull-through
+> mirror config renders into the *same* shellscript MIME part as the
+> gVisor install, so gating that whole part on gVisor — which is how
+> DESIGN-0024 literally reads — would silently drop the mirror on every
+> non-gVisor class. That failure is invisible: nodes boot fine and just
+> pull from upstream. The plan suite pins the rendered text; this run is
+> the only place EC2 is asked to *accept* the resulting multipart user
+> data with the mirror on and gVisor off. If it fails at
+> `CreateLaunchTemplate` rather than on an assertion, the finding is
+> about the emulator's multipart handling, not the module.
+
 ## Findings
 
 ### Finding #1 — No coverage gaps in the AWS API surface this module touches (as of LocalStack Pro 2026.5.0)

@@ -72,6 +72,23 @@ variable "endpoint_public_access" {
   default     = true
 }
 
+# The public-endpoint fence (DESIGN-0024 part 2 / INV-0011 OQ 12).
+# Both inputs default to empty, and an empty union resolves to
+# 0.0.0.0/0 — exactly the implicit behavior every existing cluster
+# already has in state, so adding these is a zero-diff change.
+
+variable "endpoint_public_access_cidrs" {
+  description = "Literal CIDR allowlist for the public API endpoint. Default [] — combined with endpoint_public_access_prefix_list_ids into the effective fence; an empty union means the EKS default 0.0.0.0/0 (exactly today's behavior)."
+  type        = list(string)
+  default     = []
+}
+
+variable "endpoint_public_access_prefix_list_ids" {
+  description = "Managed prefix lists whose entries are expanded into the public-endpoint fence AT PLAN TIME (the EKS API accepts literal CIDRs only — see the README warning: this is not a live reference like an SG rule; prefix-list edits land on the NEXT apply of this stack)."
+  type        = list(string)
+  default     = []
+}
+
 variable "enabled_cluster_log_types" {
   description = "Control plane log types to ship to CloudWatch. EKS supports: api, audit, authenticator, controllerManager, scheduler."
   type        = list(string)

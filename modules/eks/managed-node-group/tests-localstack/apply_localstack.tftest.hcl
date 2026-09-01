@@ -119,4 +119,89 @@ run "default_apply" {
     condition     = aws_eks_node_group.this.capacity_type == "ON_DEMAND"
     error_message = "LocalStack EKS must reflect ON_DEMAND capacity type"
   }
+
+  # The default class applies untainted (IMPL-0020 Phase 5). This is
+  # the applied half of Gate 1: a hub built on the default must have
+  # somewhere for the tolerate-nothing platform baseline to land.
+  assert {
+    condition     = aws_eks_node_group.this.labels["workload-class"] == "core"
+    error_message = "the default class label must round-trip through the EKS API as core"
+  }
+  assert {
+    condition = length([
+      for t in aws_eks_node_group.this.taint : t if t.key == "workload-class"
+    ]) == 0
+    error_message = "the default (core) node group must apply with no workload-class taint"
+  }
+}
+
+# The secure class applied end-to-end: label, taint, and gVisor all on.
+# Keeps the pre-DESIGN-0024 posture proven at apply, not just at plan.
+run "secure_class_apply" {
+  command = apply
+
+  variables {
+    nodegroup_name = "tftest-ng-secure"
+    workload_class = "secure"
+  }
+
+  assert {
+    condition     = aws_eks_node_group.this.labels["workload-class"] == "secure" && aws_eks_node_group.this.labels["runtime"] == "gvisor"
+    error_message = "the secure class must apply with both the class and runtime labels"
+  }
+
+  assert {
+    condition = length([
+      for t in aws_eks_node_group.this.taint :
+      t if t.key == "workload-class" && t.value == "secure" && t.effect == "NO_SCHEDULE"
+    ]) == 1
+    error_message = "the secure class taint must round-trip through the EKS API"
+  }
+
+  assert {
+    condition     = strcontains(base64decode(aws_launch_template.node.user_data), "gvisor/releases")
+    error_message = "the applied secure launch template must carry the gVisor install part"
+  }
+}
+
+# The independent-gating regression, applied.
+#
+# The ECR pull-through mirror config lives INSIDE the same shellscript
+# MIME part as the gVisor install, so gating that whole part on gVisor
+# (as DESIGN-0024 literally reads) would silently drop the mirror on
+# every non-gVisor class — nodes that boot fine and then pull from
+# upstream, which no assertion about gVisor would ever catch. The plan
+# suite pins the rendered text; this run proves EC2 actually accepts the
+# resulting multipart user data on a class with gVisor OFF, which is the
+# combination the bug would have broken.
+run "mirror_without_gvisor_apply" {
+  command = apply
+
+  variables {
+    nodegroup_name = "tftest-ng-mirror"
+    workload_class = "core"
+    containerd_pull_through_mirror = {
+      enabled          = true
+      cache_url_prefix = "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+      upstreams = [
+        { host = "docker.io", prefix = "docker-hub" },
+        { host = "quay.io", prefix = "quay" },
+      ]
+    }
+  }
+
+  assert {
+    condition     = strcontains(base64decode(aws_launch_template.node.user_data), "000000000000.dkr.ecr.us-east-1.amazonaws.com")
+    error_message = "the mirror config must reach the applied launch template on a non-gVisor class"
+  }
+
+  assert {
+    condition     = !strcontains(base64decode(aws_launch_template.node.user_data), "gvisor/releases")
+    error_message = "core must not carry the gVisor install part — if this passes with gVisor present, the two fragments are no longer independently gated"
+  }
+
+  assert {
+    condition     = !contains(keys(aws_eks_node_group.this.labels), "runtime")
+    error_message = "a node with no runsc installed must not advertise a runtime label"
+  }
 }

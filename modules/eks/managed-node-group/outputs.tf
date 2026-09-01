@@ -43,14 +43,14 @@ output "launch_template_latest_version" {
 }
 
 output "node_labels" {
-  description = "Kubernetes node labels applied to every node (workload-class=secure, runtime=gvisor, kubernetes.io/arch, plus var.additional_labels)."
+  description = "Kubernetes node labels applied to every node (workload-class=<var.workload_class>, runtime=gvisor, kubernetes.io/arch, plus var.additional_labels)."
   value       = local.runtime_labels
 }
 
 output "node_taints" {
-  description = "Kubernetes node taints applied to every node — the always-on workload-class=secure:NO_SCHEDULE plus var.additional_taints."
+  description = "Kubernetes node taints applied to every node — the class taint workload-class=<var.workload_class>:NO_SCHEDULE (absent for the untainted core class) plus var.additional_taints."
   value = concat(
-    [{ key = "workload-class", value = "secure", effect = "NO_SCHEDULE" }],
+    local.class_taint_enabled ? [{ key = "workload-class", value = var.workload_class, effect = "NO_SCHEDULE" }] : [],
     var.additional_taints,
   )
 }

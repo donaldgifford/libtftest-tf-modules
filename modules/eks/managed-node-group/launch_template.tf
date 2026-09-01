@@ -18,7 +18,7 @@
 
 resource "aws_launch_template" "node" {
   name_prefix            = "${var.nodegroup_name}-"
-  description            = "Launch template for ${var.nodegroup_name} secure node group"
+  description            = "Launch template for ${var.nodegroup_name} (${var.workload_class} workload class)"
   update_default_version = true
   vpc_security_group_ids = [data.terraform_remote_state.eks.outputs.node_security_group_id]
   # AL2023 nodeadm + gVisor install + containerd drop-in multipart MIME

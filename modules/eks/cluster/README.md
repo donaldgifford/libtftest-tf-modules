@@ -2,6 +2,82 @@
 
 [Usage docs](./USAGE.md)
 
+## API endpoint access
+
+`endpoint_private_access` (default `true`) and `endpoint_public_access`
+(default `true`) select the endpoint posture; the hub keeps both, spokes run
+private-only (`endpoint_public_access = false`). Two additive inputs fence the
+public endpoint:
+
+| Input                                    | Effect                                                  |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `endpoint_public_access_cidrs`           | literal CIDRs added to the fence                        |
+| `endpoint_public_access_prefix_list_ids` | managed prefix lists, expanded to CIDRs **at plan time** |
+
+The effective fence is the **de-duplicated union** of both. An empty union
+resolves to `["0.0.0.0/0"]` — exactly the value EKS already applies implicitly,
+so a cluster that sets neither input replans with **zero diff**.
+
+Four guards fail at plan rather than at apply: at least one endpoint must be
+enabled; fence inputs set while the public endpoint is off are rejected (a
+fence on a disabled endpoint is a misconfiguration, not a silent no-op); the
+union must stay within the EKS limit of 40 CIDRs; and **a fence that was
+configured but resolves to zero CIDRs is refused** rather than falling back to
+`0.0.0.0/0`.
+
+That fourth guard is the one worth understanding, because it can fail a plan
+that used to succeed. The empty-union → `0.0.0.0/0` fallback above is correct
+for *no fence requested*. But a fence built only from prefix lists that expand
+to nothing — a list emptied out-of-band by anyone holding
+`ec2:ModifyManagedPrefixList`, or simply not populated yet — reached that same
+fallback, which would quietly convert a corp-only endpoint into a world-open
+one on the next routine apply. If you hit this, the prefix list is empty: fix
+the list, or drop the fence input deliberately.
+
+> [!WARNING]
+> **Prefix-list expansion is plan-time only.** Unlike a security-group rule's
+> `prefix_list_id` — which is a *live* reference that tracks the list — the EKS
+> API accepts literal CIDRs, so this module snapshots each list's entries when
+> it plans. **Edits to a prefix list do not reach the cluster until this
+> stack's next apply.** If you need live tracking of a source list, that is a
+> security-group rule's job (`modules/network/security-group`, DESIGN-0026), not
+> this fence's.
+>
+> The expansion also counts against the 40-CIDR public-endpoint limit — a
+> corporate egress list can consume it faster than expected. The plan guard
+> names both inputs when it trips.
+>
+> Live sync is a recorded follow-up (an out-of-band syncer plus a module-wide
+> ignored-fence posture decision), not a v1 knob: a conditional
+> `ignore_changes` cannot exist, because Terraform `lifecycle` arguments are
+> static and cannot reference variables (INV-0011 OQ 12).
+
+## Cluster creator admin permissions
+
+`access_config.bootstrap_cluster_creator_admin_permissions` is set explicitly
+to `true`. This is the value that already applied silently as the provider
+default — writing it changes nothing, but it makes the posture reviewable and
+attaches this contract to it:
+
+> [!IMPORTANT]
+> The bootstrap admin entry binds to **whatever principal creates the
+> cluster**, permanently. Cluster applies must therefore run through the
+> **stable automation path** — Atlantis under its pod-identity role, assuming
+> the per-account deploy role — and **not** an ad-hoc operator SSO session. An
+> `AWSReservedSSO_*` creator is a rotating principal: permission-set changes
+> re-mint the role suffix, and the bootstrap entry silently goes stale, leaving
+> a cluster whose day-0 admin no longer resolves.
+
+If a day-0 bring-up does happen from an SSO workstation, treat the resulting
+bootstrap entry as **disposable**: it is superseded by the declared
+`eks/access-entries` map (DESIGN-0024 part 1) and can be deleted out-of-band
+once that stack is green. Moving to `false` plus an explicit deploy-role entry
+is the recorded follow-up posture once the hub pattern burns in — it is
+feasible per-cluster at create time, and the flag forces replacement after.
+
+Until the entries stack applies, this bootstrap entry is the access floor: a
+wrong or absent entries stack can never lock the fleet out of a fresh cluster.
+
 ## Testing
 
 This module is the deliberate side-by-side reference for the
@@ -24,9 +100,12 @@ terraform init -backend=false
 terraform test
 ```
 
-Runtime: ~1.2s. 4 run blocks (default plan, KMS external, SSO
-disabled, SSO enabled). Uses `override_data` to stub
-`data.terraform_remote_state.vpc` and `data.aws_caller_identity.current`.
+Runtime: ~1.2s. 13 run blocks across four files: the default plan, KMS
+external, SSO disabled/enabled, and `endpoint_fence.tftest.hcl` — the fence
+matrix (the zero-diff default pin, literal CIDRs, prefix-list expansion, the
+de-duplicated union, the private-only spoke posture, and all four guards).
+Uses `override_data` to stub `data.terraform_remote_state.vpc`,
+`data.aws_caller_identity.current`, and `data.aws_ec2_managed_prefix_list`.
 
 **Opt-in mode: apply-against-LocalStack** (`tests-localstack/*.tftest.hcl`).
 The gap-discovery mode per RFC-0001 — `command = apply` against
@@ -87,7 +166,7 @@ directory must be):
 
 `cluster_name` is both the live-repo folder name and the key every EKS
 consumer (`managed-node-group`, `addons`, `pod-identity-access`,
-`efs/filesystem`) composes to find this cluster's state. A mismatch fails
+`access-entries`, `efs/filesystem`) composes to find this cluster's state. A mismatch fails
 the consumer plan with `Unable to find remote state` (the error names
 neither bucket nor key — diff against this contract). The key template is
 pinned by a plan assertion in `tests/default.tftest.hcl`; see ADR-0020 for

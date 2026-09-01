@@ -47,8 +47,8 @@ No modules.
 | ---- | ----------- | ---- | ------- | :------: |
 | account\_id | 12-digit AWS account ID that owns the remote-state bucket. Composed into the assume\_role role\_arn (arn:aws:iam::<account\_id>:role/<deploy\_role\_name>) for the cross-account state reads. | `string` | n/a | yes |
 | account\_name | Terragrunt account name — the <account\_name> prefix of the account-scoped remote-state keys this module reads (<account\_name>/<region>/{eks,vpc}/<name>/terraform.tfstate). | `string` | n/a | yes |
-| additional\_labels | Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class labels. | `map(string)` | `{}` | no |
-| additional\_taints | Extra taints to apply on top of the always-on workload-class=secure:NO\_SCHEDULE taint. | ```list(object({ key = string value = string effect = string }))``` | `[]` | no |
+| additional\_labels | Extra Kubernetes labels to merge onto the node group on top of the module-managed runtime / workload-class / arch labels. The module-managed keys are reserved: they are derived from workload\_class and effective gVisor and are also written into the kubelet bootstrap flags, so overriding them here would desynchronize the two label paths. | `map(string)` | `{}` | no |
+| additional\_taints | Extra taints to apply on top of the class taint (workload-class=<var.workload\_class>:NO\_SCHEDULE, emitted for every class except the untainted core). | ```list(object({ key = string value = string effect = string }))``` | `[]` | no |
 | architecture | Architecture object: name (arm64\|amd64), ami\_type, gvisor\_arch (aarch64\|x86\_64), k8s\_arch (arm64\|amd64), and default\_instance\_types. Boilerplate-derived per DESIGN-0001. | ```object({ name = string ami_type = string gvisor_arch = string k8s_arch = string default_instance_types = list(string) })``` | ```{ "ami_type": "AL2023_ARM_64_STANDARD", "default_instance_types": [ "m7g.large", "m7g.xlarge", "c7g.large", "c7g.xlarge" ], "gvisor_arch": "aarch64", "k8s_arch": "arm64", "name": "arm64" }``` | no |
 | capacity\_type | Node group capacity type. ON\_DEMAND default per ADR-0009; SPOT permitted for explicitly batch / non-critical workloads. | `string` | `"ON_DEMAND"` | no |
 | cluster\_name | EKS cluster name. Used as the remote-state key fragment and as aws\_eks\_node\_group.cluster\_name (read from the cluster's remote state output at the use site, ADR-0001). | `string` | n/a | yes |
@@ -59,6 +59,7 @@ No modules.
 | enable\_ssm | Attach AmazonSSMManagedInstanceCore to the node role for Session Manager break-glass access. Off by default per ADR-0012. | `bool` | `false` | no |
 | extra\_kubelet\_args | Extra kubelet command-line arguments appended at AL2023 nodeadm bootstrap. Empty by default. | `string` | `""` | no |
 | extra\_node\_policies | Additional managed-style IAM policy ARNs to attach to the node role. Reserved for opt-in ECR pull-through cache policy per ADR-0015. Default empty — no extra attachments unless the consumer's Terragrunt config explicitly opts in. Each ARN is attached via aws\_iam\_role\_policy\_attachment. | `list(string)` | `[]` | no |
+| gvisor\_enabled | Nullable override for the gVisor runtime install + runtime=gvisor labeling + kubelet fragments. Null (default) = the class rule: enabled iff workload\_class == "secure". Set true/false to override for the odd case (e.g. a sandboxed analytics pool, or a secure group whose sandboxing is handled elsewhere). | `bool` | `null` | no |
 | gvisor\_sha512 | SHA-512 digests for the gVisor binaries matching var.gvisor\_version and var.architecture.gvisor\_arch. Keys: "runsc", "containerd\_shim\_runsc\_v1". Renovate updates this map alongside gvisor\_version. Empty defaults are placeholders — wired to a real verification step in Phase 4. | ```object({ runsc = string containerd_shim_runsc_v1 = string })``` | ```{ "containerd_shim_runsc_v1": "", "runsc": "" }``` | no |
 | gvisor\_version | gVisor release identifier, e.g. "release-20260101.0". Used as the URL fragment in https://storage.googleapis.com/gvisor/releases/<release>/<arch>/. Renovate manages bumps per ADR-0010. | `string` | `"release-20260101.0"` | no |
 | instance\_types | Override list of instance types. Empty (default) falls back to var.architecture.default\_instance\_types. Instance-type-vs-architecture compatibility is asserted in Phase 5 / Phase 7. | `list(string)` | `[]` | no |
@@ -70,6 +71,7 @@ No modules.
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backends read from this region. | `string` | n/a | yes |
 | tags | AWS resource tags applied to every resource in the module. | `map(string)` | `{}` | no |
 | vpc\_name | VPC stack name. Used in the VPC remote-state key fragment. | `string` | n/a | yes |
+| workload\_class | Platform workload class for this node group. Drives the workload-class label (always), the workload-class=<class>:NO\_SCHEDULE taint (every class EXCEPT core — core is the untainted default landing zone), and the gVisor default (secure only). The class taxonomy is the platform's (DESIGN-0001 section 2); new classes are deliberate one-line enum additions here, never free-form. | `string` | `"core"` | no |
 
 ## Outputs
 
@@ -80,9 +82,9 @@ No modules.
 | instance\_profile\_arn | ARN of the EC2 instance profile bound to the node role. |
 | launch\_template\_id | ID of the launch template used by the node group. |
 | launch\_template\_latest\_version | Latest version of the launch template — bumps on every change to user\_data, metadata\_options, etc. |
-| node\_labels | Kubernetes node labels applied to every node (workload-class=secure, runtime=gvisor, kubernetes.io/arch, plus var.additional\_labels). |
+| node\_labels | Kubernetes node labels applied to every node (workload-class=<var.workload\_class>, runtime=gvisor, kubernetes.io/arch, plus var.additional\_labels). |
 | node\_role\_arn | ARN of the node IAM role. Consumed by the ECR pull-through cache module's Terragrunt wiring to attach the opt-in third policy per ADR-0015. |
 | node\_role\_name | Name of the node IAM role. Useful for downstream IAM lookups. |
-| node\_taints | Kubernetes node taints applied to every node — the always-on workload-class=secure:NO\_SCHEDULE plus var.additional\_taints. |
+| node\_taints | Kubernetes node taints applied to every node — the class taint workload-class=<var.workload\_class>:NO\_SCHEDULE (absent for the untainted core class) plus var.additional\_taints. |
 | nodegroup\_name | EKS managed node group name. Stable identifier; matches var.nodegroup\_name. |
 <!-- END_TF_DOCS -->

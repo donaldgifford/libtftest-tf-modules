@@ -10,6 +10,18 @@
 # IMPL-0005 Q8. When enabled, the rendered template adds a
 # /etc/containerd/certs.d/<host>/hosts.toml entry per configured
 # upstream, redirecting pulls through the cache URL prefix.
+#
+# workload_class + taint_enabled carry the class into the kubelet
+# flags (DESIGN-0024 part 3, F8 site 3). Note the spelling split the
+# template preserves: kubelet's --register-with-taints wants
+# "NoSchedule" while the EKS API (aws_eks_node_group.taint.effect)
+# wants "NO_SCHEDULE" — same taint, two spellings, both required.
+#
+# gvisor_enabled gates the install part (F8 site 4). It and
+# mirror_enabled gate INDEPENDENTLY inside the template: both write
+# containerd config into the same shellscript part, so gating that
+# whole part on gVisor alone would silently drop the pull-through
+# mirror on every non-gVisor class.
 
 locals {
   user_data_body = templatefile(
@@ -18,7 +30,10 @@ locals {
       cluster_name            = data.terraform_remote_state.eks.outputs.cluster_name
       cluster_endpoint        = data.terraform_remote_state.eks.outputs.cluster_endpoint
       cluster_ca_data         = data.terraform_remote_state.eks.outputs.cluster_ca_data
-      k8s_arch                = var.architecture.k8s_arch
+      node_labels             = local.kubelet_node_labels
+      workload_class          = var.workload_class
+      taint_enabled           = local.class_taint_enabled
+      gvisor_enabled          = local.gvisor_effective
       gvisor_arch             = var.architecture.gvisor_arch
       gvisor_version          = var.gvisor_version
       runsc_sha512            = var.gvisor_sha512.runsc

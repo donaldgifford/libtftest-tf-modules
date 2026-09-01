@@ -111,15 +111,17 @@ run "default_plan" {
     error_message = "root EBS KMS key must come from data.terraform_remote_state.eks.outputs.kms_key_arn"
   }
 
-  # Always-on workload-class=secure:NO_SCHEDULE taint. taint is a typed
-  # set (not list) per the AWS provider schema; iterate with for instead
-  # of indexing — same RFC-0001 finding as the cluster module.
+  # The default class is core (DESIGN-0024 part 3) — the untainted
+  # landing zone, so no class taint is emitted. taint is a typed set
+  # (not list) per the AWS provider schema; iterate with for instead of
+  # indexing — same RFC-0001 finding as the cluster module. The full
+  # per-class matrix, including the explicit-secure regression that
+  # used to be this default, lives in workload_class.tftest.hcl.
   assert {
     condition = length([
-      for t in aws_eks_node_group.this.taint :
-      t if t.key == "workload-class" && t.value == "secure" && t.effect == "NO_SCHEDULE"
-    ]) == 1
-    error_message = "always-on workload-class=secure:NO_SCHEDULE taint missing"
+      for t in aws_eks_node_group.this.taint : t if t.key == "workload-class"
+    ]) == 0
+    error_message = "the default class (core) must be untainted — no workload-class taint"
   }
 
   # ami_type matches architecture (default arm64).
@@ -128,14 +130,17 @@ run "default_plan" {
     error_message = "ami_type must come from var.architecture.ami_type (default AL2023_ARM_64_STANDARD)"
   }
 
-  # Node labels include the runtime + workload-class pair (ADR-0005).
+  # The runtime label rides effective gVisor, not the class — and the
+  # default class (core) does not sandbox, so the label must be absent
+  # rather than present-and-false. A node must never advertise a
+  # runtime it did not install (ADR-0005; DESIGN-0024 part 3).
   assert {
-    condition     = aws_eks_node_group.this.labels["runtime"] == "gvisor"
-    error_message = "runtime=gvisor label must be set"
+    condition     = !contains(keys(aws_eks_node_group.this.labels), "runtime")
+    error_message = "the default (core, gVisor-less) group must not carry a runtime label"
   }
   assert {
-    condition     = aws_eks_node_group.this.labels["workload-class"] == "secure"
-    error_message = "workload-class=secure label must be set"
+    condition     = aws_eks_node_group.this.labels["workload-class"] == "core"
+    error_message = "workload-class label must carry the default class (core)"
   }
   assert {
     condition     = aws_eks_node_group.this.labels["kubernetes.io/arch"] == "arm64"

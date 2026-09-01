@@ -16,17 +16,33 @@ spec:
     config:
       maxPods: 110
     flags:
-      - "--node-labels=workload-class=secure,runtime=gvisor,kubernetes.io/arch=${k8s_arch}"
-      - "--register-with-taints=workload-class=secure:NoSchedule"
+      - "--node-labels=${node_labels}"
+%{ if taint_enabled ~}
+      - "--register-with-taints=workload-class=${workload_class}:NoSchedule"
+%{ endif ~}
 %{ if extra_kubelet_args != "" ~}
       - "${extra_kubelet_args}"
 %{ endif ~}
+%{ if gvisor_enabled || mirror_enabled ~}
 
 --//
 Content-Type: text/x-shellscript; charset="us-ascii"
 
 #!/bin/bash
 #
+# Bootstrap-time containerd configuration. This part renders only when
+# something needs it — the gVisor runtime install (effective-gVisor
+# node groups per DESIGN-0024) and/or the ECR pull-through cache
+# mirror. Both write containerd config, so they share the single
+# restart at the end.
+#
+# The two are gated INDEPENDENTLY on purpose: wrapping the whole part
+# in the gVisor gate would silently drop the mirror config on every
+# non-gVisor class (core, observability, analytics, temporal).
+
+set -euxo pipefail
+%{ if gvisor_enabled ~}
+
 # gVisor install — ADR-0005 (gVisor runtime), ADR-0008 (AL2023),
 # ADR-0010 (Renovate-pinned release). Downloads runsc +
 # containerd-shim-runsc-v1 from upstream GCS, verifies SHA-512 against
@@ -36,8 +52,6 @@ Content-Type: text/x-shellscript; charset="us-ascii"
 # URL pattern: https://storage.googleapis.com/gvisor/releases/<release>/<arch>/<binary>
 # Renovate bumps both var.gvisor_version and the matching SHA-512
 # digests in var.gvisor_sha512 together per ADR-0010.
-
-set -euxo pipefail
 
 GVISOR_RELEASE="${gvisor_version}"
 GVISOR_ARCH="${gvisor_arch}"
@@ -82,13 +96,15 @@ version = 2
   TypeUrl    = "io.containerd.runsc.v1.options"
   ConfigPath = "/etc/containerd/runsc.toml"
 EOF
-
+%{ endif ~}
 %{ if mirror_enabled ~}
+
 # Containerd registry mirror — ECR pull-through cache redirect per
 # IMPL-0005 Q8. Off by default; opt-in via
 # var.containerd_pull_through_mirror.enabled. Bootstrap-time write
 # (before any Kubernetes pod runs) — ADR-0011 allows this since it's
 # not a K8s API call.
+mkdir -p /etc/containerd/config.toml.d
 cat >/etc/containerd/config.toml.d/mirror.toml <<'EOF'
 version = 2
 
@@ -109,11 +125,14 @@ EOF
 %{ endif ~}
 
 systemctl restart containerd
+%{ if gvisor_enabled ~}
 
 # Sanity: runsc plugin must be loaded after the restart. ctr returns
 # nothing on success; non-zero exit + log to journalctl on failure.
 ctr --namespace k8s.io plugins list \
   | grep -q "io.containerd.runsc.v1" \
   || { echo "runsc runtime plugin not loaded after containerd restart" >&2; exit 1; }
+%{ endif ~}
+%{ endif ~}
 
 --//--

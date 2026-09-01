@@ -1,14 +1,16 @@
 #--------------------------------------------------------------
-# Managed Node Group — secure node group with gVisor
+# Managed Node Group — platform workload-class node group
 #--------------------------------------------------------------
 #
-# DESIGN-0001 implementation per IMPL-0002. Phases 1–4 ship the
-# variable surface, IAM role + instance profile, launch template, and
-# AL2023 nodeadm + gVisor user data. This file lands the node group
+# DESIGN-0001 implementation per IMPL-0002, parameterized by workload
+# class per DESIGN-0024 / IMPL-0020. Phases 1–4 of IMPL-0002 shipped
+# the variable surface, IAM role + instance profile, launch template,
+# and AL2023 nodeadm + gVisor user data. This file lands the node group
 # itself: architecture-pinned ami_type (ADR-0006 / ADR-0008),
-# ON_DEMAND default (ADR-0009), workload-class=secure:NO_SCHEDULE
-# taint, runtime + arch labels, and a precondition asserting the
-# selected instance types match the chosen architecture.
+# ON_DEMAND default (ADR-0009), the class taint
+# (workload-class=<class>:NO_SCHEDULE for every class but core),
+# runtime + arch labels, and a precondition asserting the selected
+# instance types match the chosen architecture.
 
 resource "aws_eks_node_group" "this" {
   cluster_name    = data.terraform_remote_state.eks.outputs.cluster_name
@@ -32,17 +34,21 @@ resource "aws_eks_node_group" "this" {
     version = aws_launch_template.node.latest_version
   }
 
-  # Always-on taint matching the workload-class=secure label.
-  # gvisor RuntimeClass scheduling adds the corresponding toleration
-  # so only opted-in workloads land here (DESIGN-0001 / ADR-0011).
-  taint {
-    key    = "workload-class"
-    value  = "secure"
-    effect = "NO_SCHEDULE"
+  # Class taint matching the workload-class=<class> label — emitted for
+  # every class except core, which is the untainted default landing
+  # zone (DESIGN-0024 part 3). Workloads reach a tainted class through
+  # the matching toleration; for secure that toleration rides the
+  # gvisor RuntimeClass (DESIGN-0001 / ADR-0011).
+  dynamic "taint" {
+    for_each = local.class_taint_enabled ? [var.workload_class] : []
+    content {
+      key    = "workload-class"
+      value  = taint.value
+      effect = "NO_SCHEDULE"
+    }
   }
 
-  # Caller-supplied additional taints layered on top of the always-on
-  # workload-class taint.
+  # Caller-supplied additional taints layered on top of the class taint.
   dynamic "taint" {
     for_each = var.additional_taints
     content {

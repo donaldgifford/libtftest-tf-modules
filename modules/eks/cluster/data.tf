@@ -8,6 +8,17 @@
 # key resource policy (arn:aws:iam::<id>:root principal).
 data "aws_caller_identity" "current" {}
 
+# Managed prefix lists expanded into the public-endpoint fence. The EKS
+# API accepts literal CIDRs only, so this is a PLAN-TIME snapshot of
+# each list's entries — edits to a list do not reach the cluster until
+# this stack's next apply (DESIGN-0024 part 2; the README warning
+# callout spells out the contrast with a live SG prefix-list rule).
+data "aws_ec2_managed_prefix_list" "fence" {
+  for_each = toset(var.endpoint_public_access_prefix_list_ids)
+
+  id = each.value
+}
+
 # VPC stack remote state. Per ADR-0001, cross-module data flows through
 # the last-known-good state file rather than live AWS data sources.
 #

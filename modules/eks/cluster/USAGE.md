@@ -42,6 +42,7 @@ No modules.
 | [aws_vpc_security_group_ingress_rule.nodes_from_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.nodes_from_self](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_ec2_managed_prefix_list.fence](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ec2_managed_prefix_list) | data source |
 | [aws_iam_policy_document.cluster_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.kms_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_roles.sso](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_roles) | data source |
@@ -59,6 +60,8 @@ No modules.
 | enabled\_cluster\_log\_types | Control plane log types to ship to CloudWatch. EKS supports: api, audit, authenticator, controllerManager, scheduler. | `list(string)` | ```[ "api", "audit", "authenticator" ]``` | no |
 | endpoint\_private\_access | Enable private API server endpoint inside the VPC. | `bool` | `true` | no |
 | endpoint\_public\_access | Enable public API server endpoint. Combined with the private endpoint so VPC traffic uses the private path and external operators reach the cluster over the public path. | `bool` | `true` | no |
+| endpoint\_public\_access\_cidrs | Literal CIDR allowlist for the public API endpoint. Default [] — combined with endpoint\_public\_access\_prefix\_list\_ids into the effective fence; an empty union means the EKS default 0.0.0.0/0 (exactly today's behavior). | `list(string)` | `[]` | no |
+| endpoint\_public\_access\_prefix\_list\_ids | Managed prefix lists whose entries are expanded into the public-endpoint fence AT PLAN TIME (the EKS API accepts literal CIDRs only — see the README warning: this is not a live reference like an SG rule; prefix-list edits land on the NEXT apply of this stack). | `list(string)` | `[]` | no |
 | kms\_deletion\_window\_in\_days | Pending-deletion window for the module-managed KMS CMK. Ignored when var.kms\_key\_arn is set. | `number` | `30` | no |
 | kms\_key\_arn | ARN of an externally-managed KMS CMK to use for cluster secret encryption. When null the module creates and manages its own CMK. | `string` | `null` | no |
 | name | Cluster Name. | `string` | `"libtftest"` | no |
@@ -85,4 +88,5 @@ No modules.
 | cluster\_version | EKS cluster Kubernetes version. Consumed by the addons module for data.aws\_eks\_addon\_version lookups; consumed by the managed-node-group module to choose a matching AL2023 AMI. |
 | kms\_key\_arn | KMS CMK ARN used for cluster secret envelope encryption. Non-null in both module-managed and external-key modes. Also exported for managed-node-group EBS encryption. |
 | node\_security\_group\_id | Shared node security group ID. Node group launch templates attach to this SG. |
+| sso\_principal\_arn | IAM role ARN of the resolved SSO permission-set principal that owns this cluster's SSO access entry, or null when sso\_access\_enabled is false. Consumed by eks/access-entries as its cross-stack collision guard. |
 <!-- END_TF_DOCS -->
