@@ -170,6 +170,22 @@ Plus the standard optional set: `description`, `path` (default
 `permissions_boundary` (null default), the three policy channels
 (below), and `tags`.
 
+> **Path note (post-IMPL-0020 review, 2026-09-01).** A role with a
+> non-default `path` has two legitimate ARN spellings — path-bearing
+> (what IAM returns) and path-stripped — and IMPL-0020's security
+> review showed spelling mismatches are exactly where guards and
+> validations get evaded (its collision guard now normalizes for this
+> reason). Two consequences here: `trusted_role_arns` entries must be
+> the **real, path-bearing** ARNs — IAM validates principals at
+> policy save, and role names are account-unique regardless of path,
+> so a stripped spelling of a path-bearing role fails the apply
+> rather than matching anything else; and roles destined for an
+> `eks/access-entries` binding (worked example 2) should keep
+> `path = "/"` — the shipped access-entries validation and collision
+> guard handle both spellings, but how the EKS API canonicalizes
+> path-bearing principal ARNs is unverified until the IMPL-0020
+> task 5.4 live runs answer it. The README carries both notes.
+
 ### Trust policy composition
 
 `data.aws_iam_policy_document.trust` — one statement, `Effect =
@@ -257,6 +273,13 @@ echo (the caller supplied them), no credential-adjacent values
   validation failures via `expect_failures` (empty trust list,
   wildcard ARN, malformed ARN, service principal passed as ARN, bad
   session duration, bad name charset); boundary + tags pass-through.
+  **Verification discipline (post-IMPL-0020 review, 2026-09-01):**
+  with this many validations stacked on two variables, a passing
+  `expect_failures` run proves only that the variable errored, not
+  that the intended rule fired — IMPL-0020 proved a run can pass off
+  a neighbouring rule and look identically green. The IMPL doc
+  carries per-rule verification (message-probe or mutation, per the
+  CLAUDE.md recipe) as an explicit task.
 - **Community apply (`tests-localstack/`):** token-free 4.4,
   `SERVICES=iam,sts` — create + attach + inline round-trip asserted
   live. FINDINGS.md records the known LocalStack caveat up front:
