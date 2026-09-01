@@ -33,10 +33,10 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`ecr/org-registry`](modules/ecr/org-registry) | `v0.7.0` | IMPL-0006 | 8 | plan-only | — |
 | [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `v0.20.0` | IMPL-0005 | 7 | plan-only | — |
 | [`efs/filesystem`](modules/efs/filesystem) | `v0.17.0` | IMPL-0008 | 9 | apply | — |
-| [`eks/access-entries`](modules/eks/access-entries) | `unreleased` | IMPL-0020 | 3 | apply | — |
+| [`eks/access-entries`](modules/eks/access-entries) | `v0.21.0` | IMPL-0020 | 3 | apply | — |
 | [`eks/addons`](modules/eks/addons) | `v0.17.0` | IMPL-0003 | 4 | apply | — |
-| [`eks/cluster`](modules/eks/cluster) | `unreleased` | IMPL-0001 | 4 | apply | — |
-| [`eks/managed-node-group`](modules/eks/managed-node-group) | `unreleased` | IMPL-0002 | 5 | apply | — |
+| [`eks/cluster`](modules/eks/cluster) | `v0.21.0` | IMPL-0001 | 4 | apply | — |
+| [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.21.0` | IMPL-0002 | 5 | apply | — |
 | [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.17.0` | IMPL-0004 | 4 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
 | [`rds/cluster`](modules/rds/cluster) | `v0.18.0` | IMPL-0012 | 6 | plan-only | ✅ |
