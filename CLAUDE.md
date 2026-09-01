@@ -108,7 +108,12 @@ Tracked in git. As of this writing:
   recorded), and IMPL-0020 OQ 4's Community-`plan_smoke` fallback is moot. The
   Phase 5 apply-suite extensions (cluster fence runs, node-group class runs,
   the new module's suite + its two-state fixture) are **authored but not yet
-  run live** — each FINDINGS.md carries a pending-re-run note.
+  run live** — each FINDINGS.md carries a pending-re-run note, and the
+  operator **deferred the live runs (2026-09-01)**: the release does not
+  block on them; they follow when a Pro container is available.
+  DESIGN-0024 is flipped **Implemented** under that deferral (the design's
+  every surface is in code, plan-gated, conformance-audited); IMPL-0020
+  stays In Progress until the PR/tag half of 5.7 lands.
   **Adversarial security review (IMPL-0020, `iac-security`)** closed five
   real holes in the as-built code — two HIGH (the namespaces-only silent
   cluster-wide grant; the emptied-prefix-list fence falling through to

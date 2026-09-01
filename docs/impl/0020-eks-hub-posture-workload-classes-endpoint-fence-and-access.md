@@ -35,6 +35,12 @@ created: 2026-08-28
   - [Phase 5: LocalStack applies and closure](#phase-5-localstack-applies-and-closure)
     - [Tasks](#tasks-4)
     - [Success Criteria](#success-criteria-4)
+- [Security review (2026-08-30)](#security-review-2026-08-30)
+- [Design-conformance audit (2026-08-30)](#design-conformance-audit-2026-08-30)
+  - [Verifying the fail-closed tests fail for the right reason](#verifying-the-fail-closed-tests-fail-for-the-right-reason)
+  - [The Go libtftest suite this work broke](#the-go-libtftest-suite-this-work-broke)
+  - [Open — the CHANGELOG task 5.7 names does not exist](#open--the-changelog-task-57-names-does-not-exist)
+  - [Live-coverage sweep the review prompted](#live-coverage-sweep-the-review-prompted)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -445,11 +451,16 @@ conventions require.
       4.4 supports `public_access_cidrs`; FINDINGS.md updated.
 - [x] 5.3 Node-group Community apply extension: class-parameterized
       runs (core + secure); FINDINGS.md updated.
-- [ ] 5.4 Run all three touched apply suites live
-      (`just tf test-localstack ...` per module). **Corrected from the
-      original wording** ("against the 4.4 pin — token-free"): that is
-      not achievable and never was. EKS is Pro-only, so these suites
-      need a **Pro** container despite living in the
+- [ ] 5.4 **DEFERRED by operator decision (2026-09-01)** — the release
+      does not block on the live applies; they run as a follow-up when
+      a Pro container is available (either closure path below). The
+      suites stay authored, each `FINDINGS.md` keeps its
+      pending-re-run note, and this task stays unchecked until the
+      runs happen. Original task: run all three touched apply suites
+      live (`just tf test-localstack ...` per module). **Corrected
+      from the original wording** ("against the 4.4 pin — token-free"):
+      that is not achievable and never was. EKS is Pro-only, so these
+      suites need a **Pro** container despite living in the
       `tests-localstack/` directory. The directory name is a fleet
       convention, not a statement about the container tier — CI's
       `test-localstack` job launches `localstack/localstack-pro` with
@@ -460,9 +471,14 @@ conventions require.
       ADR-0011 load-bearing change bar, the class taxonomy, the
       default change); the ADR-0020 consumer-table row for
       `eks/access-entries`; the INV-0011 delivery note.
-- [ ] 5.6 docz status flips (DESIGN-0024 → Implemented; this doc →
-      Completed) + `docz update` + the 14-file mangle-set restore +
-      `just docs lint`.
+- [x] 5.6 docz status flips + `docz update` + the mangle-set restore +
+      `just docs lint`. **Resolved under the 5.4 deferral (2026-09-01):**
+      DESIGN-0024 → Implemented (the design *is* implemented — every
+      surface it specifies is in code, plan-gated, and
+      conformance-audited; live-apply verification is 5.4's concern,
+      not the design's). This doc stays **In Progress**, not Completed:
+      it tracks delivery, and 5.4 (deferred) + 5.7's PR/tag half remain
+      open. Completed flips when the release lands.
 - [ ] 5.7 Conventional commits throughout; PRs labeled `minor` with
       the node-group default-change note prominent in README and
       CHANGELOG (per the OQ 1 cadence).
@@ -479,11 +495,12 @@ conventions require.
 > `LOCALSTACK_AUTH_TOKEN` is unset, and `lstk` has no stored
 > credentials (no config at `~/.config/lstk/config.toml`) — `lstk
 > login` is interactive. Each touched `FINDINGS.md` carries a
-> pending-re-run note naming the command. **5.6 is deliberately held** behind 5.4: flipping
-> DESIGN-0024 to Implemented and this doc to Completed would assert a
-> live-verified state that does not exist yet. **5.7's PR/merge/tag
-> half** is likewise the operator's — the conventional-commit half is
-> done. This also leaves IMPL-0020 OQ 4 resolved by evidence rather
+> pending-re-run note naming the command. **Update (2026-09-01): the
+> operator deferred 5.4** — the release proceeds without the live
+> applies, which run as a follow-up. That resolved 5.6 (see the task
+> note): DESIGN-0024 flipped to Implemented; this doc stays In
+> Progress until the release lands. **5.7's PR/merge/tag half** is
+> the operator's — the conventional-commit half is done. This also leaves IMPL-0020 OQ 4 resolved by evidence rather
 > than by fallback: the Community-`plan_smoke` alternative is moot,
 > since the APIs are wholly absent from that tier.
 >

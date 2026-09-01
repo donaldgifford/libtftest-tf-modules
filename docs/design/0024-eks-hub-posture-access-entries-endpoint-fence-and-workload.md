@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0024
 title: "EKS hub posture access entries endpoint fence and workload classes"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-08-27
 ---
@@ -9,7 +9,7 @@ created: 2026-08-27
 
 # DESIGN 0024: EKS hub posture access entries endpoint fence and workload classes
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-08-27
 
