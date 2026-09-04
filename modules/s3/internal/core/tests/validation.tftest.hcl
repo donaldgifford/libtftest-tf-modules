@@ -117,3 +117,81 @@ run "self_logging_rejected" {
 
   expect_failures = [aws_s3_bucket_logging.this]
 }
+
+# --- Object lock guardrails (DESIGN-0022 / IMPL-0021 1.4) ---
+# Each run is constructed so exactly ONE rule can fire (verified
+# per-rule, IMPL-0021 task 1.5): a passing expect_failures run proves
+# only that the object errored, not which rule caught it.
+
+run "object_lock_bad_mode" {
+  command = plan
+
+  variables {
+    versioning_enabled = true
+    object_lock = {
+      enabled = true
+      mode    = "LEGAL_HOLD"
+      days    = 1
+    }
+  }
+
+  expect_failures = [var.object_lock]
+}
+
+run "object_lock_days_and_years" {
+  command = plan
+
+  variables {
+    versioning_enabled = true
+    object_lock = {
+      enabled = true
+      days    = 1
+      years   = 1
+    }
+  }
+
+  expect_failures = [var.object_lock]
+}
+
+# The coherence guard (IMPL-0020's silent-widening lesson, inverted):
+# { days = 400 } — "retain 400 days" with enabled forgotten — must
+# fail, not silently configure nothing.
+run "object_lock_retention_without_enabled" {
+  command = plan
+
+  variables {
+    object_lock = {
+      days = 400
+    }
+  }
+
+  expect_failures = [var.object_lock]
+}
+
+run "object_lock_without_versioning" {
+  command = plan
+
+  variables {
+    object_lock = {
+      enabled = true
+      days    = 1
+    }
+  }
+
+  expect_failures = [aws_s3_bucket_versioning.this]
+}
+
+run "bad_transition_storage_class" {
+  command = plan
+
+  variables {
+    extra_lifecycle_rules = [{
+      id = "bad-tier"
+      transitions = [
+        { days = 90, storage_class = "GLACIER_FLEX" },
+      ]
+    }]
+  }
+
+  expect_failures = [var.extra_lifecycle_rules]
+}

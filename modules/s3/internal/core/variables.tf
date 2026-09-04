@@ -67,6 +67,38 @@ variable "versioning_enabled" {
   nullable    = false
 }
 
+variable "object_lock" {
+  description = "Purpose-module-only Object Lock wiring (DESIGN-0022 — never exposed on bucket/events-bucket). enabled is CREATE-TIME: toggling it on an existing bucket REPLACES the bucket. Requires versioning_enabled = true. days xor years sets the default retention; both null = lock enabled with per-object-only retention."
+  type = object({
+    enabled = optional(bool, false)
+    mode    = optional(string, "COMPLIANCE")
+    days    = optional(number)
+    years   = optional(number)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["GOVERNANCE", "COMPLIANCE"], var.object_lock.mode)
+    error_message = "object_lock.mode must be GOVERNANCE or COMPLIANCE."
+  }
+
+  validation {
+    condition     = !(var.object_lock.days != null && var.object_lock.years != null)
+    error_message = "object_lock.days and object_lock.years are mutually exclusive (the S3 API takes exactly one)."
+  }
+
+  # Coherence guard (IMPL-0020 lesson): a permissive default plus a
+  # partially-specified input is a silent weakening — { days = 400 }
+  # without enabled = true would count-gate the config resource away
+  # and silently discard the caller's stated retention.
+  validation {
+    condition     = var.object_lock.enabled || (var.object_lock.days == null && var.object_lock.years == null)
+    error_message = "object_lock.days/years are set but object_lock.enabled is false — the retention would be silently discarded. Set enabled = true or remove the duration."
+  }
+
+  nullable = false
+}
+
 variable "force_destroy" {
   description = "Allow destroy to delete a non-empty bucket. Off by default — the baseline treats data loss as opt-in; test fixtures set it true for teardown."
   type        = bool
@@ -88,15 +120,34 @@ variable "abort_incomplete_multipart_days" {
 }
 
 variable "extra_lifecycle_rules" {
-  description = "Additional lifecycle rules appended after the baseline MPU-abort rule (e.g. the access-logs sink's retention expiration; a staging-prefix expiry). prefix null = whole bucket."
+  description = "Additional lifecycle rules appended after the baseline MPU-abort rule (e.g. the access-logs sink's retention expiration; a staging-prefix expiry). prefix null = whole bucket. transitions/noncurrent_version_transitions tier objects across storage classes (DESIGN-0022); per-rule day ordering (transitions before expiration) is left to the S3 API."
   type = list(object({
     id                                 = string
     enabled                            = optional(bool, true)
     prefix                             = optional(string)
     expiration_days                    = optional(number)
     noncurrent_version_expiration_days = optional(number)
+    transitions = optional(list(object({
+      days          = number
+      storage_class = string
+    })), [])
+    noncurrent_version_transitions = optional(list(object({
+      noncurrent_days = number
+      storage_class   = string
+    })), [])
   }))
-  default  = []
+  default = []
+
+  validation {
+    condition = alltrue(flatten([
+      for r in var.extra_lifecycle_rules : concat(
+        [for t in r.transitions : contains(["STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER_IR", "GLACIER", "DEEP_ARCHIVE"], t.storage_class)],
+        [for t in r.noncurrent_version_transitions : contains(["STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER_IR", "GLACIER", "DEEP_ARCHIVE"], t.storage_class)],
+      )
+    ]))
+    error_message = "Transition storage_class must be one of the S3 transition targets: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE."
+  }
+
   nullable = false
 }
 
