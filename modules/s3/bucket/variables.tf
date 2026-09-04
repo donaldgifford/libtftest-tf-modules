@@ -127,6 +127,38 @@ variable "abort_incomplete_multipart_days" {
   nullable = false
 }
 
+variable "lifecycle_rules" {
+  description = "Additional lifecycle rules appended after the baseline MPU-abort rule (DESIGN-0022 / INV-0011 OQ 8a). prefix null = whole bucket. transitions/noncurrent_version_transitions tier objects across storage classes; per-rule day ordering (transitions before expiration) is left to the S3 API. Rule wiring is assertable via the lifecycle_rule_ids output."
+  type = list(object({
+    id                                 = string
+    enabled                            = optional(bool, true)
+    prefix                             = optional(string)
+    expiration_days                    = optional(number)
+    noncurrent_version_expiration_days = optional(number)
+    transitions = optional(list(object({
+      days          = number
+      storage_class = string
+    })), [])
+    noncurrent_version_transitions = optional(list(object({
+      noncurrent_days = number
+      storage_class   = string
+    })), [])
+  }))
+  default = []
+
+  # Mirrors the core's guard so the failure is root-addressable
+  # (the reserved-sid pattern): expect_failures cannot target a child
+  # module's validation, and the error should name THIS variable.
+  validation {
+    condition = alltrue([
+      for r in var.lifecycle_rules : r.id != "abort-incomplete-multipart-upload"
+    ])
+    error_message = "lifecycle_rules must not reuse the reserved baseline rule id (abort-incomplete-multipart-upload) — the baseline MPU-abort hygiene rule always renders first and cannot be shadowed."
+  }
+
+  nullable = false
+}
+
 variable "allowed_vpc_endpoint_ids" {
   description = "Opt-in VPCE-only restriction (INV-0009 OQ 6): non-empty adds the DenyOutsideVpce statement. CAUTION: locks out console and any non-VPCE access path. Default [] = no restriction."
   type        = list(string)

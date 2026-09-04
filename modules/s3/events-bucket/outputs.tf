@@ -28,6 +28,11 @@ output "bucket_policy_json" {
   value       = module.core.bucket_policy_json
 }
 
+output "lifecycle_rule_ids" {
+  description = "Ids of every lifecycle rule on the bucket, in order (the baseline MPU-abort rule first, then lifecycle_rules) — the plan suites' window on rule wiring (child-module resources aren't assertable)."
+  value       = module.core.lifecycle_rule_ids
+}
+
 output "logging_target" {
   description = "Resolved server-access-logging target bucket (the looked-up fleet sink, the explicit override, or null when disabled) — the plan suites' window on the tri-state resolution."
   value       = module.core.logging_target

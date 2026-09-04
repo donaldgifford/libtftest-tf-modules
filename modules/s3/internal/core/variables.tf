@@ -148,6 +148,16 @@ variable "extra_lifecycle_rules" {
     error_message = "Transition storage_class must be one of the S3 transition targets: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE."
   }
 
+  # Mirrored onto every purpose module's lifecycle_rules variable (the
+  # reserved-sid pattern): the root-side copy is what expect_failures
+  # can target and what names the operator-facing variable.
+  validation {
+    condition = alltrue([
+      for r in var.extra_lifecycle_rules : r.id != "abort-incomplete-multipart-upload"
+    ])
+    error_message = "extra_lifecycle_rules must not reuse the reserved baseline rule id (abort-incomplete-multipart-upload) — the baseline MPU-abort hygiene rule always renders first and cannot be shadowed."
+  }
+
   nullable = false
 }
 

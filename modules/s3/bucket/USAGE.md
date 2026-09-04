@@ -37,6 +37,7 @@
 | deploy\_role\_name | Name of the IAM role Terraform assumes to read the remote-state bucket cross-account. Composed into the assume\_role role\_arn with account\_id. | `string` | n/a | yes |
 | force\_destroy | Allow destroy to delete a non-empty bucket. Off by default — data loss is opt-in; test fixtures set it true for teardown. | `bool` | `false` | no |
 | kms\_key\_arn | Customer-managed KMS key for SSE-KMS, or null (default) for the AWS-managed aws/s3 key. A CMK is required when cross-account consumers must decrypt — the aws/s3 key cannot be policy-edited. | `string` | `null` | no |
+| lifecycle\_rules | Additional lifecycle rules appended after the baseline MPU-abort rule (DESIGN-0022 / INV-0011 OQ 8a). prefix null = whole bucket. transitions/noncurrent\_version\_transitions tier objects across storage classes; per-rule day ordering (transitions before expiration) is left to the S3 API. Rule wiring is assertable via the lifecycle\_rule\_ids output. | ```list(object({ id = string enabled = optional(bool, true) prefix = optional(string) expiration_days = optional(number) noncurrent_version_expiration_days = optional(number) transitions = optional(list(object({ days = number storage_class = string })), []) noncurrent_version_transitions = optional(list(object({ noncurrent_days = number storage_class = string })), []) }))``` | `[]` | no |
 | name | Logical bucket name. Composed into the real bucket name as <name>-<account\_id>-<region> (plus the optional shard prefix). Lowercase alphanumeric + hyphens, 3-37 chars, must start/end alphanumeric. | `string` | n/a | yes |
 | name\_override | Escape hatch: use this exact bucket name verbatim, skipping <name>-<account\_id>-<region> composition (externally-dictated names). | `string` | `null` | no |
 | region | AWS region — composed into the bucket name and the reserved access-logs remote-state key. | `string` | n/a | yes |
@@ -54,6 +55,7 @@
 | bucket\_id | The bucket's ID (its name, as the provider returns it). |
 | bucket\_name | The bucket's final composed name. |
 | bucket\_policy\_json | The composed bucket policy (baseline denies + opt-in VPCE + additional\_policy\_statements) — re-exported so plan suites can assert the additive merge. |
+| lifecycle\_rule\_ids | Ids of every lifecycle rule on the bucket, in order (the baseline MPU-abort rule first, then lifecycle\_rules) — the plan suites' window on rule wiring (child-module resources aren't assertable). |
 | logging\_prefix | Resolved server-access-logging prefix, or null when logging is off. |
 | logging\_target | Resolved server-access-logging target bucket (the looked-up fleet sink, the explicit override, or null when disabled) — the plan suites' window on the tri-state resolution. |
 | security\_baseline | The composed security baseline, re-exported verbatim from the internal core — pinned by this module's security\_baseline.tftest.hcl (the family's byte-identical copy, Phase-5 diff guard). |
