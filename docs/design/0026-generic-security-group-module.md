@@ -220,6 +220,22 @@ posture is visible, not implied.
 - No at-least-one-rule floor: an SG with an empty allowlist is
   useless but harmless (a legitimate bring-up intermediate).
 
+> **The world-open guard's boundary (post-IMPL-0020 review,
+> 2026-09-01).** The guard inspects the literal `cidr_ipv4` /
+> `cidr_ipv6` fields only. A `prefix_list_id` source whose list
+> contains `0.0.0.0/0` admits the world and the module cannot see
+> it — **by design**: the reference is live, so a plan-time
+> expansion of the list would give false assurance (the list can be
+> edited to world-open a minute after the apply, which is exactly
+> what "live" means). This is the shape of IMPL-0020's HIGH fence
+> finding — a guard testing raw inputs while the resolved value
+> differs — with the difference that here resolution is impossible
+> on purpose, so the boundary is **documented instead of closed**:
+> prefix-list contents are the list owner's audit surface, and the
+> README states this beside the worked example's GitHub-webhook
+> list. (`referenced_security_group_id` sources have no equivalent
+> hole — an SG reference admits that SG's members, never the world.)
+
 ### The Gateway frontend worked example
 
 The README's full call site, `gateway-frontend-public`:
@@ -275,7 +291,13 @@ DESIGN-0025's, recorded in the README.
   guard (plus its explicit-toggle pass run); the egress posture
   runs (default all-egress rule present; `allow_all_egress = false`
   + typed egress map); the ADR-0020 composed-key assertion; the
-  `name_prefix` + CBD pin.
+  `name_prefix` + CBD pin. **Verification discipline
+  (post-IMPL-0020 review, 2026-09-01):** four-plus guards stack on
+  the one `ingress_rules` variable, so a passing `expect_failures`
+  run proves only that the variable errored, not that the intended
+  guard fired — the IMPL doc carries per-rule verification
+  (message-probe or mutation, per the CLAUDE.md recipe) as an
+  explicit task.
 - **Community apply (`tests-localstack/`):** pure EC2 API — real
   apply against token-free 4.4 (`SERVICES=ec2,sts`), no Pro, no
   named volume (the `vpc-lookup` precedent). The fixture sources the
