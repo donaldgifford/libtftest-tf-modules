@@ -257,8 +257,10 @@ Pure IAM API — token-free Community, no Pro, no named volume.
       reserving the shape ahead of its first TF consumer, the way
       `secrets` was reserved.
 - [ ] 4.2 CLAUDE.md: the new `modules/iam/` section (module summary,
-      the two follow-ups, the STS caveat); INV-0011 delivery note
-      (the 2026-08-28 queue revision's condensed pair, delivered).
+      the two design follow-ups + the OQ 1a jsondecode-backport
+      follow-up for `eks/pod-identity-access`, the STS caveat);
+      INV-0011 delivery note (the 2026-08-28 queue revision's
+      condensed pair, delivered).
 - [ ] 4.3 `just readme` — the module table gains the `iam/role` row
       (the separate `readme-check` CI job, not covered by `just
       static`).
@@ -313,7 +315,20 @@ The design's Testing Strategy is the authority. Fleet mechanics:
 
 ## Open Questions
 
+> **All resolved 2026-09-04: 1a, 2a.** `inline_policies` keeps the
+> pod-identity-access surface **shape** and gains the per-value
+> `can(jsondecode())` validation — with the recorded follow-up to
+> backport the identical validation to `eks/pod-identity-access`
+> (task 4.2 carries it into CLAUDE.md) — and duplicate
+> `trusted_role_arns` entries are rejected at validation. Tasks
+> 1.2/1.6 were written to reference these OQs and are now concrete;
+> no other task edits follow.
+
 ### 1. Do inline policy documents get plan-time JSON validation?
+
+**Resolved: a.** Verbatim shape + per-value `can(jsondecode())`
+validation; backport follow-up recorded for
+`eks/pod-identity-access`.
 
 DESIGN-0025 OQ 3a says mirror `eks/pod-identity-access` **verbatim**
 — and the verbatim surface has no validation on `inline_policies`
@@ -336,6 +351,9 @@ apply with IAM's `MalformedPolicyDocument`, not at plan.
 - Other: (your call)
 
 ### 2. Are duplicate trust entries rejected?
+
+**Resolved: a.** Rejected at validation — the trust list states
+intent exactly once.
 
 `trusted_role_arns` is a list; nothing in the design's validation
 set addresses the same ARN appearing twice. IAM itself dedupes

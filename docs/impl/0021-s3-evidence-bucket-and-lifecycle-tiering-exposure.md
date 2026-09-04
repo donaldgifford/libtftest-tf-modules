@@ -297,9 +297,10 @@ The F6 probe discipline, then documentation and release.
       `evidence-bucket` row. Its drift gate is the **separate**
       `readme-check` CI job that `just static` does not cover
       (IMPL-0020 shipped with this stale until caught by hand).
-- [ ] 4.7 PR + release per OQ 1's resolution; `### RELEASE NOTES`
-      carries the evidence-bucket introduction and the lifecycle
-      exposure; label `minor`.
+- [ ] 4.7 One PR carrying all four phases as separate commit groups
+      (OQ 1a); `### RELEASE NOTES` carries the evidence-bucket
+      introduction and the lifecycle exposure; label `minor` — one
+      release, one tag for the Loki stack to pin.
 
 #### Success Criteria
 
@@ -353,7 +354,17 @@ above carry it item-by-item. Fleet mechanics that apply here:
 
 ## Open Questions
 
+> **All resolved 2026-09-04: 1a, 2a.** One PR carries all four
+> phases as separate commit groups with one `minor` release
+> (task 4.7 updated to the resolved cadence), and probe B's outcome
+> lands in FINDINGS.md either way — Community stays the s3 family's
+> only apply tier. No other task edits follow: the phases were
+> written to the recommended shapes.
+
 ### 1. What is the PR and release cadence?
+
+**Resolved: a.** One PR, all four phases as separate commit groups,
+one `minor` release.
 
 The design says the change set "should ride one PR series" because
 `scripts/changed-modules.sh` re-tests every s3 leaf on any
@@ -376,6 +387,9 @@ is one PR or two.
 - Other: (your call)
 
 ### 2. What happens if probe B finds no retention enforcement?
+
+**Resolved: a.** Record the outcome in FINDINGS.md; Community stays
+the family's only apply tier either way.
 
 Probe A (config surface) is expected to pass. Probe B — whether
 LocalStack 4.4 actually **denies** a version delete before

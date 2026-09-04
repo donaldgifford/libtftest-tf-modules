@@ -107,8 +107,11 @@ its tasks are checked off and its success criteria are met.
       design's layout (`main.tf`, `data.tf`, `variables.tf`,
       `outputs.tf`, `versions.tf`, `.tflint.hcl`, README/USAGE
       stubs, `tests/`, `tests-localstack/`). `versions.tf`: aws
-      `~> 6.2`; `required_version` per OQ 1's resolution (the
-      world-open guard mechanism decides the floor).
+      `~> 6.2`; `required_version = ">= 1.9"` (OQ 1a — the
+      world-open guard is a cross-variable validation, a TF 1.9
+      feature; the fleet's first 1.9 floor, beside the two
+      existing 1.11 modules. Do not "simplify" it down: the guard
+      silently stops compiling below 1.9).
 - [ ] 1.2 `data.tf`: the standard vpc remote-state read —
       `vpc_name` + the six Terragrunt globals compose the
       account-scoped ADR-0020 vpc key with the standard
@@ -141,8 +144,11 @@ its tasks are checked off and its success criteria are met.
       allowlist is an audit surface); **ports-with-`-1`** rejection
       (the API rejects ports with all-protocols); the **world-open
       guard** — `0.0.0.0/0` / `::/0` in any ingress rule fails
-      unless `allow_world_open_ingress = true` — mechanism per
-      OQ 1. The guard's boundary is deliberate: it inspects the
+      unless `allow_world_open_ingress = true` — implemented as a
+      cross-variable validation on `ingress_rules` naming the
+      offending rule keys in its message (OQ 1a; the reason for
+      the module's `>= 1.9` floor). The guard's boundary is
+      deliberate: it inspects the
       literal CIDR fields only; a prefix list containing
       `0.0.0.0/0` is invisible **by design** (the reference is
       live — plan-time expansion would give false assurance), so
@@ -325,7 +331,17 @@ The design's Testing Strategy is the authority. Fleet mechanics:
 
 ## Open Questions
 
+> **All resolved 2026-09-04: 1a, 2a.** The world-open guard is a
+> cross-variable validation on `ingress_rules` referencing
+> `allow_world_open_ingress`, and the module ships with
+> `required_version = ">= 1.9"` — the fleet's first 1.9 floor
+> (tasks 1.1 and 1.5 updated). Egress carries no guard: world
+> egress is the default posture. No other task edits follow.
+
 ### 1. What mechanism enforces the world-open guard?
+
+**Resolved: a.** Cross-variable validation on `ingress_rules` +
+`required_version = ">= 1.9"`.
 
 The guard reads **two** variables — a rule in `ingress_rules` plus
 the `allow_world_open_ingress` toggle — and a `validation` block
@@ -354,6 +370,9 @@ only the world-open guard's home and the module's floor.
 - Other: (your call)
 
 ### 2. Does egress get the world-open guard too?
+
+**Resolved: a.** No — ingress only; world egress is the module's
+default posture.
 
 The typed `egress_rules` map accepts the same CIDR fields, so
 `0.0.0.0/0` can appear there when `allow_all_egress = false`.
