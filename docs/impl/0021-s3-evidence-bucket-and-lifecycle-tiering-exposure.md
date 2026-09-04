@@ -179,25 +179,25 @@ The INV-0011 OQ 8a surface, landed on both forks in one pass so the
 
 #### Tasks
 
-- [ ] 2.1 `s3/bucket`: `lifecycle_rules` variable typed identically
+- [x] 2.1 `s3/bucket`: `lifecycle_rules` variable typed identically
       to the extended core shape, passed straight through to
       `extra_lifecycle_rules`; the reserved-id validation
       (`abort-incomplete-multipart-upload`) **mirrored at the root**
       (`expect_failures` cannot target a child module's validation —
       the family's established mirroring rule).
-- [ ] 2.2 `lifecycle_rule_ids` output re-export on `s3/bucket`.
-- [ ] 2.3 `s3/events-bucket`: the identical variable + passthrough +
+- [x] 2.2 `lifecycle_rule_ids` output re-export on `s3/bucket`.
+- [x] 2.3 `s3/events-bucket`: the identical variable + passthrough +
       re-export — divergence between the forks stays
       notification.tf-only.
-- [ ] 2.4 Plan additions in both modules: passthrough asserted via
+- [x] 2.4 Plan additions in both modules: passthrough asserted via
       `lifecycle_rule_ids` ordering (baseline MPU-abort rule first),
       a transitions-rendering run, reserved-id rejection — plus its
       per-rule verification.
-- [ ] 2.5 Diff-guard check: the `bucket`/`events-bucket`
+- [x] 2.5 Diff-guard check: the `bucket`/`events-bucket`
       byte-identical `security_baseline.tftest.hcl` pair still
       passes untouched (the baseline suite does not cover
       lifecycle).
-- [ ] 2.6 Gates (`just tf all` both modules); conventional commit.
+- [x] 2.6 Gates (`just tf all` both modules); conventional commit.
 
 #### Success Criteria
 
