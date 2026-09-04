@@ -663,6 +663,27 @@ decision), and `acm/certificate` (parked until a Terraform consumer of
 cert ARNs exists — today the ARN consumer is chart-side). The IAM pair
 wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 
+**S3 delivery (2026-09-04, IMPL-0021):** the evidence bucket and the
+lifecycle tiering exposure are built — F2, F4, and F5 are all closed.
+The core carries `object_lock` (default = hard no-op; explicit
+`object_lock_enabled = false` is the provider's absent-argument
+equivalent, pinned by a default run) with three validations including
+the retention-set-but-disabled coherence guard, the versioning
+precondition, and the transition/noncurrent-transition type extension
+with the F5 coverage gaps closed (core suite 19 → 31 runs).
+`bucket` + `events-bucket` expose the full typed `lifecycle_rules`
+surface with the reserved-rule-id root mirrors (9 → 11 / 13 → 15
+runs; the baseline diff-guard pair unchanged). The new
+**`s3/evidence-bucket`** pins versioning + lock with COMPLIANCE
+default and a REQUIRED duration (OQ 6a/7a as resolved; 15 runs, the
+family's second documented baseline variant). Live Community apply
+1/1 on token-free 4.4 — and **probe B came back POSITIVE**: 4.4
+Community *enforces* COMPLIANCE retention (`delete-object` on a
+locked version → AccessDenied), beyond the config round-trip F4
+expected; the baked suite still asserts config surface only and
+writes no objects, since real enforcement makes a locked version's
+teardown undeletable.
+
 **EKS delivery (2026-08-30, IMPL-0020):** the hub posture work is
 built — F7 and F8 are both closed. `managed-node-group` carries the
 five-class `workload_class` enum (`core` default; the five hardwired

@@ -341,7 +341,8 @@ Tracked in git. As of this writing:
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
 - **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
-  IMPL-0018, in progress). Architecture: thin purpose modules over one shared
+  IMPL-0018; extended by DESIGN-0022 → IMPL-0021 with the evidence
+  tier + lifecycle tiering). Architecture: thin purpose modules over one shared
   **internal core** at `modules/s3/internal/core` (IMPL-0018 Phase 1,
   implemented), consumed ONLY via the relative path
   `source = "../internal/core"` so the core rides each purpose module's tag —
@@ -438,6 +439,39 @@ Tracked in git. As of this writing:
   second probe found LocalStack does **not** enforce destination
   policies (real S3 returns `InvalidArgument` for a policy-less queue),
   so the apply demonstrates the queue-policy shape without verifying it.
+  **IMPL-0021 (DESIGN-0022, 2026-09-04)** added the evidence tier: the
+  core grew `object_lock` (default `{}` = hard no-op — explicit
+  `object_lock_enabled = false` is the provider's absent-argument
+  equivalent, so every pre-existing bucket replans zero-diff, pinned
+  by a default run) with a mode enum, days-xor-years, and the
+  **retention-set-but-disabled coherence guard** (`{ days = 400 }`
+  without `enabled = true` fails at plan instead of silently
+  configuring nothing — the IMPL-0020 silent-widening lesson applied),
+  a versioning-coupling precondition, a count-gated
+  `aws_s3_bucket_object_lock_configuration` (lock-on with no duration
+  is legal: per-object retention only), and an attribute-derived
+  `object_lock` output (null without default retention — rides its
+  own output so the shared `security_baseline` shape is untouched,
+  OQ 7a). The lifecycle type gained `transitions` +
+  `noncurrent_version_transitions` (storage-class validated; per-rule
+  day ordering left to the S3 API) and the F5 gaps closed (core 19 →
+  31 runs). `bucket`/`events-bucket` expose the full typed
+  `lifecycle_rules` + `lifecycle_rule_ids` re-export with the
+  reserved-rule-id guard mirrored at both roots (the reserved-sid
+  pattern; 11/15 runs, diff-guard pair untouched).
+  **`evidence-bucket`** (NEW) pins versioning + lock (no variables),
+  maps required `retention` (COMPLIANCE default, exactly one of
+  days/years — OQ 1a: no default duration) onto the core, carries the
+  full reference-consumer surface, and its `security_baseline` suite
+  is the family's **second documented variant** (versioning Enabled;
+  static-check's diff loop is an events-bucket-only allowlist, so
+  variants need no exclusion edit — but the guard comment names
+  them). Community apply 1/1 on token-free 4.4; **probe B POSITIVE**:
+  4.4 Community *enforces* COMPLIANCE retention (version delete →
+  AccessDenied), so never write objects in a locked-bucket apply
+  suite — teardown would be undeletable until retention expires
+  (suite keeps `days = 1`, writes nothing; enforcement recorded in
+  FINDINGS.md, config-surface assertions only per OQ 2a).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →

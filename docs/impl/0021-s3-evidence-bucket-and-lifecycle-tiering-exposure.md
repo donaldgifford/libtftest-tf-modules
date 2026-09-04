@@ -273,7 +273,7 @@ The F6 probe discipline, then documentation and release.
 
 #### Tasks
 
-- [ ] 4.1 Community apply suite (`tests-localstack/`, token-free
+- [x] 4.1 Community apply suite (`tests-localstack/`, token-free
       `localstack/localstack:4.4`, `SERVICES=s3,sts`): **probe A** —
       does 4.4 accept `object_lock_enabled` at create +
       `PutObjectLockConfiguration`? **Probe B** — does 4.4
@@ -281,19 +281,19 @@ The F6 probe discipline, then documentation and release.
       Unprobed territory (F4). The apply keeps retention
       `days = 1` and writes **no objects**, so teardown never
       fights COMPLIANCE mode.
-- [ ] 4.2 Run live; FINDINGS.md records both probe outcomes; the
+- [x] 4.2 Run live; FINDINGS.md records both probe outcomes; the
       baked suite asserts only what round-trips (the family rule —
       config surface, never enforcement depth; see OQ 2).
-- [ ] 4.3 READMEs: the prominent COMPLIANCE warning (locked
+- [x] 4.3 READMEs: the prominent COMPLIANCE warning (locked
       versions undeletable by anyone until expiry; a fat-fingered
       long retention is unfixable; a bucket holding locked versions
       cannot be deleted), the retention/expiration interplay
       section (deferred expiration, lock-compatible transitions),
       the brownfield new-bucket-plus-copy note, lifecycle docs on
       `bucket`/`events-bucket`.
-- [ ] 4.4 CLAUDE.md s3 family section; INV-0011 delivery note.
-- [ ] 4.5 `docz update` + the mangle-set restore; `just docs lint`.
-- [ ] 4.6 `just readme` — the module table gains the
+- [x] 4.4 CLAUDE.md s3 family section; INV-0011 delivery note.
+- [x] 4.5 `docz update` + the mangle-set restore; `just docs lint`.
+- [x] 4.6 `just readme` — the module table gains the
       `evidence-bucket` row. Its drift gate is the **separate**
       `readme-check` CI job that `just static` does not cover
       (IMPL-0020 shipped with this stale until caught by hand).
