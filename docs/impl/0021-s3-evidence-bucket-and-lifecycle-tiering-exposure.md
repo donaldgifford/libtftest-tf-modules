@@ -1,7 +1,7 @@
 ---
 id: IMPL-0021
 title: "S3 evidence bucket and lifecycle tiering exposure"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0021: S3 evidence bucket and lifecycle tiering exposure
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
