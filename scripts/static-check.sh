@@ -112,9 +112,10 @@ done < <(list_modules)
 #      module's tag — a versioned source (registry name or git ref) would
 #      break that and let a purpose module pin a stale core.
 #   b) The shared security-baseline suite is byte-identical across the
-#      modules that carry the full F2 baseline. access-logs-bucket is the
-#      documented F3 variant (SSE-S3, no tri-state) and is deliberately
-#      excluded.
+#      modules that carry the full F2 baseline. Two documented variants
+#      are deliberately excluded: access-logs-bucket (F3 — SSE-S3, no
+#      tri-state) and evidence-bucket (DESIGN-0022 OQ 7a — versioning
+#      pinned Enabled for Object Lock).
 log "s3 family guards (core source form + baseline-suite identity)"
 
 # (a) any `source =` pointing at the core must be exactly the relative path.
