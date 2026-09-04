@@ -117,7 +117,7 @@ is why the whole change set rides one PR series (OQ 1).
 
 #### Tasks
 
-- [ ] 1.1 `object_lock` variable in
+- [x] 1.1 `object_lock` variable in
       `modules/s3/internal/core/variables.tf` — the DESIGN-0022
       spec verbatim: `{enabled, mode, days, years}`, default `{}`,
       `nullable = false`, three validations — mode enum
@@ -126,7 +126,7 @@ is why the whole change set rides one PR series (OQ 1).
       post-IMPL-0020-review addition: `{ days = 400 }` without
       `enabled = true` must fail at plan, not silently configure
       nothing).
-- [ ] 1.2 `bucket.tf` wiring: `object_lock_enabled =
+- [x] 1.2 `bucket.tf` wiring: `object_lock_enabled =
       var.object_lock.enabled` on `aws_s3_bucket.this` (explicit
       false == today's absent argument — the zero-diff guarantee);
       the count-gated `aws_s3_bucket_object_lock_configuration`
@@ -135,7 +135,7 @@ is why the whole change set rides one PR series (OQ 1).
       versioning precondition (`!var.object_lock.enabled ||
       var.versioning_enabled`) with both variables named in the
       message.
-- [ ] 1.3 Lifecycle type extension: `extra_lifecycle_rules` entries
+- [x] 1.3 Lifecycle type extension: `extra_lifecycle_rules` entries
       gain optional `transitions` + `noncurrent_version_transitions`
       lists (default `[]` — additive, existing callers unchanged);
       matching `dynamic "transition"` /
@@ -143,7 +143,7 @@ is why the whole change set rides one PR series (OQ 1).
       `dynamic "rule"`; `storage_class` validation against the six
       transition targets. Per-rule day-ordering stays with the S3
       API (the design's call — no cross-field arithmetic).
-- [ ] 1.4 Core plan additions in `internal/core/tests/`: the
+- [x] 1.4 Core plan additions in `internal/core/tests/`: the
       **default-run no-op pin** (`object_lock_enabled == false` +
       zero config resources — the existing-bucket guarantee); the
       enabled run (config resource + mode/days); the
@@ -153,14 +153,14 @@ is why the whole change set rides one PR series (OQ 1).
       noncurrent-transition rendering; the F5 closures
       (`noncurrent_version_expiration_days`, `enabled = false`,
       `prefix`).
-- [ ] 1.5 Per-rule verification of every new `expect_failures` run
+- [x] 1.5 Per-rule verification of every new `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) — three
       validations and a precondition now stack on this surface, and
       a passing run proves only that the object errored, not which
       rule fired.
-- [ ] 1.6 Full family fan-out: `just changed` shows every s3 leaf;
+- [x] 1.6 Full family fan-out: `just changed` shows every s3 leaf;
       run all family plan suites green.
-- [ ] 1.7 `just tf all` on the core; conventional commit.
+- [x] 1.7 `just tf all` on the core; conventional commit.
 
 #### Success Criteria
 
