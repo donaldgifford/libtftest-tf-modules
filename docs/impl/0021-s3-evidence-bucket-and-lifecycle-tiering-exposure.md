@@ -1,7 +1,7 @@
 ---
 id: IMPL-0021
 title: "S3 evidence bucket and lifecycle tiering exposure"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0021: S3 evidence bucket and lifecycle tiering exposure
 
-**Status:** In Progress
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
@@ -297,10 +297,12 @@ The F6 probe discipline, then documentation and release.
       `evidence-bucket` row. Its drift gate is the **separate**
       `readme-check` CI job that `just static` does not cover
       (IMPL-0020 shipped with this stale until caught by hand).
-- [ ] 4.7 One PR carrying all four phases as separate commit groups
+- [x] 4.7 One PR carrying all four phases as separate commit groups
       (OQ 1a); `### RELEASE NOTES` carries the evidence-bucket
       introduction and the lifecycle exposure; label `minor` — one
-      release, one tag for the Loki stack to pin.
+      release, one tag for the Loki stack to pin. **Shipped: PR #110,
+      squash-merged 2026-09-04, tagged `v0.22.0` — the tag the Loki
+      archive stack pins.**
 
 #### Success Criteria
 
