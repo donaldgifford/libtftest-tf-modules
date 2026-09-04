@@ -214,7 +214,7 @@ posture pinned and the retention surface as its one new variable.
 
 #### Tasks
 
-- [ ] 3.1 Scaffold `modules/s3/evidence-bucket` as a `bucket` fork:
+- [x] 3.1 Scaffold `modules/s3/evidence-bucket` as a `bucket` fork:
       **pinned, no variables** — `versioning_enabled = true` and
       `object_lock.enabled = true` into the core; the `retention`
       object (`mode` optional, default `"COMPLIANCE"`; `days` /
@@ -224,7 +224,7 @@ posture pinned and the retention surface as its one new variable.
       only rejects both-set). Honor the wrapper-module
       `required_providers` gotcha (root declares aws even with no
       direct aws resource, tflint-ignored).
-- [ ] 3.2 The full reference-consumer surface carried over from
+- [x] 3.2 The full reference-consumer surface carried over from
       `bucket`: composed naming + shard prefix, the `access_logging`
       tri-state (count-gated reserved-key read),
       `additional_policy_statements` + the mirrored reserved-sid
@@ -233,29 +233,29 @@ posture pinned and the retention surface as its one new variable.
       cannot override lock retention), and the full
       `lifecycle_rules` surface (OQ 2a — evidence data is exactly
       the long-retention data that needs Glacier tiering).
-- [ ] 3.3 Outputs: the NEW evidence-only `object_lock` output —
+- [x] 3.3 Outputs: the NEW evidence-only `object_lock` output —
       `{ mode, days, years }` **attribute-derived** from the config
       resource (the family doctrine); the standard
       `security_baseline` re-export (shared shape untouched — lock
       facts ride the separate output so nothing ripples into the
       other family suites); `lifecycle_rule_ids`.
-- [ ] 3.4 The variant `security_baseline.tftest.hcl`: asserts
+- [x] 3.4 The variant `security_baseline.tftest.hcl`: asserts
       `versioning_status == "Enabled"`, otherwise the full F2
       posture; header comment naming exactly which assertions
       diverge and why; excluded from the byte-identical diff loop —
       the second documented variant beside `access-logs-bucket`'s
       AES256 variant (OQ 7a).
-- [ ] 3.5 Plan suite per the design's Testing Strategy: retention
+- [x] 3.5 Plan suite per the design's Testing Strategy: retention
       wiring through to the config resource (COMPLIANCE default,
       GOVERNANCE override, days and years variants); the
       required-duration and days-xor-years rejections via
       `expect_failures` + per-rule verification; the tri-state
       logging paths; policy passthrough + reserved-sid guard; the
       `object_lock` output contract; lifecycle passthrough.
-- [ ] 3.6 `just changed` verification: the new leaf enters the plan
+- [x] 3.6 `just changed` verification: the new leaf enters the plan
       and community matrix arrays automatically (test-directory
       discovery — zero pipeline edits).
-- [ ] 3.7 Gates; conventional commit.
+- [x] 3.7 Gates; conventional commit.
 
 #### Success Criteria
 
