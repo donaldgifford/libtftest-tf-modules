@@ -15,7 +15,13 @@
 #--------------------------------------------------------------
 
 resource "aws_s3_bucket" "this" {
-  bucket        = local.bucket_name
+  bucket = local.bucket_name
+
+  # CREATE-TIME (ForceNew). Explicit false is identical to the absent
+  # argument, so pre-DESIGN-0022 buckets replan zero-diff — pinned by
+  # the default run in tests/object_lock.tftest.hcl.
+  object_lock_enabled = var.object_lock.enabled
+
   force_destroy = var.force_destroy
   tags          = var.tags
 
@@ -50,6 +56,35 @@ resource "aws_s3_bucket_versioning" "this" {
   versioning_configuration {
     status = var.versioning_enabled ? "Enabled" : "Suspended"
   }
+
+  lifecycle {
+    precondition {
+      condition     = !var.object_lock.enabled || var.versioning_enabled
+      error_message = "object_lock.enabled = true requires versioning_enabled = true — S3 Object Lock depends on versioning and forbids suspending it (INV-0011 F4)."
+    }
+  }
+}
+
+# Default retention only renders when the caller sets a duration —
+# lock-enabled with both null is legal (per-object retention only; the
+# evidence module decides whether to require a default, DESIGN-0022
+# OQ 1a: it does).
+resource "aws_s3_bucket_object_lock_configuration" "this" {
+  count = var.object_lock.enabled && (var.object_lock.days != null || var.object_lock.years != null) ? 1 : 0
+
+  bucket = aws_s3_bucket.this.id
+
+  rule {
+    default_retention {
+      mode  = var.object_lock.mode
+      days  = var.object_lock.days
+      years = var.object_lock.years
+    }
+  }
+
+  # Object Lock requires versioning Enabled; sequence after the
+  # versioning resource the same way the lifecycle configuration does.
+  depends_on = [aws_s3_bucket_versioning.this]
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
@@ -114,6 +149,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 
         content {
           noncurrent_days = noncurrent_version_expiration.value
+        }
+      }
+
+      dynamic "transition" {
+        for_each = rule.value.transitions
+
+        content {
+          days          = transition.value.days
+          storage_class = transition.value.storage_class
+        }
+      }
+
+      dynamic "noncurrent_version_transition" {
+        for_each = rule.value.noncurrent_version_transitions
+
+        content {
+          noncurrent_days = noncurrent_version_transition.value.noncurrent_days
+          storage_class   = noncurrent_version_transition.value.storage_class
         }
       }
     }

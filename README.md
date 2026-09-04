@@ -45,9 +45,10 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`rds/read-replica`](modules/rds/read-replica) | `v0.17.0` | IMPL-0013 | 3 | plan-only | ✅ |
 | [`rds/serverless`](modules/rds/serverless) | `v0.18.0` | IMPL-0007 | 7 | apply | — |
 | [`s3/access-logs-bucket`](modules/s3/access-logs-bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
-| [`s3/bucket`](modules/s3/bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
-| [`s3/events-bucket`](modules/s3/events-bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
-| [`s3/internal/core`](modules/s3/internal/core) | `v0.19.0` | IMPL-0018 | 5 | — | — |
+| [`s3/bucket`](modules/s3/bucket) | `unreleased` | IMPL-0018 | 4 | apply | — |
+| [`s3/events-bucket`](modules/s3/events-bucket) | `unreleased` | IMPL-0018 | 4 | apply | — |
+| [`s3/evidence-bucket`](modules/s3/evidence-bucket) | `unreleased` | IMPL-0021 | 4 | apply | — |
+| [`s3/internal/core`](modules/s3/internal/core) | `unreleased` | IMPL-0018 | 7 | — | — |
 | [`secretsmanager/secret`](modules/secretsmanager/secret) | `v0.20.0` | IMPL-0019 | 4 | apply | — |
 
 <!-- END_MODULE_TABLE -->

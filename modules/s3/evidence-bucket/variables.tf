@@ -100,11 +100,34 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "versioning_enabled" {
-  description = "Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2)."
-  type        = bool
-  default     = false
-  nullable    = false
+# NB: no versioning_enabled variable — versioning is PINNED Enabled
+# (Object Lock requires it and forbids suspending it, INV-0011 F4).
+
+variable "retention" {
+  description = "Object Lock default retention, applied to every new object version at write time. REQUIRED, no default duration (DESIGN-0022 OQ 1a: a too-long COMPLIANCE default is unfixable, a too-short one under-retains evidence — the retention period IS the design decision, stated explicitly per stack). mode COMPLIANCE (default) = no principal, including root, can shorten retention or delete a locked version until expiry; GOVERNANCE is bypassable via s3:BypassGovernanceRetention (lower-stakes tiers). Exactly one of days/years."
+  type = object({
+    mode  = optional(string, "COMPLIANCE")
+    days  = optional(number)
+    years = optional(number)
+  })
+
+  # Root-addressable mirror of the core's mode enum (the reserved-sid
+  # pattern: expect_failures cannot target a child module's
+  # validation).
+  validation {
+    condition     = contains(["GOVERNANCE", "COMPLIANCE"], var.retention.mode)
+    error_message = "retention.mode must be GOVERNANCE or COMPLIANCE."
+  }
+
+  # Stricter than the core (which allows lock-on with no default
+  # retention): the evidence module REQUIRES a duration — exactly one
+  # of days/years (OQ 1a).
+  validation {
+    condition     = (var.retention.days == null) != (var.retention.years == null)
+    error_message = "retention requires exactly one of days or years — the duration is required (no default), and the S3 API takes exactly one."
+  }
+
+  nullable = false
 }
 
 variable "force_destroy" {

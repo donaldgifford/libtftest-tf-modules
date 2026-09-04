@@ -46,6 +46,15 @@ output "lifecycle_rule_ids" {
   value       = [for r in aws_s3_bucket_lifecycle_configuration.this.rule : r.id]
 }
 
+output "object_lock" {
+  description = "Default-retention facts derived from the object-lock configuration resource attributes (DESIGN-0022 OQ 7a — rides its own output so the shared security_baseline shape is untouched), or null when no default retention is configured. The evidence purpose module re-exports this verbatim; like security_baseline, it exists because purpose-module suites cannot address the core's resources."
+  value = try({
+    mode  = one(one(aws_s3_bucket_object_lock_configuration.this[0].rule).default_retention).mode
+    days  = one(one(aws_s3_bucket_object_lock_configuration.this[0].rule).default_retention).days
+    years = one(one(aws_s3_bucket_object_lock_configuration.this[0].rule).default_retention).years
+  }, null)
+}
+
 output "logging_target" {
   description = "Resolved server-access-logging target bucket, or null when logging is off."
   value       = try(aws_s3_bucket_logging.this[0].target_bucket, null)

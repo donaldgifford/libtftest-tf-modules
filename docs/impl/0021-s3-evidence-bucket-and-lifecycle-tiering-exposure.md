@@ -1,7 +1,7 @@
 ---
 id: IMPL-0021
 title: "S3 evidence bucket and lifecycle tiering exposure"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0021: S3 evidence bucket and lifecycle tiering exposure
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
@@ -117,7 +117,7 @@ is why the whole change set rides one PR series (OQ 1).
 
 #### Tasks
 
-- [ ] 1.1 `object_lock` variable in
+- [x] 1.1 `object_lock` variable in
       `modules/s3/internal/core/variables.tf` — the DESIGN-0022
       spec verbatim: `{enabled, mode, days, years}`, default `{}`,
       `nullable = false`, three validations — mode enum
@@ -126,7 +126,7 @@ is why the whole change set rides one PR series (OQ 1).
       post-IMPL-0020-review addition: `{ days = 400 }` without
       `enabled = true` must fail at plan, not silently configure
       nothing).
-- [ ] 1.2 `bucket.tf` wiring: `object_lock_enabled =
+- [x] 1.2 `bucket.tf` wiring: `object_lock_enabled =
       var.object_lock.enabled` on `aws_s3_bucket.this` (explicit
       false == today's absent argument — the zero-diff guarantee);
       the count-gated `aws_s3_bucket_object_lock_configuration`
@@ -135,7 +135,7 @@ is why the whole change set rides one PR series (OQ 1).
       versioning precondition (`!var.object_lock.enabled ||
       var.versioning_enabled`) with both variables named in the
       message.
-- [ ] 1.3 Lifecycle type extension: `extra_lifecycle_rules` entries
+- [x] 1.3 Lifecycle type extension: `extra_lifecycle_rules` entries
       gain optional `transitions` + `noncurrent_version_transitions`
       lists (default `[]` — additive, existing callers unchanged);
       matching `dynamic "transition"` /
@@ -143,7 +143,7 @@ is why the whole change set rides one PR series (OQ 1).
       `dynamic "rule"`; `storage_class` validation against the six
       transition targets. Per-rule day-ordering stays with the S3
       API (the design's call — no cross-field arithmetic).
-- [ ] 1.4 Core plan additions in `internal/core/tests/`: the
+- [x] 1.4 Core plan additions in `internal/core/tests/`: the
       **default-run no-op pin** (`object_lock_enabled == false` +
       zero config resources — the existing-bucket guarantee); the
       enabled run (config resource + mode/days); the
@@ -153,14 +153,14 @@ is why the whole change set rides one PR series (OQ 1).
       noncurrent-transition rendering; the F5 closures
       (`noncurrent_version_expiration_days`, `enabled = false`,
       `prefix`).
-- [ ] 1.5 Per-rule verification of every new `expect_failures` run
+- [x] 1.5 Per-rule verification of every new `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) — three
       validations and a precondition now stack on this surface, and
       a passing run proves only that the object errored, not which
       rule fired.
-- [ ] 1.6 Full family fan-out: `just changed` shows every s3 leaf;
+- [x] 1.6 Full family fan-out: `just changed` shows every s3 leaf;
       run all family plan suites green.
-- [ ] 1.7 `just tf all` on the core; conventional commit.
+- [x] 1.7 `just tf all` on the core; conventional commit.
 
 #### Success Criteria
 
@@ -179,25 +179,25 @@ The INV-0011 OQ 8a surface, landed on both forks in one pass so the
 
 #### Tasks
 
-- [ ] 2.1 `s3/bucket`: `lifecycle_rules` variable typed identically
+- [x] 2.1 `s3/bucket`: `lifecycle_rules` variable typed identically
       to the extended core shape, passed straight through to
       `extra_lifecycle_rules`; the reserved-id validation
       (`abort-incomplete-multipart-upload`) **mirrored at the root**
       (`expect_failures` cannot target a child module's validation —
       the family's established mirroring rule).
-- [ ] 2.2 `lifecycle_rule_ids` output re-export on `s3/bucket`.
-- [ ] 2.3 `s3/events-bucket`: the identical variable + passthrough +
+- [x] 2.2 `lifecycle_rule_ids` output re-export on `s3/bucket`.
+- [x] 2.3 `s3/events-bucket`: the identical variable + passthrough +
       re-export — divergence between the forks stays
       notification.tf-only.
-- [ ] 2.4 Plan additions in both modules: passthrough asserted via
+- [x] 2.4 Plan additions in both modules: passthrough asserted via
       `lifecycle_rule_ids` ordering (baseline MPU-abort rule first),
       a transitions-rendering run, reserved-id rejection — plus its
       per-rule verification.
-- [ ] 2.5 Diff-guard check: the `bucket`/`events-bucket`
+- [x] 2.5 Diff-guard check: the `bucket`/`events-bucket`
       byte-identical `security_baseline.tftest.hcl` pair still
       passes untouched (the baseline suite does not cover
       lifecycle).
-- [ ] 2.6 Gates (`just tf all` both modules); conventional commit.
+- [x] 2.6 Gates (`just tf all` both modules); conventional commit.
 
 #### Success Criteria
 
@@ -214,7 +214,7 @@ posture pinned and the retention surface as its one new variable.
 
 #### Tasks
 
-- [ ] 3.1 Scaffold `modules/s3/evidence-bucket` as a `bucket` fork:
+- [x] 3.1 Scaffold `modules/s3/evidence-bucket` as a `bucket` fork:
       **pinned, no variables** — `versioning_enabled = true` and
       `object_lock.enabled = true` into the core; the `retention`
       object (`mode` optional, default `"COMPLIANCE"`; `days` /
@@ -224,7 +224,7 @@ posture pinned and the retention surface as its one new variable.
       only rejects both-set). Honor the wrapper-module
       `required_providers` gotcha (root declares aws even with no
       direct aws resource, tflint-ignored).
-- [ ] 3.2 The full reference-consumer surface carried over from
+- [x] 3.2 The full reference-consumer surface carried over from
       `bucket`: composed naming + shard prefix, the `access_logging`
       tri-state (count-gated reserved-key read),
       `additional_policy_statements` + the mirrored reserved-sid
@@ -233,29 +233,29 @@ posture pinned and the retention surface as its one new variable.
       cannot override lock retention), and the full
       `lifecycle_rules` surface (OQ 2a — evidence data is exactly
       the long-retention data that needs Glacier tiering).
-- [ ] 3.3 Outputs: the NEW evidence-only `object_lock` output —
+- [x] 3.3 Outputs: the NEW evidence-only `object_lock` output —
       `{ mode, days, years }` **attribute-derived** from the config
       resource (the family doctrine); the standard
       `security_baseline` re-export (shared shape untouched — lock
       facts ride the separate output so nothing ripples into the
       other family suites); `lifecycle_rule_ids`.
-- [ ] 3.4 The variant `security_baseline.tftest.hcl`: asserts
+- [x] 3.4 The variant `security_baseline.tftest.hcl`: asserts
       `versioning_status == "Enabled"`, otherwise the full F2
       posture; header comment naming exactly which assertions
       diverge and why; excluded from the byte-identical diff loop —
       the second documented variant beside `access-logs-bucket`'s
       AES256 variant (OQ 7a).
-- [ ] 3.5 Plan suite per the design's Testing Strategy: retention
+- [x] 3.5 Plan suite per the design's Testing Strategy: retention
       wiring through to the config resource (COMPLIANCE default,
       GOVERNANCE override, days and years variants); the
       required-duration and days-xor-years rejections via
       `expect_failures` + per-rule verification; the tri-state
       logging paths; policy passthrough + reserved-sid guard; the
       `object_lock` output contract; lifecycle passthrough.
-- [ ] 3.6 `just changed` verification: the new leaf enters the plan
+- [x] 3.6 `just changed` verification: the new leaf enters the plan
       and community matrix arrays automatically (test-directory
       discovery — zero pipeline edits).
-- [ ] 3.7 Gates; conventional commit.
+- [x] 3.7 Gates; conventional commit.
 
 #### Success Criteria
 
@@ -273,7 +273,7 @@ The F6 probe discipline, then documentation and release.
 
 #### Tasks
 
-- [ ] 4.1 Community apply suite (`tests-localstack/`, token-free
+- [x] 4.1 Community apply suite (`tests-localstack/`, token-free
       `localstack/localstack:4.4`, `SERVICES=s3,sts`): **probe A** —
       does 4.4 accept `object_lock_enabled` at create +
       `PutObjectLockConfiguration`? **Probe B** — does 4.4
@@ -281,19 +281,19 @@ The F6 probe discipline, then documentation and release.
       Unprobed territory (F4). The apply keeps retention
       `days = 1` and writes **no objects**, so teardown never
       fights COMPLIANCE mode.
-- [ ] 4.2 Run live; FINDINGS.md records both probe outcomes; the
+- [x] 4.2 Run live; FINDINGS.md records both probe outcomes; the
       baked suite asserts only what round-trips (the family rule —
       config surface, never enforcement depth; see OQ 2).
-- [ ] 4.3 READMEs: the prominent COMPLIANCE warning (locked
+- [x] 4.3 READMEs: the prominent COMPLIANCE warning (locked
       versions undeletable by anyone until expiry; a fat-fingered
       long retention is unfixable; a bucket holding locked versions
       cannot be deleted), the retention/expiration interplay
       section (deferred expiration, lock-compatible transitions),
       the brownfield new-bucket-plus-copy note, lifecycle docs on
       `bucket`/`events-bucket`.
-- [ ] 4.4 CLAUDE.md s3 family section; INV-0011 delivery note.
-- [ ] 4.5 `docz update` + the mangle-set restore; `just docs lint`.
-- [ ] 4.6 `just readme` — the module table gains the
+- [x] 4.4 CLAUDE.md s3 family section; INV-0011 delivery note.
+- [x] 4.5 `docz update` + the mangle-set restore; `just docs lint`.
+- [x] 4.6 `just readme` — the module table gains the
       `evidence-bucket` row. Its drift gate is the **separate**
       `readme-check` CI job that `just static` does not cover
       (IMPL-0020 shipped with this stale until caught by hand).

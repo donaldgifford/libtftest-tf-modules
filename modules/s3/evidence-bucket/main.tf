@@ -1,13 +1,22 @@
-# S3 bucket (modules/s3/bucket)
+# S3 evidence bucket (modules/s3/evidence-bucket)
 #
-# The family's general-purpose secure bucket (DESIGN-0019 Phase 3 /
-# INV-0009 F1) and its reference consumer: the fleet's first
-# count-gated remote-state read. The F2 security baseline (PAB,
-# BucketOwnerEnforced, SSE-KMS + bucket key, TLS policy denies,
-# MPU-abort hygiene) comes verbatim from the internal core; this
-# module's type-specific surface is exactly the F4 access-logging
-# tri-state plus the six Terragrunt globals and the additive
-# operator policy statements (OQ 4b).
+# Evidence-grade retention (DESIGN-0022 / INV-0011 F4): a `bucket`
+# fork with the evidence posture PINNED — versioning Enabled and
+# Object Lock on, neither exposed as a variable (suspending
+# versioning is forbidden on a locked bucket anyway; the lock flag is
+# create-time). The retention surface is the one new variable:
+# var.retention maps onto the core's object_lock, mode defaulting
+# COMPLIANCE — no principal, including root, can shorten retention or
+# delete a locked version until expiry — with the duration REQUIRED
+# (OQ 1a: the retention period IS the design decision).
+#
+# Everything else is the reference-consumer surface carried from
+# `bucket`: the F2 baseline via the core, the F4 access-logging
+# tri-state, the six Terragrunt globals, additive operator policy
+# statements, and the full lifecycle surface (OQ 2a — evidence data
+# is exactly the long-retention data that tiers to Glacier while
+# retention holds; expiration of a locked version defers until its
+# retention passes).
 #
 # The tri-state (var.access_logging):
 #   1. default {}            — look the fleet sink up at the reserved
@@ -72,7 +81,18 @@ module "core" {
   # aws/s3 key + bucket key, a CMK otherwise.
   encryption = { kms_key_arn = var.kms_key_arn }
 
-  versioning_enabled              = var.versioning_enabled
+  # The evidence posture, pinned (no variables): a locked bucket
+  # requires versioning Enabled, and object_lock.enabled is
+  # create-time — every evidence bucket is BORN locked.
+  versioning_enabled = true
+
+  object_lock = {
+    enabled = true
+    mode    = var.retention.mode
+    days    = var.retention.days
+    years   = var.retention.years
+  }
+
   force_destroy                   = var.force_destroy
   abort_incomplete_multipart_days = var.abort_incomplete_multipart_days
   extra_lifecycle_rules           = var.lifecycle_rules

@@ -70,6 +70,28 @@ stack sidesteps the ordering entirely with
 The composed key is pinned by a plan assertion in
 `tests/default.tftest.hcl`; see ADR-0020 for the fleet table.
 
+## Lifecycle rules
+
+`lifecycle_rules` appends typed rules after the always-first baseline
+MPU-abort rule (DESIGN-0022 / INV-0011 OQ 8a) — expirations plus
+storage-class **transitions** for tiering (`STANDARD_IA`,
+`ONEZONE_IA`, `INTELLIGENT_TIERING`, `GLACIER_IR`, `GLACIER`,
+`DEEP_ARCHIVE`; validated at plan). The baseline rule id
+(`abort-incomplete-multipart-upload`) is reserved and rejected at
+plan; per-rule day ordering (transitions before expiration when both
+are set) is left to the S3 API. Rule wiring is assertable via the
+`lifecycle_rule_ids` output (baseline first, then caller order).
+
+```hcl
+lifecycle_rules = [{
+  id = "tier-and-expire"
+  transitions = [
+    { days = 90, storage_class = "GLACIER_IR" },
+  ]
+  noncurrent_version_expiration_days = 730
+}]
+```
+
 ## Additional policy statements
 
 `additional_policy_statements` appends operator statements into the

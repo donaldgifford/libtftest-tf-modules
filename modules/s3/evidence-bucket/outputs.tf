@@ -19,8 +19,13 @@ output "bucket_id" {
 }
 
 output "security_baseline" {
-  description = "The composed security baseline, re-exported verbatim from the internal core — pinned by this module's security_baseline.tftest.hcl (the family's byte-identical copy, Phase-5 diff guard)."
+  description = "The composed security baseline, re-exported verbatim from the internal core — pinned by this module's security_baseline.tftest.hcl (the documented VERSIONING VARIANT: versioning_status asserts Enabled, so the file is excluded from the family's byte-identical diff guard — DESIGN-0022 OQ 7a)."
   value       = module.core.security_baseline
+}
+
+output "object_lock" {
+  description = "The applied default retention { mode, days, years }, attribute-derived from the core's object-lock configuration resource (DESIGN-0022 OQ 7a — lock facts ride this evidence-only output so the shared security_baseline shape stays untouched across the family). Never null here: the retention duration is required."
+  value       = module.core.object_lock
 }
 
 output "bucket_policy_json" {
@@ -41,24 +46,4 @@ output "logging_target" {
 output "logging_prefix" {
   description = "Resolved server-access-logging prefix, or null when logging is off."
   value       = module.core.logging_prefix
-}
-
-output "notification_id" {
-  description = "ID of the singleton bucket-notification configuration (the bucket name, as the provider returns it)."
-  value       = aws_s3_bucket_notification.this.id
-}
-
-output "eventbridge_enabled" {
-  description = "Whether all events are forwarded to EventBridge (attribute-derived)."
-  value       = aws_s3_bucket_notification.this.eventbridge
-}
-
-output "notification_queue_arns" {
-  description = "Map of notification entry id => SQS queue ARN, derived from the applied notification configuration."
-  value       = { for q in aws_s3_bucket_notification.this.queue : q.id => q.queue_arn }
-}
-
-output "notification_topic_arns" {
-  description = "Map of notification entry id => SNS topic ARN, derived from the applied notification configuration."
-  value       = { for t in aws_s3_bucket_notification.this.topic : t.id => t.topic_arn }
 }

@@ -16,8 +16,9 @@ a valid intermediate state.
 
 See [USAGE.md](USAGE.md) for the generated input / output reference,
 and `s3/bucket`'s README for the shared surface (tri-state,
-ADR-0020 contract, additional policy statements) — it applies verbatim
-here.
+ADR-0020 contract, additional policy statements, the typed
+`lifecycle_rules` exposure with its reserved rule id) — it applies
+verbatim here.
 
 ## Destinations
 
