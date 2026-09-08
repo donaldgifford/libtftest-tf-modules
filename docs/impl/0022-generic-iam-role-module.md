@@ -103,7 +103,7 @@ verification.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/iam/role` per the design's layout
+- [x] 1.1 Scaffold `modules/iam/role` per the design's layout
       (`main.tf`, `trust.tf`, `variables.tf`, `outputs.tf`,
       `versions.tf`, `.tflint.hcl`, README/USAGE stubs, `tests/`,
       `tests-localstack/`). `versions.tf`: aws `~> 6.2`,
