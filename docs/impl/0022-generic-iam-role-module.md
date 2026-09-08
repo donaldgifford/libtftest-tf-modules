@@ -31,6 +31,7 @@ created: 2026-09-04
   - [Phase 4: Closure](#phase-4-closure)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+- [Verifying the fail-closed tests fail for the right reason](#verifying-the-fail-closed-tests-fail-for-the-right-reason)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -156,7 +157,7 @@ verification.
       session duration, bad name charset, plus the OQ-dependent
       duplicate-entry and malformed-JSON rejections; boundary +
       tags passthrough.
-- [ ] 1.7 Per-rule verification of every `expect_failures` run
+- [x] 1.7 Per-rule verification of every `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) — the
       design flags this explicitly: six-plus rules stack on two
       variables, and a passing run proves only that the variable
@@ -274,6 +275,44 @@ Pure IAM API — token-free Community, no Pro, no named volume.
   gates green; release tagged.
 
 ---
+
+## Verifying the fail-closed tests fail for the right reason
+
+Task 1.7, done by message-probe (each rejection re-run in a scratch
+file **without** `expect_failures`, reading the real error). Eleven
+rejection runs, **eight distinct rules** — every run fires the rule
+it is named for:
+
+| Run | Rule that fired |
+|-----|-----------------|
+| `empty_trust_list_rejected` | "must name at least one principal" |
+| `wildcard_arn_rejected` | "must not contain wildcard characters" |
+| `malformed_arn_rejected` | "must be an exact IAM role or user ARN" |
+| `service_principal_rejected` | "must be an exact IAM role or user ARN" |
+| `duplicate_principal_rejected` | "must not repeat a principal" |
+| `name_bad_charset_rejected` | "IAM role-name charset" |
+| `name_too_long_rejected` | "must be 1-64 characters" |
+| `path_without_trailing_slash_rejected` | "path must begin and end" |
+| `session_duration_too_long_rejected` | "max_session_duration must be between" |
+| `session_duration_too_short_rejected` | "max_session_duration must be between" |
+| `malformed_inline_json_rejected` | "must be a valid JSON document" |
+
+Two pairs share a rule **by design**, and the probe is what makes
+that visible rather than assumed:
+
+- `malformed_arn` and `service_principal` both hit the ARN-format
+  regex — a service principal *is* a malformed ARN from this
+  variable's perspective. Both are inputs a caller plausibly writes,
+  so both keep their run; neither is redundant coverage of a
+  *different* rule.
+- The two `session_duration` runs are the two directions of one
+  range rule.
+
+The reason to check rather than trust the green: four of the eight
+rules sit on `trusted_role_arns` alone, so a wildcard entry that
+also happened to be malformed would have passed off the ARN rule and
+looked identical. Each run is constructed to leave exactly one rule
+violated.
 
 ## File Changes
 
