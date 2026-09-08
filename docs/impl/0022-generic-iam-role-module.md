@@ -137,7 +137,7 @@ verification.
       `assume_role_policy` is plan-known (the plan-knowability
       discipline). Single-statement composition left so Follow-up
       1's conditions block slots in without reshaping the variable.
-- [ ] 1.4 `main.tf`: `aws_iam_role.this` (name, path, description,
+- [x] 1.4 `main.tf`: `aws_iam_role.this` (name, path, description,
       trust JSON, session duration, boundary, tags) + two
       `aws_iam_role_policy_attachment` `for_each`es (managed /
       customer-managed channels kept as separate variables so plans
