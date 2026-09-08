@@ -253,19 +253,19 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 
 #### Tasks
 
-- [ ] 4.1 ADR-0020: the `iam` producer row
+- [x] 4.1 ADR-0020: the `iam` producer row
       (`<account_name>/<region>/iam/<name>/terraform.tfstate`) —
       reserving the shape ahead of its first TF consumer, the way
       `secrets` was reserved.
-- [ ] 4.2 CLAUDE.md: the new `modules/iam/` section (module summary,
+- [x] 4.2 CLAUDE.md: the new `modules/iam/` section (module summary,
       the two design follow-ups + the OQ 1a jsondecode-backport
       follow-up for `eks/pod-identity-access`, the STS caveat);
       INV-0011 delivery note (the 2026-08-28 queue revision's
       condensed pair, delivered).
-- [ ] 4.3 `just readme` — the module table gains the `iam/role` row
+- [x] 4.3 `just readme` — the module table gains the `iam/role` row
       (the separate `readme-check` CI job, not covered by `just
       static`).
-- [ ] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
+- [x] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
 - [ ] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
       module and the adoption runbook.
 

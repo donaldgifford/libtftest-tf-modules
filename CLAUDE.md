@@ -474,7 +474,7 @@ Tracked in git. As of this writing:
   FINDINGS.md, config-surface assertions only per OQ 2a).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
-- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, **in progress**).
+- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, implemented).
   One generic **trust-boundary** role module replacing the queued
   `iam/deploy-role` + `iam/cross-account-role` pair — identical resource
   surfaces, so the inputs define what an instance is. Producer-only (no
@@ -498,6 +498,27 @@ Tracked in git. As of this writing:
   non-default `path` gives one role two legitimate ARN spellings; keep
   `path = "/"` for roles destined for an `eks/access-entries` binding
   until IMPL-0020 task 5.4's live runs settle EKS canonicalization.
+  Publishes at the platform-reserved ADR-0020 **`iam`** shape
+  (`<acct>/<region>/iam/<name>`), reserved ahead of its first consumer
+  the way `secrets` was; the `<name>` coupling is **exact and doubly
+  load-bearing** — it is both the state key segment and the string every
+  `assume_role` block composes, so a rename is a deliberate role
+  replacement, not a refactor. Tests: plan `tests/` 18 runs (the gate —
+  both §4 shapes with the trust JSON asserted by *content*, channel
+  address stability, 11 rejections each verified per-rule) + a Community
+  apply 3/3 on token-free 4.4 (`SERVICES=iam,sts` — no Pro, no token, no
+  named volume) whose `verify_readback` run reads the role back through
+  `data.aws_iam_role` in its own fixture. **FINDINGS leads with the
+  caveat that LocalStack STS mints credentials for any role ARN
+  (IMPL-0015 Phase 1), so the suite never asserts assumability** — trust
+  is enforced at plan by the four validations. **Import probe POSITIVE
+  (OQ 4a):** an out-of-band role adopted via an `import` block inside
+  `terraform test` applies clean and is torn down with the test; the
+  control — the identical apply *without* the block failing 409
+  `EntityAlreadyExists` — is what makes that evidence rather than a
+  coincidence. **Open follow-ups:** trust conditions (`external_id`)
+  and policy *creation* (`iam/policy` sibling), both additive and
+  expected sooner rather than later.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
   IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a

@@ -663,6 +663,26 @@ decision), and `acm/certificate` (parked until a Terraform consumer of
 cert ARNs exists — today the ARN consumer is chart-side). The IAM pair
 wants the platform's DESIGN-0001 §4 shared before its DESIGN is written.
 
+**IAM delivery (2026-09-04, IMPL-0022):** the 2026-08-28 queue
+revision's condensed pair is built — **`modules/iam/role`** covers
+both platform §4 patterns (the per-account deploy role and
+`sse-platform-access`) with one module and zero pattern branches, as
+the revision predicted. Trust is ARN-only and fail-closed: four
+separate validations on `trusted_role_arns` (non-empty, exact
+`role|user` ARN, wildcard rejection, duplicate rejection), no
+service-principal channel, no raw-JSON escape hatch. Policy channels
+mirror `eks/pod-identity-access` in shape; `inline_policies` adds a
+`can(jsondecode())` validation, and backporting that one rule to
+`pod-identity-access` is a recorded follow-up. Plan suite 18 runs,
+every rejection verified per-rule; Community apply 3/3 on token-free
+4.4 with an independent `data.aws_iam_role` read-back. **The
+sequencing note's cleanly-importable claim is now evidence, not
+assertion:** an out-of-band role adopted through an `import` block
+inside `terraform test` applies clean, and the control (the same
+apply without the block → 409 `EntityAlreadyExists`) proves the
+import did the work. Live deploy-role adoption stays live-repo work
+(OQ 4a); this repo ships the module plus the runbook.
+
 **S3 delivery (2026-09-04, IMPL-0021):** the evidence bucket and the
 lifecycle tiering exposure are built — F2, F4, and F5 are all closed.
 The core carries `object_lock` (default = hard no-op; explicit
