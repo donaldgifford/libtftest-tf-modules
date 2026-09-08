@@ -145,7 +145,7 @@ verification.
       `aws_iam_role_policy` `for_each` over `inline_policies`.
 - [x] 1.5 `outputs.tf`: `role_arn`, `role_name`, `role_unique_id` —
       pointer-only; no policy echo, no credential-adjacent values.
-- [ ] 1.6 Plan suite (`tests/`, real-provider-fake-creds — the data
+- [x] 1.6 Plan suite (`tests/`, real-provider-fake-creds — the data
       source needs no API call): a **deploy-shaped** run and a
       **platform-access-shaped** run pinning the composed trust
       JSON via `jsondecode(aws_iam_role.this.assume_role_policy)`
