@@ -1,7 +1,7 @@
 ---
 id: IMPL-0022
 title: "Generic IAM role module"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0022: Generic IAM role module
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
