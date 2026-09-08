@@ -113,7 +113,7 @@ verification.
       remote-state read, none of the six Terragrunt globals
       (IMPL-0015 Q6a — Terragrunt's pass-every-input injects them
       harmlessly).
-- [ ] 1.2 `variables.tf`: `name` (exact — no prefix; the by-name
+- [x] 1.2 `variables.tf`: `name` (exact — no prefix; the by-name
       contract in the description since every ADR-0020
       `assume_role` block composes this role's ARN from
       `deploy_role_name`; IAM charset + length ≤ 64 validation),
