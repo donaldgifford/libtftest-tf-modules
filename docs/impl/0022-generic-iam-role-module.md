@@ -143,7 +143,7 @@ verification.
       customer-managed channels kept as separate variables so plans
       distinguish AWS-owned from caller-owned at a glance) +
       `aws_iam_role_policy` `for_each` over `inline_policies`.
-- [ ] 1.5 `outputs.tf`: `role_arn`, `role_name`, `role_unique_id` —
+- [x] 1.5 `outputs.tf`: `role_arn`, `role_name`, `role_unique_id` —
       pointer-only; no policy echo, no credential-adjacent values.
 - [ ] 1.6 Plan suite (`tests/`, real-provider-fake-creds — the data
       source needs no API call): a **deploy-shaped** run and a
