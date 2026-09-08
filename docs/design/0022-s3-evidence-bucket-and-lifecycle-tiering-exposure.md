@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0022
 title: "S3 evidence bucket and lifecycle tiering exposure"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-08-27
 ---
@@ -9,7 +9,7 @@ created: 2026-08-27
 
 # DESIGN 0022: S3 evidence bucket and lifecycle tiering exposure
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-08-27
 
