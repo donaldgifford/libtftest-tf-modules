@@ -223,23 +223,23 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 
 #### Tasks
 
-- [ ] 3.1 `tests-localstack/` suite (token-free
+- [x] 3.1 `tests-localstack/` suite (token-free
       `localstack/localstack:4.4`, `SERVICES=iam,sts`): apply a
       platform-access-shaped instance; assert the IAM surface live
       — `get-role` round-trip (name, path, trust JSON), both
       attachment channels listed, inline documents round-tripping.
-- [ ] 3.2 FINDINGS.md **leads with the caveat**: LocalStack STS
+- [x] 3.2 FINDINGS.md **leads with the caveat**: LocalStack STS
       `AssumeRole` proves nothing about trust policies — it mints
       creds for any role ARN (the IMPL-0015 Phase 1 finding) — so
       the apply asserts the IAM surface, never "assumability."
-- [ ] 3.3 The OQ 4a import-feasibility probe: a fixture-created
+- [x] 3.3 The OQ 4a import-feasibility probe: a fixture-created
       role + an `import` block through the module's address, as a
       **recorded stretch, not a gate** — either outcome (works /
       `terraform test` can't) lands in FINDINGS as evidence for the
       runbook.
-- [ ] 3.4 Run live (`just tf test-localstack iam/role`); record the
+- [x] 3.4 Run live (`just tf test-localstack iam/role`); record the
       pass + LocalStack version in FINDINGS.md.
-- [ ] 3.5 Conventional commit.
+- [x] 3.5 Conventional commit.
 
 #### Success Criteria
 
