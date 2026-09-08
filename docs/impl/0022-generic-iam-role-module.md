@@ -181,7 +181,7 @@ adoption, and the runbook is what the live repo executes.
 
 #### Tasks
 
-- [ ] 2.1 The two platform §4 worked examples as full call sites:
+- [x] 2.1 The two platform §4 worked examples as full call sites:
       the **deploy role** (`name` = the fleet's `deploy_role_name`
       value; `trusted_role_arns` = the hub automation principals —
       the same stable-creator principal DESIGN-0024 OQ 4 sanctions;
@@ -190,7 +190,7 @@ adoption, and the runbook is what the live repo executes.
       argocd-deployer pod-identity role; a scoped inline EKS-access
       document; the cross-reference to DESIGN-0024 — the
       cluster-side half is an `eks/access-entries` entry).
-- [ ] 2.2 "Adopting an existing role": `import` blocks targeting
+- [x] 2.2 "Adopting an existing role": `import` blocks targeting
       the module's addresses (role by name, each attachment by
       `<role-name>/<policy-arn>`, each inline policy by
       `<role-name>:<policy-name>`); **match reality first, converge
@@ -198,7 +198,7 @@ adoption, and the runbook is what the live repo executes.
       zero-diff plan, then converge conventions in later reviewed
       plans; trust diffs converge in place (no replacement, no
       downtime).
-- [ ] 2.3 The remote-state key contract section: the
+- [x] 2.3 The remote-state key contract section: the
       platform-reserved `<account_name>/<region>/iam/<name>` shape,
       the triple coupling, and the reserved-ahead-of-consumers note
       (the `secrets` precedent). Both path notes land here: trust
@@ -206,7 +206,7 @@ adoption, and the runbook is what the live repo executes.
       destined for an access-entries binding should keep
       `path = "/"` until IMPL-0020 task 5.4's live runs answer how
       the EKS API canonicalizes path-bearing principals.
-- [ ] 2.4 `just tf docs iam/role` (USAGE.md regen, lock-free
+- [x] 2.4 `just tf docs iam/role` (USAGE.md regen, lock-free
       constraint form); conventional commit.
 
 #### Success Criteria
