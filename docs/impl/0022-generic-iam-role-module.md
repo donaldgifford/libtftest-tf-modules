@@ -266,8 +266,8 @@ Pure IAM API — token-free Community, no Pro, no named volume.
       (the separate `readme-check` CI job, not covered by `just
       static`).
 - [x] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
-- [ ] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
-      module and the adoption runbook.
+- [x] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
+      module and the adoption runbook. **Opened: PR #112.**
 
 #### Success Criteria
 
