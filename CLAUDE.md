@@ -474,6 +474,30 @@ Tracked in git. As of this writing:
   FINDINGS.md, config-surface assertions only per OQ 2a).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
+- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, **in progress**).
+  One generic **trust-boundary** role module replacing the queued
+  `iam/deploy-role` + `iam/cross-account-role` pair — identical resource
+  surfaces, so the inputs define what an instance is. Producer-only (no
+  remote-state read, none of the six globals), `required_version >= 1.1`
+  (every validation is single-variable). Fail-closed trust:
+  `trusted_role_arns` carries **four separate validation blocks**
+  (non-empty / exact `role|user` ARN regex / wildcard rejection /
+  duplicate rejection) so each rejection run is verifiable against the
+  rule it names; there is deliberately **no service-principal channel and
+  no raw-JSON trust escape hatch** (resource-owning modules mint their own
+  service roles). Policy channels mirror `eks/pod-identity-access` in
+  shape, with one deviation: `inline_policies` gains a
+  `can(jsondecode())` validation (IMPL-0022 OQ 1a) moving a guaranteed
+  apply-time `MalformedPolicyDocument` to plan — **a backport of that one
+  validation to `pod-identity-access` is an open follow-up** so the mirror
+  stays honest both ways. **`aws_iam_policy_document` rendering gotcha
+  (probed, pinned by two runs):** it collapses single-element sets, so
+  `Principal.AWS` is a **string** with one principal and a **list** with
+  two or more (`Action` likewise, being a single action) — an assertion
+  written for one shape silently proves nothing on the other. A
+  non-default `path` gives one role two legitimate ARN spellings; keep
+  `path = "/"` for roles destined for an `eks/access-entries` binding
+  until IMPL-0020 task 5.4's live runs settle EKS canonicalization.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
   IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a

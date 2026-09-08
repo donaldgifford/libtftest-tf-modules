@@ -162,7 +162,7 @@ verification.
       design flags this explicitly: six-plus rules stack on two
       variables, and a passing run proves only that the variable
       errored.
-- [ ] 1.8 `just tf all iam/role`; conventional commit.
+- [x] 1.8 `just tf all iam/role`; conventional commit.
 
 #### Success Criteria
 
