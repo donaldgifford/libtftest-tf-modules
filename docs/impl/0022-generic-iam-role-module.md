@@ -130,7 +130,7 @@ verification.
       (`managed_policy_arns`, `customer_managed_policy_arns`,
       `inline_policies` map of JSON — verbatim shape from
       `eks/pod-identity-access`; validation per OQ 1), `tags`.
-- [ ] 1.3 `trust.tf`: `data.aws_iam_policy_document.trust` — one
+- [x] 1.3 `trust.tf`: `data.aws_iam_policy_document.trust` — one
       `Allow` statement, `actions = ["sts:AssumeRole"]`,
       `principals { type = "AWS", identifiers =
       var.trusted_role_arns }`. Locally evaluated, so the composed
