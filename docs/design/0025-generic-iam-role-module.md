@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0025
 title: "Generic IAM role module"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-08-28
 ---
