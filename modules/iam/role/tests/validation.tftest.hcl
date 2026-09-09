@@ -1,10 +1,15 @@
 # Guardrails — every validation fails closed (IMPL-0022 task 1.6).
 #
-# Eight rules stack on five variables here, four of them on
+# Twelve rules stack on seven variables here, five of them on
 # trusted_role_arns alone, so each run below is constructed to leave
 # exactly ONE rule violated: a passing expect_failures run proves the
 # variable errored, NOT that the intended rule fired (IMPL-0020's
 # lesson). Task 1.7 message-probes every one of these.
+#
+# The last five runs are the security-review regressions (IMPL-0022
+# task 4.6) — each one is a call the module ACCEPTED before the
+# review, verified by re-running these inputs against the pre-fix
+# module and watching all five plan green.
 
 provider "aws" {
   region                      = "us-east-1"
@@ -150,4 +155,90 @@ run "malformed_inline_json_rejected" {
   }
 
   expect_failures = [var.inline_policies]
+}
+
+# --- security-review regressions (IMPL-0022 task 4.6) ---
+
+# F1: the provider omits permissions_boundary on create when it is ""
+# and DELETES the boundary on update, so "" plans as "bounded" and
+# applies as unbounded. The realistic source is a live-repo
+# try(dependency.x.outputs.arn, "") or a lookup miss.
+run "empty_string_permissions_boundary_rejected" {
+  command = plan
+
+  variables {
+    permissions_boundary = ""
+  }
+
+  expect_failures = [var.permissions_boundary]
+}
+
+# F3a: ".+$" matches a trailing space, so a padded ARN reached
+# Principal.AWS verbatim and resolved to no principal at all.
+run "padded_trust_arn_rejected" {
+  command = plan
+
+  variables {
+    trusted_role_arns = ["arn:aws:iam::000000000000:role/atlantis-pod-identity "]
+  }
+
+  expect_failures = [var.trusted_role_arns]
+}
+
+# F3b: IAM role names are account-unique CASE-INSENSITIVELY, so these
+# two spellings are one principal. Raw distinct() saw two.
+run "case_variant_duplicate_principal_rejected" {
+  command = plan
+
+  variables {
+    trusted_role_arns = [
+      "arn:aws:iam::000000000000:role/atlantis-pod-identity",
+      "arn:aws:iam::000000000000:role/Atlantis-Pod-Identity",
+    ]
+  }
+
+  expect_failures = [var.trusted_role_arns]
+}
+
+# F3c: the same role's path-bearing and path-stripped spellings — the
+# exact evasion IMPL-0020's collision guard normalizes against, and
+# the one var.path's own description warns about.
+run "path_variant_duplicate_principal_rejected" {
+  command = plan
+
+  variables {
+    trusted_role_arns = [
+      "arn:aws:iam::000000000000:role/platform/deploy-tf",
+      "arn:aws:iam::000000000000:role/deploy-tf",
+    ]
+  }
+
+  expect_failures = [var.trusted_role_arns]
+}
+
+# F2/F6: listing one ARN in BOTH channels minted two attachment
+# resources over one real (idempotent) attachment, so dropping it from
+# one channel detached the policy while the other still declared it —
+# a "1 to destroy" plan that silently re-grants on the next apply. The
+# typed channel partition makes that state unrepresentable: this ARN
+# is AWS-managed, so the customer channel now rejects it.
+run "aws_managed_arn_in_customer_channel_rejected" {
+  command = plan
+
+  variables {
+    managed_policy_arns          = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+    customer_managed_policy_arns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+  }
+
+  expect_failures = [var.customer_managed_policy_arns]
+}
+
+run "customer_arn_in_aws_managed_channel_rejected" {
+  command = plan
+
+  variables {
+    managed_policy_arns = ["arn:aws:iam::000000000000:policy/platform-deploy"]
+  }
+
+  expect_failures = [var.managed_policy_arns]
 }

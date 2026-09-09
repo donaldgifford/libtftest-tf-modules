@@ -176,15 +176,30 @@ Plus the standard optional set: `description`, `path` (default
 > review showed spelling mismatches are exactly where guards and
 > validations get evaded (its collision guard now normalizes for this
 > reason). Two consequences here: `trusted_role_arns` entries must be
-> the **real, path-bearing** ARNs — IAM validates principals at
-> policy save, and role names are account-unique regardless of path,
-> so a stripped spelling of a path-bearing role fails the apply
-> rather than matching anything else; and roles destined for an
+> the **real, path-bearing** ARNs — the module normalizes them to
+> `<account>/<name>` (lowercased, path-stripped) to reject the two
+> spellings of one principal at plan; and roles destined for an
 > `eks/access-entries` binding (worked example 2) should keep
 > `path = "/"` — the shipped access-entries validation and collision
 > guard handle both spellings, but how the EKS API canonicalizes
 > path-bearing principal ARNs is unverified until the IMPL-0020
 > task 5.4 live runs answer it. The README carries both notes.
+>
+> **Correction (IMPL-0022 security review, 2026-09-08).** This note
+> originally claimed a stripped spelling "fails the apply rather than
+> matching anything else." That is true **same-account only**: IAM
+> resolves a same-account principal to its unique id at policy save
+> and rejects one it cannot resolve. Cross-account it cannot resolve
+> the principal at all, so the ARN persists as an unvalidated literal
+> — a typo applies green, grants nobody, and leaves a **dangling
+> principal** that whoever later creates a role by that name in that
+> account inherits. Both worked examples are cross-account, so the
+> backstop is absent exactly where this module is meant to be used.
+> This promotes **Follow-up 1 (trust conditions) from "expected
+> sooner rather than later" to a prerequisite for the cross-account
+> instances** — with `aws:PrincipalOrgID` preferred over
+> `sts:ExternalId`, since it is the one that survives a dangling
+> principal and both v1 consumers are intra-org.
 
 ### Trust policy composition
 

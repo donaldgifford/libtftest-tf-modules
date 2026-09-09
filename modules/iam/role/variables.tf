@@ -47,7 +47,7 @@ variable "description" {
 #--------------------------------------------------------------
 
 variable "trusted_role_arns" {
-  description = "Exact IAM principal ARNs (roles or users) granted sts:AssumeRole on this role. At least one is required — a role nobody can assume is dead weight. Wildcards are rejected: this typed surface exists to prevent the fail-open a JSON trust channel would allow. Entries must be the REAL, path-bearing ARNs — IAM validates principals when the policy is saved, and role names are account-unique regardless of path, so a path-stripped spelling of a path-bearing role fails the apply rather than matching anything else. Service principals belong to the resource-owning modules (see the README Non-Goals)."
+  description = "Exact IAM principal ARNs (roles or users) granted sts:AssumeRole on this role. At least one is required — a role nobody can assume is dead weight. Wildcards are rejected: this typed surface exists to prevent the fail-open a JSON trust channel would allow. Entries must be the REAL, path-bearing ARNs. CAUTION — the apply-time backstop is SAME-ACCOUNT ONLY: IAM resolves a same-account principal to its unique id when the policy is saved, so a wrong spelling there fails the apply; a CROSS-ACCOUNT ARN is stored as an unvalidated literal string, so a typo applies green, grants nobody, and leaves a dangling principal that whoever later creates a role by that name inherits. Both worked examples in the README are cross-account, so treat these ARNs as unverified input and pair the cross-account instances with a trust condition (DESIGN-0025 Follow-up 1). Service principals belong to the resource-owning modules (see the README Non-Goals)."
   type        = list(string)
 
   validation {
@@ -69,12 +69,34 @@ variable "trusted_role_arns" {
     error_message = "trusted_role_arns must not contain wildcard characters (* or ?) — trust is granted to named principals only."
   }
 
+  # A padded ARN passes the format regex above (".+$" happily matches
+  # a trailing space) and reaches Principal.AWS verbatim, where it
+  # resolves to nothing — the realistic copy-paste artifact. Leading
+  # whitespace and embedded newlines are already rejected by the
+  # anchors (Go RE2 "$" is end-of-text without the "m" flag).
+  validation {
+    condition     = alltrue([for a in var.trusted_role_arns : a == trimspace(a)])
+    error_message = "trusted_role_arns entries must carry no leading or trailing whitespace — a padded ARN passes the format check and reaches the trust policy verbatim, where it matches no principal at all."
+  }
+
   # Duplicates change no behavior (IAM dedupes principals at policy
   # save), but the trust list is an audit surface reviewers count:
   # a repeated ARN misstates the principal count (OQ 2a).
+  #
+  # Compared NORMALIZED — <account>/<name>, lowercased and
+  # path-stripped — not as raw strings, because one role has two
+  # legitimate ARN spellings (see var.path) and IAM role names are
+  # account-unique CASE-INSENSITIVELY. A raw distinct() lets both
+  # evasions through, which is the IMPL-0020 collision-guard lesson.
+  # element() is used over [] indexing because it wraps rather than
+  # erroring, so this rule stays evaluable on a malformed ARN that
+  # the format rule above is what should reject.
   validation {
-    condition     = length(var.trusted_role_arns) == length(distinct(var.trusted_role_arns))
-    error_message = "trusted_role_arns must not repeat a principal — the trust list is an audit surface and states each principal exactly once."
+    condition = length(var.trusted_role_arns) == length(distinct([
+      for a in var.trusted_role_arns :
+      lower(format("%s/%s", element(split(":", a), 4), element(reverse(split("/", a)), 0)))
+    ]))
+    error_message = "trusted_role_arns must not name the same principal twice — compared as normalized <account>/<name>, lowercased and path-stripped, because one role has two legitimate ARN spellings and IAM role names are case-insensitively unique."
   }
 
   nullable = false
@@ -94,9 +116,18 @@ variable "max_session_duration" {
 }
 
 variable "permissions_boundary" {
-  description = "ARN of an IAM policy to attach as this role's permissions boundary. Null (default) attaches no boundary."
+  description = "ARN of an IAM policy to attach as this role's permissions boundary. Null (default) attaches no boundary. An EMPTY STRING is rejected rather than treated as null: the provider omits the argument on create and takes the DeleteRolePermissionsBoundary branch on update, so \"\" reads as \"bounded\" in a plan and applies as NO boundary — including silently stripping the boundary off an existing role. Pass null explicitly, never a defaulted-to-empty lookup."
   type        = string
   default     = null
+
+  # The empty string is the one value here that is both accepted by
+  # the provider's ARN validator and semantically the opposite of what
+  # it looks like. A live-repo `try(dependency.x.outputs.arn, "")` or
+  # a lookup miss is all it takes.
+  validation {
+    condition     = var.permissions_boundary == null || can(regex("^arn:aws:iam::(aws|[0-9]{12}):policy/.+$", var.permissions_boundary))
+    error_message = "permissions_boundary must be null (no boundary) or an IAM policy ARN — an empty string reads as \"bounded\" in a plan and applies as NO boundary."
+  }
 }
 
 #--------------------------------------------------------------
@@ -107,17 +138,39 @@ variable "permissions_boundary" {
 #--------------------------------------------------------------
 
 variable "managed_policy_arns" {
-  description = "AWS-managed policy ARNs to attach to this role (e.g. arn:aws:iam::aws:policy/ReadOnlyAccess)."
+  description = "AWS-managed policy ARNs to attach to this role (e.g. arn:aws:iam::aws:policy/ReadOnlyAccess). Only the aws-owned pseudo-account spelling is accepted — caller-owned ARNs belong in customer_managed_policy_arns."
   type        = list(string)
   default     = []
+
+  # The channel split is advertised as a plan-readability contract, so
+  # enforce it rather than trusting it. This partition ALSO closes the
+  # cross-channel duplicate hazard structurally: an ARN cannot match
+  # both this rule and the customer one (the account field is "aws" or
+  # 12 digits, never both), so the same policy can no longer be listed
+  # in two channels. That mattered because AttachRolePolicy is
+  # idempotent — two resources would manage one real attachment, and
+  # dropping the ARN from one channel would DETACH the policy while
+  # the other channel still declared it, printing "1 to destroy" with
+  # no hint the grant survives in config. Anyone loosening these
+  # regexes (e.g. for aws-cn / aws-us-gov) must keep the account field
+  # mutually exclusive or restore that guard as a precondition.
+  validation {
+    condition     = alltrue([for a in var.managed_policy_arns : can(regex("^arn:aws:iam::aws:policy/.+$", a))])
+    error_message = "Every managed_policy_arns entry must be an AWS-managed policy ARN (arn:aws:iam::aws:policy/...). Caller-owned policies belong in customer_managed_policy_arns."
+  }
 
   nullable = false
 }
 
 variable "customer_managed_policy_arns" {
-  description = "Customer-managed policy ARNs to attach to this role. Separate from managed_policy_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance."
+  description = "Customer-managed policy ARNs to attach to this role. Separate from managed_policy_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance, and so the same ARN cannot be listed in both channels."
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for a in var.customer_managed_policy_arns : can(regex("^arn:aws:iam::[0-9]{12}:policy/.+$", a))])
+    error_message = "Every customer_managed_policy_arns entry must be a customer-managed policy ARN (arn:aws:iam::<12-digit-account>:policy/...). AWS-managed policies belong in managed_policy_arns."
+  }
 
   nullable = false
 }
@@ -127,14 +180,20 @@ variable "inline_policies" {
   type        = map(string)
   default     = {}
 
-  # OQ 1a: the surface SHAPE is the pod-identity-access mirror, but a
-  # malformed document is a guaranteed apply-time
-  # MalformedPolicyDocument — cheap to move to plan time. (Follow-up:
-  # backport this validation to eks/pod-identity-access so the mirror
-  # stays honest in both directions.)
+  # OQ 1a: the surface SHAPE is the pod-identity-access mirror, plus
+  # this parse check — unparseable JSON is a guaranteed apply-time
+  # MalformedPolicyDocument, cheap to move to plan time. (Follow-up:
+  # backport it to eks/pod-identity-access so the mirror stays honest
+  # in both directions.)
+  #
+  # Scope, precisely: this proves the value PARSES, nothing more. A
+  # well-formed document that is not a policy ({"foo":1}) passes here
+  # and still fails at apply. The provider's own validIAMPolicyJSON
+  # separately rejects a JSON array at plan. Statement-level validity
+  # is the caller's concern by design.
   validation {
     condition     = alltrue([for doc in values(var.inline_policies) : can(jsondecode(doc))])
-    error_message = "Every inline_policies value must be a valid JSON document — IAM rejects malformed documents at apply (MalformedPolicyDocument); this catches it at plan."
+    error_message = "Every inline_policies value must parse as JSON — unparseable documents are a guaranteed apply-time MalformedPolicyDocument; this catches that class at plan."
   }
 
   nullable = false

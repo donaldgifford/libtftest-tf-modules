@@ -127,6 +127,47 @@ run "platform_access_shaped" {
   }
 }
 
+# The BARE call — nothing set but the two required inputs, so this
+# run is the only place the defaults themselves are pinned. Every
+# other run overrides them, which is how "permissions_boundary has no
+# default assertion anywhere" survived review (IMPL-0022 task 4.6):
+# changing a default failed no test. null here is load-bearing — it is
+# what makes the empty-string rejection meaningful rather than a
+# stricter spelling of the same behavior.
+run "bare_call_pins_defaults" {
+  command = plan
+
+  variables {
+    name              = "bare-role"
+    trusted_role_arns = ["arn:aws:iam::000000000000:role/atlantis-pod-identity"]
+  }
+
+  assert {
+    condition     = aws_iam_role.this.permissions_boundary == null
+    error_message = "permissions_boundary must default to null — NO boundary argument, not an empty one"
+  }
+
+  assert {
+    condition     = aws_iam_role.this.max_session_duration == 3600
+    error_message = "max_session_duration must default to the AWS 1-hour default"
+  }
+
+  assert {
+    condition     = aws_iam_role.this.path == "/"
+    error_message = "path must default to \"/\""
+  }
+
+  assert {
+    condition     = aws_iam_role.this.description == null
+    error_message = "description must default to null rather than an empty string"
+  }
+
+  # tags is deliberately not asserted here: an empty map renders as
+  # null on this Optional+Computed attribute at plan, so an assertion
+  # would pin the provider's representation rather than the module's
+  # default. The apply suite checks tags where they are real.
+}
+
 # Defaults and pass-throughs the two shapes above do not exercise.
 run "defaults_and_passthrough" {
   command = plan

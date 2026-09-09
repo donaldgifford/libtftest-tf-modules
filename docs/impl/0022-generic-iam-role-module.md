@@ -268,11 +268,16 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 - [x] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
 - [x] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
       module and the adoption runbook. **Opened: PR #112.**
+- [x] 4.6 Adversarial `iac-security` review before merge (the
+      IMPL-0020 precedent). Four real defects found and fixed on the
+      branch, six regression runs added (18 → 25 plan runs), the
+      cross-account trust claim corrected in three places. Full
+      write-up below.
 
 #### Success Criteria
 
 - ADR-0020 row present; CLAUDE.md + module table current; all doc
-  gates green; release tagged.
+  gates green; security review closed; release tagged.
 
 ---
 
@@ -280,8 +285,9 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 
 Task 1.7, done by message-probe (each rejection re-run in a scratch
 file **without** `expect_failures`, reading the real error). Eleven
-rejection runs, **eight distinct rules** — every run fires the rule
-it is named for:
+rejection runs at first pass, **eight distinct rules** — every run
+fires the rule it is named for. The security review below added six
+more (probed the same way; see its own table):
 
 | Run | Rule that fired |
 |-----|-----------------|
@@ -313,6 +319,75 @@ rules sit on `trusted_role_arns` alone, so a wildcard entry that
 also happened to be malformed would have passed off the ARN rule and
 looked identical. Each run is constructed to leave exactly one rule
 violated.
+
+## Adversarial security review (task 4.6, 2026-09-08)
+
+An `iac-security` pass over the as-built module before merge — the
+IMPL-0020 precedent, where the same review found two HIGH
+silent-widening bugs. It found **four real defects**, all of which
+the module accepted at plan; each was independently reproduced
+against the real module before being fixed.
+
+| # | Defect | Fix |
+|---|--------|-----|
+| **F1** | `permissions_boundary = ""` yields an **unbounded role**. The provider omits the argument on create (`d.GetOk` is false for `""`) and takes the `DeleteRolePermissionsBoundary` branch on update — so `""` reads as "bounded" in a plan and applies as no boundary, *including stripping the boundary off an existing role via a one-character diff*. It was the only security-relevant input with zero validations. | ARN-or-null validation + `empty_string_permissions_boundary_rejected` |
+| **F2** | The **same ARN in both policy channels** made revocation a silent no-op. `AttachRolePolicy` is idempotent, so two resources managed one real attachment; dropping the ARN from one channel printed `1 to destroy`, fully detached the policy, and the next unrelated apply re-granted it as drift correction. The surviving attachment is an *unchanged* resource, so Terraform never prints it. | closed **structurally** by F6 — see below |
+| **F3** | The four trust validations compared **raw strings**: a trailing space passes `.+$` and reaches `Principal.AWS` padded; `distinct()` is case-sensitive while IAM role names are case-insensitively unique; path-bearing and path-stripped spellings both pass. IMPL-0020's normalization lesson had not been carried across — despite `var.path`'s own description warning about exactly this. | `trimspace` rule + normalized `<account>/<name>` duplicate rule, 3 runs |
+| **F4** | The documented apply-time backstop **does not exist cross-account**. IAM resolves a same-account principal to its unique id at policy save; cross-account it cannot resolve at all and stores the ARN as an unvalidated literal. Both worked examples are cross-account, so a typo applies green, grants nobody, and leaves a **dangling principal** for whoever later creates a role by that name. | doc correction in `variables.tf` / README / DESIGN-0025 + Follow-up 1 promoted to a **prerequisite** for the cross-account instances |
+| **F6** | Neither policy channel had any validation, so the "AWS-owned vs caller-owned" split the README sells was unenforced. | one regex per channel, 2 runs |
+
+**F2 is fixed by F6 rather than by its own guard, deliberately.** The
+two channel regexes partition on the account field (`aws` vs 12
+digits), which are mutually exclusive — so an ARN can no longer
+appear in both channels at all, and the failure state is
+unrepresentable rather than merely guarded. A `setintersection`
+precondition on top would be permanently unreachable, and an
+unreachable guard is untestable and rots. `managed_policy_arns`
+carries a comment telling anyone who loosens those regexes (for
+`aws-cn` / `aws-us-gov`, the F7 partition note) to keep the account
+field mutually exclusive or restore the precondition.
+
+Two review items were **rejected**: `service_principal_rejected`
+sharing the ARN-format rule was already recorded above as deliberate
+rule-sharing, and the `can(jsondecode())` validation's scope was
+narrowed in its description (it proves parseability only — a
+well-formed non-policy still fails at apply) rather than removed.
+
+Also fixed from the review's test-quality findings (F5): **no run
+pinned the defaults**. Every existing run overrode
+`max_session_duration` and `permissions_boundary`, so changing either
+default failed no test — which is how F1 stayed invisible. A bare
+call now pins them, and `permissions_boundary == null` on that run is
+what makes the empty-string rejection meaningful rather than a
+stricter spelling of the same behavior.
+
+Six new rejection runs, message-probed like the originals:
+
+| Run | Rule that fired |
+|-----|-----------------|
+| `empty_string_permissions_boundary_rejected` | "must be null (no boundary) or an IAM policy ARN" |
+| `padded_trust_arn_rejected` | "must carry no leading or trailing whitespace" |
+| `case_variant_duplicate_principal_rejected` | "must not name the same principal twice" |
+| `path_variant_duplicate_principal_rejected` | "must not name the same principal twice" |
+| `aws_managed_arn_in_customer_channel_rejected` | "must be a customer-managed policy ARN" |
+| `customer_arn_in_aws_managed_channel_rejected` | "must be an AWS-managed policy ARN" |
+
+The three `trusted_role_arns` runs needed the probe most: **five**
+rules now sit on that one variable, and the padded ARN passes the
+format, wildcard, non-empty and duplicate rules — only `trimspace`
+catches it. The two duplicate-variant runs share the normalized rule
+with `duplicate_principal_rejected` by design (three spellings of one
+evasion class), the same shape as the `malformed_arn` /
+`service_principal` pair above.
+
+**The carried lesson:** every one of F1–F3 is the IMPL-0020 shape —
+*a permissive default plus a partially-specified input is a silent
+widening* — and F1 in particular is category-3: the plan-time value
+(`""`) and the applied semantics (no boundary) differ, so a plan
+review cannot catch it. The new one is **F4's**: a fail-closed guard
+documented with a backstop that does not exist in the deployment
+topology the module is *for* is worse than no guard, because it
+stops anyone from looking further.
 
 ## File Changes
 

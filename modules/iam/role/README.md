@@ -114,15 +114,55 @@ letting a second spelling through, and it now normalizes for this
 reason. Two consequences:
 
 - **`trusted_role_arns` entries must be the real, path-bearing
-  ARNs.** IAM validates principals when the policy is saved, and
-  role names are account-unique regardless of path, so a stripped
-  spelling of a path-bearing role fails the apply rather than
-  quietly matching something else.
+  ARNs.** The module rejects the two spellings of one principal at
+  plan, comparing normalized `<account>/<name>` lowercased and
+  path-stripped (the IMPL-0020 collision-guard rule) — but see the
+  cross-account caveat immediately below, because that plan-time
+  check is the *only* one you get for a principal in another
+  account.
 - **Keep `path = "/"` for roles destined for an access-entries
   binding.** The shipped access-entries validation and collision
   guard handle both spellings, but how the EKS API *canonicalizes*
   path-bearing principal ARNs is unverified until IMPL-0020 task
   5.4's live runs answer it.
+
+### The apply-time backstop is same-account only
+
+**Corrected after the IMPL-0022 security review** — an earlier
+version of this section claimed a wrong ARN spelling "fails the apply
+rather than quietly matching something else." That holds only for
+**same-account** principals, where IAM resolves the ARN to the
+principal's unique id when the trust policy is saved and rejects one
+it cannot resolve.
+
+**Cross-account, there is no such check.** IAM cannot resolve a
+principal in an account it does not own, so the ARN is stored as an
+unvalidated literal string. A typo'd, padded, or wrongly-cased
+cross-account ARN therefore:
+
+1. passes every plan-time validation,
+2. applies green — no error, no warning,
+3. grants the intended principal nothing (fail-closed, so it is
+   eventually noticed), and
+4. leaves a **dangling principal** — whoever can later create a role
+   by that name in that account inherits `sts:AssumeRole` on this
+   role.
+
+Both worked examples above are cross-account, which is exactly where
+the missing backstop bites. For the deploy role, whose policy is
+typically broad, a dangling principal is an account-level privilege
+handoff.
+
+**Consequences for callers:**
+
+- Treat `trusted_role_arns` as unverified input. Copy ARNs from
+  `aws iam get-role` output, never by hand.
+- The **cross-account instances should carry a trust condition**
+  before they hold real privilege (DESIGN-0025 Follow-up 1).
+  `aws:PrincipalOrgID` is the higher-value one here — it is valid in
+  an `sts:AssumeRole` trust policy, needs no per-caller
+  coordination, and survives a dangling principal, which
+  `sts:ExternalId` alone does not. Both v1 consumers are intra-org.
 
 ## Adopting an existing role
 
@@ -187,7 +227,7 @@ consumer: a spoke's platform-access stack reading a hub principal's
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` | plan (the gate) | Both §4 shapes with the trust JSON asserted by content; the three policy channels and their address stability; eleven fail-closed rejections, each verified to fire its own rule |
+| `tests/` | plan (the gate) | Both §4 shapes with the trust JSON asserted by content; a bare call pinning every default; the three policy channels and their address stability; seventeen fail-closed rejections, each verified to fire its own rule |
 | `tests-localstack/` | Community apply | The IAM surface round-trips live — see `FINDINGS.md` for what a LocalStack apply can and cannot prove about trust |
 
 Full variable/output reference: [USAGE.md](USAGE.md).
