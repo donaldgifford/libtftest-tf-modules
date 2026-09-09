@@ -53,6 +53,6 @@ docz create impl "Your Implementation Title"
 | IMPL-0019 | Secrets Manager secret producer module | Completed | 2026-08-11 | Donald Gifford | [0019-secrets-manager-secret-producer-module.md](0019-secrets-manager-secret-producer-module.md) |
 | IMPL-0020 | EKS hub posture workload classes endpoint fence and access entries | Completed | 2026-08-28 | Donald Gifford | [0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md](0020-eks-hub-posture-workload-classes-endpoint-fence-and-access.md) |
 | IMPL-0021 | S3 evidence bucket and lifecycle tiering exposure | Completed | 2026-09-04 | Donald Gifford | [0021-s3-evidence-bucket-and-lifecycle-tiering-exposure.md](0021-s3-evidence-bucket-and-lifecycle-tiering-exposure.md) |
-| IMPL-0022 | Generic IAM role module | Draft | 2026-09-04 | Donald Gifford | [0022-generic-iam-role-module.md](0022-generic-iam-role-module.md) |
+| IMPL-0022 | Generic IAM role module | In Progress | 2026-09-04 | Donald Gifford | [0022-generic-iam-role-module.md](0022-generic-iam-role-module.md) |
 | IMPL-0023 | Generic security group module | Draft | 2026-09-04 | Donald Gifford | [0023-generic-security-group-module.md](0023-generic-security-group-module.md) |
 <!-- END DOCZ AUTO-GENERATED -->

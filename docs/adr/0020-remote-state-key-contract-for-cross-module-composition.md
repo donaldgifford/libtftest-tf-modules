@@ -81,7 +81,9 @@ Every cross-module state read/publish uses the account-scoped key
 - `<region>` — the deployment region of the producer stack.
 - `<shape>` — the producer's service path segment(s): `vpc`, `eks`,
   `rds/instance`, `rds/cluster`, `rds/serverless`, `s3`, `secrets`
-  (producer: `secretsmanager/secret`, IMPL-0019).
+  (producer: `secretsmanager/secret`, IMPL-0019), `iam`
+  (producer: `iam/role`, IMPL-0022 — the platform-reserved shape from
+  DESIGN-0001 §4).
 - `<name>` — the producer instance's stable identifier (see coupling below).
   Exception: the `s3/access-logs` key is **flat** — no `<name>` segment
   (see the reserved-stack-name note below).
@@ -108,6 +110,7 @@ consumer read at plan time.
 | `efs/filesystem` | vpc + eks | `<acct>/<region>/vpc/<vpc_name>/…`, `<acct>/<region>/eks/<cluster_name>/…` | `network/vpc-lookup`, `eks/cluster` |
 | `s3/bucket` | access-logs sink | `<acct>/<region>/s3/access-logs/…` — **flat, no `<name>` segment**; **count-gated** — the read exists only on the default tri-state path | `s3/access-logs-bucket` |
 | *(reserved)* `rds/{instance,cluster,serverless}` reference mode | secret | `<acct>/<region>/secrets/<name>/…` — `<name>` couples to the producer's `var.name`, **not** the suffixed physical secret name | `secretsmanager/secret` (DESIGN-0020 Follow-up 1; no consumer wired yet) |
+| *(reserved)* cross-account trust wiring | iam | `<acct>/<region>/iam/<name>/…` — `<name>` couples to the role's exact `var.name` (which is also what every `assume_role` block composes by name) | `iam/role` (DESIGN-0025 / IMPL-0022; no consumer wired yet) |
 
 All 13 live reads carry the cross-account `assume_role`
 (`arn:aws:iam::<account_id>:role/<deploy_role_name>`,
@@ -145,6 +148,14 @@ consumer — the key contract binds only the default path, and the
   from state, never by constructing the name — and read the **value**
   only ephemerally, feeding a write-only argument, so it lands in no
   one's state).
+- **IAM:** the `iam/role` producer's `var.name` == the folder name ==
+  the future consumer's input. Unlike secrets, the coupling here is
+  **exact and doubly load-bearing**: the module takes no prefix, and
+  the same string is what every `assume_role` block in this ADR
+  composes (`arn:aws:iam::<account_id>:role/<deploy_role_name>`). A
+  rename therefore breaks the state key *and* every cross-account
+  read at once — which is why a rename is a deliberate role
+  replacement, not a refactor.
 
 ### The reserved stack name (`s3/access-logs`)
 

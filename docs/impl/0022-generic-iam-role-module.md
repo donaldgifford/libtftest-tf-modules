@@ -1,7 +1,7 @@
 ---
 id: IMPL-0022
 title: "Generic IAM role module"
-status: Draft
+status: In Progress
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0022: Generic IAM role module
 
-**Status:** Draft
+**Status:** In Progress
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
@@ -31,6 +31,7 @@ created: 2026-09-04
   - [Phase 4: Closure](#phase-4-closure)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+- [Verifying the fail-closed tests fail for the right reason](#verifying-the-fail-closed-tests-fail-for-the-right-reason)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -103,7 +104,7 @@ verification.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/iam/role` per the design's layout
+- [x] 1.1 Scaffold `modules/iam/role` per the design's layout
       (`main.tf`, `trust.tf`, `variables.tf`, `outputs.tf`,
       `versions.tf`, `.tflint.hcl`, README/USAGE stubs, `tests/`,
       `tests-localstack/`). `versions.tf`: aws `~> 6.2`,
@@ -113,7 +114,7 @@ verification.
       remote-state read, none of the six Terragrunt globals
       (IMPL-0015 Q6a — Terragrunt's pass-every-input injects them
       harmlessly).
-- [ ] 1.2 `variables.tf`: `name` (exact — no prefix; the by-name
+- [x] 1.2 `variables.tf`: `name` (exact — no prefix; the by-name
       contract in the description since every ADR-0020
       `assume_role` block composes this role's ARN from
       `deploy_role_name`; IAM charset + length ≤ 64 validation),
@@ -130,22 +131,22 @@ verification.
       (`managed_policy_arns`, `customer_managed_policy_arns`,
       `inline_policies` map of JSON — verbatim shape from
       `eks/pod-identity-access`; validation per OQ 1), `tags`.
-- [ ] 1.3 `trust.tf`: `data.aws_iam_policy_document.trust` — one
+- [x] 1.3 `trust.tf`: `data.aws_iam_policy_document.trust` — one
       `Allow` statement, `actions = ["sts:AssumeRole"]`,
       `principals { type = "AWS", identifiers =
       var.trusted_role_arns }`. Locally evaluated, so the composed
       `assume_role_policy` is plan-known (the plan-knowability
       discipline). Single-statement composition left so Follow-up
       1's conditions block slots in without reshaping the variable.
-- [ ] 1.4 `main.tf`: `aws_iam_role.this` (name, path, description,
+- [x] 1.4 `main.tf`: `aws_iam_role.this` (name, path, description,
       trust JSON, session duration, boundary, tags) + two
       `aws_iam_role_policy_attachment` `for_each`es (managed /
       customer-managed channels kept as separate variables so plans
       distinguish AWS-owned from caller-owned at a glance) +
       `aws_iam_role_policy` `for_each` over `inline_policies`.
-- [ ] 1.5 `outputs.tf`: `role_arn`, `role_name`, `role_unique_id` —
+- [x] 1.5 `outputs.tf`: `role_arn`, `role_name`, `role_unique_id` —
       pointer-only; no policy echo, no credential-adjacent values.
-- [ ] 1.6 Plan suite (`tests/`, real-provider-fake-creds — the data
+- [x] 1.6 Plan suite (`tests/`, real-provider-fake-creds — the data
       source needs no API call): a **deploy-shaped** run and a
       **platform-access-shaped** run pinning the composed trust
       JSON via `jsondecode(aws_iam_role.this.assume_role_policy)`
@@ -156,12 +157,12 @@ verification.
       session duration, bad name charset, plus the OQ-dependent
       duplicate-entry and malformed-JSON rejections; boundary +
       tags passthrough.
-- [ ] 1.7 Per-rule verification of every `expect_failures` run
+- [x] 1.7 Per-rule verification of every `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) — the
       design flags this explicitly: six-plus rules stack on two
       variables, and a passing run proves only that the variable
       errored.
-- [ ] 1.8 `just tf all iam/role`; conventional commit.
+- [x] 1.8 `just tf all iam/role`; conventional commit.
 
 #### Success Criteria
 
@@ -180,7 +181,7 @@ adoption, and the runbook is what the live repo executes.
 
 #### Tasks
 
-- [ ] 2.1 The two platform §4 worked examples as full call sites:
+- [x] 2.1 The two platform §4 worked examples as full call sites:
       the **deploy role** (`name` = the fleet's `deploy_role_name`
       value; `trusted_role_arns` = the hub automation principals —
       the same stable-creator principal DESIGN-0024 OQ 4 sanctions;
@@ -189,7 +190,7 @@ adoption, and the runbook is what the live repo executes.
       argocd-deployer pod-identity role; a scoped inline EKS-access
       document; the cross-reference to DESIGN-0024 — the
       cluster-side half is an `eks/access-entries` entry).
-- [ ] 2.2 "Adopting an existing role": `import` blocks targeting
+- [x] 2.2 "Adopting an existing role": `import` blocks targeting
       the module's addresses (role by name, each attachment by
       `<role-name>/<policy-arn>`, each inline policy by
       `<role-name>:<policy-name>`); **match reality first, converge
@@ -197,7 +198,7 @@ adoption, and the runbook is what the live repo executes.
       zero-diff plan, then converge conventions in later reviewed
       plans; trust diffs converge in place (no replacement, no
       downtime).
-- [ ] 2.3 The remote-state key contract section: the
+- [x] 2.3 The remote-state key contract section: the
       platform-reserved `<account_name>/<region>/iam/<name>` shape,
       the triple coupling, and the reserved-ahead-of-consumers note
       (the `secrets` precedent). Both path notes land here: trust
@@ -205,7 +206,7 @@ adoption, and the runbook is what the live repo executes.
       destined for an access-entries binding should keep
       `path = "/"` until IMPL-0020 task 5.4's live runs answer how
       the EKS API canonicalizes path-bearing principals.
-- [ ] 2.4 `just tf docs iam/role` (USAGE.md regen, lock-free
+- [x] 2.4 `just tf docs iam/role` (USAGE.md regen, lock-free
       constraint form); conventional commit.
 
 #### Success Criteria
@@ -222,23 +223,23 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 
 #### Tasks
 
-- [ ] 3.1 `tests-localstack/` suite (token-free
+- [x] 3.1 `tests-localstack/` suite (token-free
       `localstack/localstack:4.4`, `SERVICES=iam,sts`): apply a
       platform-access-shaped instance; assert the IAM surface live
       — `get-role` round-trip (name, path, trust JSON), both
       attachment channels listed, inline documents round-tripping.
-- [ ] 3.2 FINDINGS.md **leads with the caveat**: LocalStack STS
+- [x] 3.2 FINDINGS.md **leads with the caveat**: LocalStack STS
       `AssumeRole` proves nothing about trust policies — it mints
       creds for any role ARN (the IMPL-0015 Phase 1 finding) — so
       the apply asserts the IAM surface, never "assumability."
-- [ ] 3.3 The OQ 4a import-feasibility probe: a fixture-created
+- [x] 3.3 The OQ 4a import-feasibility probe: a fixture-created
       role + an `import` block through the module's address, as a
       **recorded stretch, not a gate** — either outcome (works /
       `terraform test` can't) lands in FINDINGS as evidence for the
       runbook.
-- [ ] 3.4 Run live (`just tf test-localstack iam/role`); record the
+- [x] 3.4 Run live (`just tf test-localstack iam/role`); record the
       pass + LocalStack version in FINDINGS.md.
-- [ ] 3.5 Conventional commit.
+- [x] 3.5 Conventional commit.
 
 #### Success Criteria
 
@@ -252,28 +253,141 @@ Pure IAM API — token-free Community, no Pro, no named volume.
 
 #### Tasks
 
-- [ ] 4.1 ADR-0020: the `iam` producer row
+- [x] 4.1 ADR-0020: the `iam` producer row
       (`<account_name>/<region>/iam/<name>/terraform.tfstate`) —
       reserving the shape ahead of its first TF consumer, the way
       `secrets` was reserved.
-- [ ] 4.2 CLAUDE.md: the new `modules/iam/` section (module summary,
+- [x] 4.2 CLAUDE.md: the new `modules/iam/` section (module summary,
       the two design follow-ups + the OQ 1a jsondecode-backport
       follow-up for `eks/pod-identity-access`, the STS caveat);
       INV-0011 delivery note (the 2026-08-28 queue revision's
       condensed pair, delivered).
-- [ ] 4.3 `just readme` — the module table gains the `iam/role` row
+- [x] 4.3 `just readme` — the module table gains the `iam/role` row
       (the separate `readme-check` CI job, not covered by `just
       static`).
-- [ ] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
-- [ ] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
-      module and the adoption runbook.
+- [x] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
+- [x] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
+      module and the adoption runbook. **Opened: PR #112.**
+- [x] 4.6 Adversarial `iac-security` review before merge (the
+      IMPL-0020 precedent). Four real defects found and fixed on the
+      branch, six regression runs added (18 → 25 plan runs), the
+      cross-account trust claim corrected in three places. Full
+      write-up below.
 
 #### Success Criteria
 
 - ADR-0020 row present; CLAUDE.md + module table current; all doc
-  gates green; release tagged.
+  gates green; security review closed; release tagged.
 
 ---
+
+## Verifying the fail-closed tests fail for the right reason
+
+Task 1.7, done by message-probe (each rejection re-run in a scratch
+file **without** `expect_failures`, reading the real error). Eleven
+rejection runs at first pass, **eight distinct rules** — every run
+fires the rule it is named for. The security review below added six
+more (probed the same way; see its own table):
+
+| Run | Rule that fired |
+|-----|-----------------|
+| `empty_trust_list_rejected` | "must name at least one principal" |
+| `wildcard_arn_rejected` | "must not contain wildcard characters" |
+| `malformed_arn_rejected` | "must be an exact IAM role or user ARN" |
+| `service_principal_rejected` | "must be an exact IAM role or user ARN" |
+| `duplicate_principal_rejected` | "must not repeat a principal" |
+| `name_bad_charset_rejected` | "IAM role-name charset" |
+| `name_too_long_rejected` | "must be 1-64 characters" |
+| `path_without_trailing_slash_rejected` | "path must begin and end" |
+| `session_duration_too_long_rejected` | "max_session_duration must be between" |
+| `session_duration_too_short_rejected` | "max_session_duration must be between" |
+| `malformed_inline_json_rejected` | "must be a valid JSON document" |
+
+Two pairs share a rule **by design**, and the probe is what makes
+that visible rather than assumed:
+
+- `malformed_arn` and `service_principal` both hit the ARN-format
+  regex — a service principal *is* a malformed ARN from this
+  variable's perspective. Both are inputs a caller plausibly writes,
+  so both keep their run; neither is redundant coverage of a
+  *different* rule.
+- The two `session_duration` runs are the two directions of one
+  range rule.
+
+The reason to check rather than trust the green: four of the eight
+rules sit on `trusted_role_arns` alone, so a wildcard entry that
+also happened to be malformed would have passed off the ARN rule and
+looked identical. Each run is constructed to leave exactly one rule
+violated.
+
+## Adversarial security review (task 4.6, 2026-09-08)
+
+An `iac-security` pass over the as-built module before merge — the
+IMPL-0020 precedent, where the same review found two HIGH
+silent-widening bugs. It found **four real defects**, all of which
+the module accepted at plan; each was independently reproduced
+against the real module before being fixed.
+
+| # | Defect | Fix |
+|---|--------|-----|
+| **F1** | `permissions_boundary = ""` yields an **unbounded role**. The provider omits the argument on create (`d.GetOk` is false for `""`) and takes the `DeleteRolePermissionsBoundary` branch on update — so `""` reads as "bounded" in a plan and applies as no boundary, *including stripping the boundary off an existing role via a one-character diff*. It was the only security-relevant input with zero validations. | ARN-or-null validation + `empty_string_permissions_boundary_rejected` |
+| **F2** | The **same ARN in both policy channels** made revocation a silent no-op. `AttachRolePolicy` is idempotent, so two resources managed one real attachment; dropping the ARN from one channel printed `1 to destroy`, fully detached the policy, and the next unrelated apply re-granted it as drift correction. The surviving attachment is an *unchanged* resource, so Terraform never prints it. | closed **structurally** by F6 — see below |
+| **F3** | The four trust validations compared **raw strings**: a trailing space passes `.+$` and reaches `Principal.AWS` padded; `distinct()` is case-sensitive while IAM role names are case-insensitively unique; path-bearing and path-stripped spellings both pass. IMPL-0020's normalization lesson had not been carried across — despite `var.path`'s own description warning about exactly this. | `trimspace` rule + normalized `<account>/<name>` duplicate rule, 3 runs |
+| **F4** | The documented apply-time backstop **does not exist cross-account**. IAM resolves a same-account principal to its unique id at policy save; cross-account it cannot resolve at all and stores the ARN as an unvalidated literal. Both worked examples are cross-account, so a typo applies green, grants nobody, and leaves a **dangling principal** for whoever later creates a role by that name. | doc correction in `variables.tf` / README / DESIGN-0025 + Follow-up 1 promoted to a **prerequisite** for the cross-account instances |
+| **F6** | Neither policy channel had any validation, so the "AWS-owned vs caller-owned" split the README sells was unenforced. | one regex per channel, 2 runs |
+
+**F2 is fixed by F6 rather than by its own guard, deliberately.** The
+two channel regexes partition on the account field (`aws` vs 12
+digits), which are mutually exclusive — so an ARN can no longer
+appear in both channels at all, and the failure state is
+unrepresentable rather than merely guarded. A `setintersection`
+precondition on top would be permanently unreachable, and an
+unreachable guard is untestable and rots. `managed_policy_arns`
+carries a comment telling anyone who loosens those regexes (for
+`aws-cn` / `aws-us-gov`, the F7 partition note) to keep the account
+field mutually exclusive or restore the precondition.
+
+Two review items were **rejected**: `service_principal_rejected`
+sharing the ARN-format rule was already recorded above as deliberate
+rule-sharing, and the `can(jsondecode())` validation's scope was
+narrowed in its description (it proves parseability only — a
+well-formed non-policy still fails at apply) rather than removed.
+
+Also fixed from the review's test-quality findings (F5): **no run
+pinned the defaults**. Every existing run overrode
+`max_session_duration` and `permissions_boundary`, so changing either
+default failed no test — which is how F1 stayed invisible. A bare
+call now pins them, and `permissions_boundary == null` on that run is
+what makes the empty-string rejection meaningful rather than a
+stricter spelling of the same behavior.
+
+Six new rejection runs, message-probed like the originals:
+
+| Run | Rule that fired |
+|-----|-----------------|
+| `empty_string_permissions_boundary_rejected` | "must be null (no boundary) or an IAM policy ARN" |
+| `padded_trust_arn_rejected` | "must carry no leading or trailing whitespace" |
+| `case_variant_duplicate_principal_rejected` | "must not name the same principal twice" |
+| `path_variant_duplicate_principal_rejected` | "must not name the same principal twice" |
+| `aws_managed_arn_in_customer_channel_rejected` | "must be a customer-managed policy ARN" |
+| `customer_arn_in_aws_managed_channel_rejected` | "must be an AWS-managed policy ARN" |
+
+The three `trusted_role_arns` runs needed the probe most: **five**
+rules now sit on that one variable, and the padded ARN passes the
+format, wildcard, non-empty and duplicate rules — only `trimspace`
+catches it. The two duplicate-variant runs share the normalized rule
+with `duplicate_principal_rejected` by design (three spellings of one
+evasion class), the same shape as the `malformed_arn` /
+`service_principal` pair above.
+
+**The carried lesson:** every one of F1–F3 is the IMPL-0020 shape —
+*a permissive default plus a partially-specified input is a silent
+widening* — and F1 in particular is category-3: the plan-time value
+(`""`) and the applied semantics (no boundary) differ, so a plan
+review cannot catch it. The new one is **F4's**: a fail-closed guard
+documented with a backstop that does not exist in the deployment
+topology the module is *for* is worse than no guard, because it
+stops anyone from looking further.
 
 ## File Changes
 

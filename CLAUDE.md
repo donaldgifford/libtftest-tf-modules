@@ -474,6 +474,92 @@ Tracked in git. As of this writing:
   FINDINGS.md, config-surface assertions only per OQ 2a).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
+- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, implemented).
+  One generic **trust-boundary** role module replacing the queued
+  `iam/deploy-role` + `iam/cross-account-role` pair — identical resource
+  surfaces, so the inputs define what an instance is. Producer-only (no
+  remote-state read, none of the six globals), `required_version >= 1.1`
+  (every validation is single-variable). Fail-closed trust:
+  `trusted_role_arns` carries **five separate validation blocks**
+  (non-empty / exact `role|user` ARN regex / wildcard rejection /
+  no surrounding whitespace / duplicate rejection **compared
+  normalized** as lowercased path-stripped `<account>/<name>`, the
+  IMPL-0020 collision-guard rule) so each rejection run is verifiable
+  against the rule it names; there is deliberately **no
+  service-principal channel and no raw-JSON trust escape hatch**
+  (resource-owning modules mint their own
+  service roles). Policy channels mirror `eks/pod-identity-access` in
+  shape, with one deviation: `inline_policies` gains a
+  `can(jsondecode())` validation (IMPL-0022 OQ 1a) moving a guaranteed
+  apply-time `MalformedPolicyDocument` to plan — **a backport of that one
+  validation to `pod-identity-access` is an open follow-up** so the mirror
+  stays honest both ways. **`aws_iam_policy_document` rendering gotcha
+  (probed, pinned by two runs):** it collapses single-element sets, so
+  `Principal.AWS` is a **string** with one principal and a **list** with
+  two or more (`Action` likewise, being a single action) — an assertion
+  written for one shape silently proves nothing on the other. A
+  non-default `path` gives one role two legitimate ARN spellings; keep
+  `path = "/"` for roles destined for an `eks/access-entries` binding
+  until IMPL-0020 task 5.4's live runs settle EKS canonicalization.
+  Publishes at the platform-reserved ADR-0020 **`iam`** shape
+  (`<acct>/<region>/iam/<name>`), reserved ahead of its first consumer
+  the way `secrets` was; the `<name>` coupling is **exact and doubly
+  load-bearing** — it is both the state key segment and the string every
+  `assume_role` block composes, so a rename is a deliberate role
+  replacement, not a refactor. Tests: plan `tests/` 25 runs (the gate —
+  both §4 shapes with the trust JSON asserted by *content*, a bare call
+  pinning every default, channel
+  address stability, 17 rejections each verified per-rule) + a Community
+  apply 3/3 on token-free 4.4 (`SERVICES=iam,sts` — no Pro, no token, no
+  named volume) whose `verify_readback` run reads the role back through
+  `data.aws_iam_role` in its own fixture. **FINDINGS leads with the
+  caveat that LocalStack STS mints credentials for any role ARN
+  (IMPL-0015 Phase 1), so the suite never asserts assumability** — trust
+  is enforced at plan by the four validations. **Import probe POSITIVE
+  (OQ 4a):** an out-of-band role adopted via an `import` block inside
+  `terraform test` applies clean and is torn down with the test; the
+  control — the identical apply *without* the block failing 409
+  `EntityAlreadyExists` — is what makes that evidence rather than a
+  coincidence.
+  **Adversarial security review (IMPL-0022, `iac-security`, pre-merge)**
+  closed four real defects the module accepted at plan, each reproduced
+  before fixing: (1) `permissions_boundary = ""` produced an
+  **unbounded role** — the provider omits the argument on create and
+  *deletes* the boundary on update, so `""` reads as "bounded" in a
+  plan and applies as no boundary; it was the only security-relevant
+  input with zero validations; (2) the **same ARN in both policy
+  channels** made revocation a silent no-op (idempotent
+  `AttachRolePolicy` → two resources over one real attachment; drop it
+  from one channel and the policy fully detaches, then the next
+  unrelated apply re-grants it, with the surviving *unchanged*
+  attachment never printed in the plan); (3) the trust validations
+  compared **raw strings**, so a trailing space, a case variant, or a
+  path-stripped spelling all slipped through; (4) the documented
+  apply-time backstop **does not exist cross-account** — IAM resolves
+  a same-account principal to its unique id at policy save but stores
+  a cross-account ARN as an unvalidated literal, so a typo applies
+  green and leaves a **dangling principal** whoever later creates that
+  role name inherits. Both worked examples are cross-account, so the
+  claim was wrong exactly where the module is used.
+  **Defect 2 is fixed structurally, not by a guard:** the two channels
+  gained regexes partitioning on the account field (`aws` vs 12
+  digits), which are mutually exclusive — so cross-channel duplication
+  is unrepresentable and a `setintersection` precondition would be
+  permanently unreachable (an unreachable guard is untestable and
+  rots). The loosening hazard is comment-pinned at the variable.
+  **Two reusable lessons:** a review-driven fix belongs at the tier
+  that makes the bad state *unrepresentable* rather than merely
+  rejected; and **a fail-closed guard documented with a backstop that
+  doesn't exist in the deployment topology the module is for is worse
+  than no guard** — it stops anyone from looking further. Also: no run
+  had pinned the module's *defaults* (every run overrode
+  `max_session_duration` and `permissions_boundary`), which is how
+  defect 1 stayed invisible — a bare-call run now pins them.
+  **Open follow-ups:** trust conditions — now a **prerequisite for the
+  cross-account instances**, not a nice-to-have, with
+  `aws:PrincipalOrgID` preferred over `sts:ExternalId` since it is the
+  one that survives a dangling principal — and policy *creation*
+  (`iam/policy` sibling), additive and expected soon.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
   IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a
