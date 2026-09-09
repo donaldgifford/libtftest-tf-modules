@@ -34,6 +34,30 @@ the far side rather than of what the provider recorded. It confirms
 the permissions boundary, and the **full trust document** (one
 statement, exactly `sts:AssumeRole`, both principals).
 
+## Probe: the empty-string permissions boundary — POSITIVE
+
+`permissions_boundary = ""` was accepted by the module before the
+review. The question was what it *does*, and 4.4 answers it
+faithfully: the apply succeeds with no error and no warning, and
+reading the role back through `fixtures/verify` returns
+`permissions_boundary == ""` — IAM stored **no boundary at all**.
+
+That matches the provider source (create uses `d.GetOk`, false for
+`""`, so the argument is omitted from `CreateRole`; update takes the
+`DeleteRolePermissionsBoundary` branch), and it means the emulator
+reproduced a security-relevant provider behavior well enough to
+prove the defect without touching real AWS.
+
+The value is now rejected at **plan** by a variable validation, so
+this state is no longer reachable and the apply suite does not
+re-probe it — the regression lives at the tier where the logic does
+(`tests/validation.tftest.hcl`,
+`empty_string_permissions_boundary_rejected`). Recorded here because
+the *emulator finding* — that 4.4 is faithful on boundary omission —
+is reusable, and because the suite's existing
+`output.permissions_boundary != ""` assertion was already the right
+check; it had simply never been fed `""`.
+
 ## Probe: `import` blocks inside `terraform test` — POSITIVE
 
 DESIGN-0025 OQ 4a records this as a **stretch, not a gate**: evidence
