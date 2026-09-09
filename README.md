@@ -38,7 +38,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`eks/cluster`](modules/eks/cluster) | `v0.21.0` | IMPL-0001 | 4 | apply | — |
 | [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.21.0` | IMPL-0002 | 5 | apply | — |
 | [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.17.0` | IMPL-0004 | 4 | apply | — |
-| [`iam/role`](modules/iam/role) | `unreleased` | IMPL-0022 | 3 | apply | — |
+| [`iam/role`](modules/iam/role) | `v0.23.0` | IMPL-0022 | 3 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
 | [`rds/cluster`](modules/rds/cluster) | `v0.18.0` | IMPL-0012 | 6 | plan-only | ✅ |
 | [`rds/instance`](modules/rds/instance) | `v0.18.0` | IMPL-0011 | 7 | plan-only | ✅ |
