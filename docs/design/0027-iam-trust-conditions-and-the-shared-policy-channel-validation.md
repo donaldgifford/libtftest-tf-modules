@@ -81,10 +81,11 @@ surface is only as strong as its weakest copy.
   not caller input; there is no principal-shaped surface to condition.
 - **Policy creation** (DESIGN-0025 Follow-up 2 / the `iam/policy`
   sibling). Unaffected and still deferred.
-- **Making conditions mandatory.** Both inputs default null. The
-  cross-account *guidance* is README/design-level; forcing it would
-  break the deploy-role instances that legitimately trust in-account
-  automation principals.
+- **Making conditions mandatory.** Neither input is set by default
+  (`[]` and `null` respectively), so no condition renders unless
+  asked for. The cross-account *guidance* is README/design-level;
+  forcing it would break the deploy-role instances that legitimately
+  trust in-account automation principals.
 
 ## Background
 
@@ -128,12 +129,24 @@ adding it later would mean touching the same statement twice.
 
 ### Part A — trust conditions on `iam/role`
 
-Two new optional variables, both `null` by default:
+Two new optional variables, each contributing no condition when unset:
 
-| Variable | Type | Renders |
-|---|---|---|
-| `require_org_id` | `string` | `StringEquals` on `aws:PrincipalOrgID` |
-| `external_id` | `string` | `StringEquals` on `sts:ExternalId` |
+| Variable | Type | Default | Renders |
+|---|---|---|---|
+| `require_org_ids` | `list(string)` | `[]` | `StringEquals` on `aws:PrincipalOrgID` |
+| `external_id` | `string` | `null` | `StringEquals` on `sts:ExternalId` |
+
+`require_org_ids` is a **list** (OQ 1, resolved (b) at review): the
+fleet spans multiple organizations, so a role trusting principals
+from more than one is a real topology, not a hypothetical. It takes
+the `[]` default and `nullable = false` of the module's other
+optional lists rather than a null sentinel — empty means "no
+condition," and there is no second no-op spelling to reason about.
+
+`external_id` stays a string: an external id is singular by
+definition — it is the shared secret one relationship is keyed on,
+and a list of accepted values would mean "any of these secrets will
+do," which is not a thing anyone wants.
 
 **Composition — the load-bearing decision.** Both conditions go into
 the **existing single statement**, never into new statements:
@@ -163,25 +176,34 @@ data "aws_iam_policy_document" "trust" {
 }
 ```
 
-Multiple `condition` blocks within one statement are **AND**-ed by
-IAM. Multiple *statements* are **OR**-ed — an assume that satisfies
-either is allowed. So splitting the conditions across statements
-would turn "in our org **and** presenting the external id" into
-"in our org **or** presenting the external id": a silent widening
-with no diff a reviewer would notice, and exactly the F-class shape
-this design exists to avoid. The single-statement composition is
-therefore a **security invariant**, not a style choice, and the plan
-suite pins the statement count at 1 in every conditions run.
+**IAM's three combining rules, which do not agree with each other** —
+this is the whole reason composition is a design decision here:
 
-`local.trust_conditions` is a compact list built from the two
-nullable inputs, so a null input contributes no block at all:
+| Level | Combines as | Consequence |
+|---|---|---|
+| `values` within one condition | **OR** | `require_org_ids` listing two orgs means "in **either** org" — the intended multi-org semantic |
+| `condition` blocks within one statement | **AND** | org id **and** external id must both hold |
+| `statement` blocks in one document | **OR** | either statement alone grants the assume |
+
+So a list of org ids OR-s correctly *inside* one condition, while the
+two conditions must stay *inside* one statement to AND. Splitting
+them across statements would turn "in our org **and** presenting the
+external id" into "in our org **or** presenting the external id": a
+silent widening with no diff a reviewer would notice, and exactly the
+F-class shape this design exists to avoid. The single-statement
+composition is therefore a **security invariant**, not a style
+choice, and the plan suite pins the statement count at 1 in every
+conditions run.
+
+`local.trust_conditions` is a compact list built from the two inputs,
+so an unset input contributes no block at all:
 
 ```hcl
 trust_conditions = concat(
-  var.require_org_id == null ? [] : [{
+  length(var.require_org_ids) == 0 ? [] : [{
     test     = "StringEquals"
     variable = "aws:PrincipalOrgID"
-    values   = [var.require_org_id]
+    values   = var.require_org_ids
   }],
   var.external_id == null ? [] : [{
     test     = "StringEquals"
@@ -192,23 +214,39 @@ trust_conditions = concat(
 ```
 
 **Validations** (single-variable, so `required_version >= 1.1` is
-unchanged):
+unchanged). Each rule gets its own block, so a rejection run is
+verifiable against the rule it names — the `trusted_role_arns`
+pattern:
 
-- `require_org_id` — null or `^o-[a-z0-9]{10,32}$`, the AWS
-  organization-id format. This is the F1 lesson applied preemptively:
-  an empty string would render `"aws:PrincipalOrgID": [""]`, a
-  condition no principal can satisfy. That fails *closed*, so it is
-  not a security hole — but it is an unexplained total lockout, and
-  the regex costs one block.
+- `require_org_ids` — every entry matches `^o-[a-z0-9]{10,32}$`, the
+  AWS organization-id format. This is the F1 lesson applied
+  preemptively: an empty string would render
+  `"aws:PrincipalOrgID": [""]`, a condition no principal can satisfy.
+  It fails *closed*, so it is not a security hole — but it is an
+  unexplained total lockout, and the regex costs one block.
+- `require_org_ids` — no duplicates. Same rationale as
+  `trusted_role_arns`: the condition is an audit surface and should
+  state each org once. Org ids are already lowercase-canonical by
+  format, so unlike the ARN case a plain `distinct()` is sufficient
+  and normalization would be theatre.
 - `external_id` — null, or 2–1224 characters matching AWS's documented
   external-id charset `[\w+=,.@:\/-]*`.
 
-**Zero-diff.** With both inputs null the `dynamic` block emits
-nothing and the rendered document is byte-identical to `v0.23.0`'s.
-Pinned by a plan run asserting the statement carries no `Condition`
-key at all — asserting an *empty* condition map would pass on a
-document that renders `"Condition": {}`, which is a different
-document.
+**Zero-diff.** With `require_org_ids = []` and `external_id = null`
+the `dynamic` block emits nothing and the rendered document is
+byte-identical to `v0.23.0`'s. Pinned by a plan run asserting the
+statement carries no `Condition` key at all — asserting an *empty*
+condition map would pass on a document that renders
+`"Condition": {}`, which is a different document.
+
+**The single-element collapse applies here too.**
+`aws_iam_policy_document` collapses single-element sets, which
+IMPL-0022 found on `Principal.AWS`. Condition `values` are a set, so
+one org id very likely renders as a bare **string** and two as a
+**list** — meaning an assertion written against a one-org run proves
+nothing about a two-org run, which is precisely the case this OQ
+resolution exists to support. Probe the rendered JSON first, then
+test **both** cardinalities.
 
 ### Part B — the shared policy-channel validation surface
 
@@ -259,7 +297,7 @@ pre-existing role belong to whatever stack owns that role.
 ## API / Interface Changes
 
 **`modules/iam/role`** — two additive optional variables
-(`require_org_id`, `external_id`). No output changes. No existing
+(`require_org_ids`, `external_id`). No output changes. No existing
 input changes shape. Every current invocation plans zero-diff.
 
 **`modules/eks/pod-identity-access`** — no new variables. Four
@@ -285,15 +323,18 @@ Plan suites are the gate for both modules, per fleet convention.
 
 - The zero-diff run — neither input set, asserting the statement has
   **no** `Condition` key.
-- `require_org_id` alone: one condition, `StringEquals` on
+- **One** org id: one condition, `StringEquals` on
   `aws:PrincipalOrgID`, statement count still 1.
+- **Two** org ids: the same condition carrying both — the OQ 1
+  cardinality, and the run that catches the single-element collapse
+  making the one-org assertion vacuous.
 - `external_id` alone: same shape on `sts:ExternalId`.
 - **Both together**: two conditions in **one** statement — the
   AND-vs-OR invariant, the run that would catch a future refactor
   splitting them.
 - Rejections, each message-probed per IMPL-0020 discipline: malformed
-  org id, empty-string org id, out-of-range external id, bad-charset
-  external id.
+  org id, empty-string org id, duplicate org id, out-of-range
+  external id, bad-charset external id.
 
 The `aws_iam_policy_document` single-element-set collapse applies to
 condition `values` as it does to `Principal.AWS` — probe the rendered
@@ -303,14 +344,16 @@ JSON before writing the assertion rather than assuming a list.
 validation plus one for the Part C precondition, each verified
 against the rule it names (five validations and preconditions now sit
 on that module's inputs, so a green `expect_failures` alone proves
-only that *something* errored).
+only that *something* errored). **Plan tier only** — see OQ 3.
 
-**Apply suites**: `iam/role`'s Community suite gains a conditions
-run, reading the trust document back through the existing
+**Apply suite**: `iam/role`'s Community suite gains a conditions run,
+reading the trust document back through the existing
 `fixtures/verify` to confirm IAM stores the condition — the far-side
-check, not the provider's recording. LocalStack cannot *enforce* the
-condition (its STS mints credentials for any role ARN, IMPL-0015
-Phase 1), so this asserts the surface only and FINDINGS says so.
+check, not the provider's recording. This one is Community-safe (pure
+IAM + STS on token-free 4.4). LocalStack cannot *enforce* the
+condition — its STS mints credentials for any role ARN (IMPL-0015
+Phase 1) — so it asserts the surface only, and FINDINGS says so
+rather than letting a green run imply more.
 
 ## Migration / Rollout Plan
 
@@ -340,16 +383,19 @@ fleet, and the hub buildout should re-plan before adopting it.
 ## Open Questions
 
 1. **Should `require_org_id` accept a list of org ids?**
-   1. **(a)** No — single string. One role trusting principals from
-      two organizations is a topology worth forcing into the open as
-      an explicit design conversation, and `StringEquals` on a
-      one-element list is the honest rendering of the current need.
-      Widening a validated string to a validated list later is
-      additive and cheap.
-   2. (b) `list(string)`, `StringEquals` against all of them — more
-      general, but it is a widening surface with no consumer, and
-      "which orgs" is exactly the question a reviewer should have to
-      ask out loud.
+   **RESOLVED (b), operator, 2026-09-09: list.** The fleet spans
+   multiple organizations, so a role trusting principals from more
+   than one is a live topology rather than the hypothetical (a)
+   assumed. Named `require_org_ids`, `list(string)`, `[]` default,
+   `nullable = false`; `StringEquals` OR-s the values inside the one
+   condition, which is the correct "in any of our orgs" semantic.
+   1. (a) No — single string, forcing multi-org into an explicit
+      design conversation. Rejected: the conversation already
+      happened and the answer is "we have several."
+   2. **(b)** `list(string)`, `StringEquals` against all of them.
+      **Chosen.** Note this makes the single-element-set collapse
+      load-bearing — one org renders a string, two a list — so both
+      cardinalities need their own assertion.
 2. **Should the Part B backport also cover `iam/role`'s trust
    normalization** (the `trimspace` + normalized-duplicate rules)?
    1. **(a)** No — not applicable. `eks/pod-identity-access` has no
@@ -357,7 +403,31 @@ fleet, and the hub buildout should re-plan before adopting it.
       principal. There is nothing to normalize.
    2. (b) Add a defensive equivalent anyway — rejected as a guard
       over an input that does not exist.
-3. **Does the Part C precondition belong on the association resource
+3. **Does `eks/pod-identity-access` need apply-tier coverage for the
+   Part B/C rules?**
+   **RESOLVED: no, operator constraint 2026-09-09 — "only if it can
+   be done without LocalStack Pro."** It cannot, and it would not
+   help even if it could. Two independent reasons:
+   1. **Pro-gated.** Every apply of this module creates an
+      `aws_eks_pod_identity_association`, and EKS is Pro-only on
+      token-free Community 4.4 (probed, IMPL-0020 Phase 5). Its
+      `tests-localstack/FINDINGS.md` records the suite's last green
+      run against Pro 2026.6.0 — the directory name says "community"
+      but the edition does not.
+   2. **The tier cannot observe these rules anyway.** All five are
+      variable validations and a precondition: they reject at
+      **plan**, so an `expect_failures` run never reaches apply. An
+      apply-tier addition would assert something the plan gate
+      already proves, at the cost of a Pro container.
+
+   The IMPL-0022 lesson ("a fix is not covered just because a
+   regression exists at the tier where the logic lives") is what
+   forced the question, and it is worth being precise about why the
+   answer differs here: that lesson bit where a *plan* regression sat
+   over a degenerate *live* case — a real apply that never exercised
+   the path. These rules have no live path to degenerate. Nothing is
+   being waved through on the Pro constraint alone.
+4. **Does the Part C precondition belong on the association resource
    or on the role?**
    1. **(a)** The association — it is the one resource that exists in
       *both* modes, so the guard fires whether or not the role is

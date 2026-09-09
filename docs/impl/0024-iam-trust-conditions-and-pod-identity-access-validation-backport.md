@@ -38,7 +38,7 @@ created: 2026-09-09
 ## Objective
 
 Implement DESIGN-0027: the typed trust-conditions surface on
-`modules/iam/role` (`require_org_id` / `external_id`), the four
+`modules/iam/role` (`require_org_ids` / `external_id`), the four
 policy-channel validations backported to
 `modules/eks/pod-identity-access`, and the `create_role = false`
 coherence guard found while reading that module.
@@ -53,9 +53,9 @@ control that survives it.
 
 ### In Scope
 
-- `iam/role`: `require_org_id` + `external_id`, composed into the
-  **existing single trust statement**, with the zero-diff invariant
-  pinned by a test.
+- `iam/role`: `require_org_ids` (a **list** — the fleet spans several
+  organizations) + `external_id`, composed into the **existing single
+  trust statement**, with the zero-diff invariant pinned by a test.
 - `eks/pod-identity-access`: validations on `permissions_boundary`,
   `managed_policy_arns`, `customer_managed_policy_arns`,
   `inline_policies`; precondition rejecting policy inputs under
@@ -85,30 +85,38 @@ control that survives it.
 
 #### Tasks
 
-- [ ] 1.1 `variables.tf`: `require_org_id` (null default, `^o-[a-z0-9]{10,32}$`
-      or null) and `external_id` (null default, 2–1224 chars,
-      `[\w+=,.@:\/-]*`). Descriptions carry the honest scope — org id
-      mitigates a dangling principal in an account *outside* the org
-      and does nothing for a typo inside it.
+- [ ] 1.1 `variables.tf`: `require_org_ids` (`list(string)`, `[]`
+      default, `nullable = false`; per-entry `^o-[a-z0-9]{10,32}$`
+      and a no-duplicates rule, each its own block) and `external_id`
+      (null default, 2–1224 chars, `[\w+=,.@:\/-]*`). Descriptions
+      carry the honest scope — org id mitigates a dangling principal
+      in an account *outside* the org and does nothing for a typo
+      inside it.
 - [ ] 1.2 `locals.tf` (new): `trust_conditions`, the compact list built
-      from the two nullable inputs so a null contributes no block.
+      from the two inputs so an unset one contributes no block.
 - [ ] 1.3 `trust.tf`: `dynamic "condition"` inside the **existing**
-      statement. Comment states the AND-vs-OR invariant — conditions
-      in one statement AND, separate statements OR, so splitting them
-      would silently widen.
-- [ ] 1.4 **Probe before asserting**: render the document with one and
-      with two conditions and read the JSON. `aws_iam_policy_document`
-      collapses single-element sets (the IMPL-0022 finding on
-      `Principal.AWS`); confirm whether condition `values` collapse
-      the same way before writing any assertion.
+      statement. Comment states all three IAM combining rules —
+      values OR inside a condition, conditions AND inside a
+      statement, statements OR inside a document — because the middle
+      one is the invariant and the other two are what make it
+      counterintuitive.
+- [ ] 1.4 **Probe before asserting**: render the document with one org
+      id, two org ids, and both conditions, and read the JSON.
+      `aws_iam_policy_document` collapses single-element sets (the
+      IMPL-0022 finding on `Principal.AWS`); condition `values` are a
+      set, so confirm the one-vs-two shape before writing any
+      assertion. With the list resolution this is no longer a
+      nicety — a one-org assertion would silently prove nothing about
+      the multi-org case the surface exists for.
 - [ ] 1.5 `tests/trust_conditions.tftest.hcl` (new): the zero-diff run
-      (**no `Condition` key at all**, not an empty map), org-id alone,
-      external-id alone, and both-together asserting **one** statement
-      with **two** conditions.
-- [ ] 1.6 Four rejection runs (malformed org id, empty-string org id,
-      out-of-range external id, bad-charset external id), each
-      message-probed — six rules now sit across the two new variables
-      and `expect_failures` proves only that the variable errored.
+      (**no `Condition` key at all**, not an empty map), one org id,
+      **two** org ids, external-id alone, and both-together asserting
+      **one** statement with **two** conditions.
+- [ ] 1.6 Five rejection runs (malformed org id, empty-string org id,
+      duplicate org id, out-of-range external id, bad-charset
+      external id), each message-probed — three rules now sit on
+      `require_org_ids` alone and `expect_failures` proves only that
+      the variable errored.
 - [ ] 1.7 `just tf fmt|lint|test iam/role`; regenerate USAGE.md
       lock-free.
 
@@ -116,9 +124,11 @@ control that survives it.
 
 - Every pre-existing `iam/role` run passes **unchanged** — the
   zero-diff bar, since the module shipped as `v0.23.0` one day prior.
+- Both cardinalities of `require_org_ids` asserted, so neither shape
+  of the collapse can hide a vacuous test.
 - Both conditions render into one statement; the two-condition run
   fails if a refactor ever splits them.
-- Each of the four rejections verified against its own rule.
+- Each of the five rejections verified against its own rule.
 
 ---
 
@@ -169,11 +179,17 @@ control that survives it.
       LocalStack cannot *enforce* it (its STS mints credentials for
       any role ARN, IMPL-0015 Phase 1) — surface only, and the note
       says so rather than implying more.
-- [ ] 3.2 Decide whether `pod-identity-access`'s apply suite needs a
-      run at all: its new rules are **plan-time rejections**, and
-      IMPL-0022's lesson was "a fix is not covered just because a
-      regression exists at the tier where the logic lives." Record the
-      call either way — if the answer is no, say why in FINDINGS.
+- [ ] 3.2 **RESOLVED — no apply-tier runs for `pod-identity-access`**
+      (operator: "only if it can be done without LocalStack Pro").
+      Verified it cannot: every apply creates an
+      `aws_eks_pod_identity_association`, and its own FINDINGS.md
+      records the suite's last green run against **Pro 2026.6.0** —
+      the `tests-localstack/` directory name says community, the
+      edition does not. Independently, all five new rules reject at
+      **plan**, so an `expect_failures` never reaches apply and the
+      tier could not observe them anyway. Record both reasons in
+      FINDINGS so the constraint is not mistaken for the whole
+      argument.
 - [ ] 3.3 READMEs: `iam/role` gains a trust-conditions section stating
       the `aws:PrincipalOrgID` scope honestly (mitigates an
       out-of-org dangling principal, no help in-org) and updated run
@@ -203,7 +219,7 @@ control that survives it.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `modules/iam/role/variables.tf` | Modify | `require_org_id`, `external_id` + validations |
+| `modules/iam/role/variables.tf` | Modify | `require_org_ids`, `external_id` + validations |
 | `modules/iam/role/locals.tf` | Create | `trust_conditions` composition |
 | `modules/iam/role/trust.tf` | Modify | `dynamic "condition"` in the existing statement |
 | `modules/iam/role/tests/trust_conditions.tftest.hcl` | Create | zero-diff, each condition, both-together, 4 rejections |
@@ -219,9 +235,10 @@ control that survives it.
 
 | Tier | Module | Content |
 |---|---|---|
-| plan (gate) | `iam/role` | 25 today → +8 (4 composition, 4 rejection) |
-| plan (gate) | `eks/pod-identity-access` | +5 rejections |
-| Community apply | `iam/role` | +1 conditions read-back run |
+| plan (gate) | `iam/role` | 25 today → +10 (5 composition incl. both org-id cardinalities, 5 rejection) |
+| plan (gate) | `eks/pod-identity-access` | +5 rejections — **plan tier only**, see task 3.2 |
+| Community apply | `iam/role` | +1 conditions read-back run (token-free 4.4; pure IAM + STS) |
+| any apply | `eks/pod-identity-access` | **none** — Pro-gated, and plan-time rejections cannot reach apply |
 
 The `expect_failures` discipline applies throughout: a passing run is
 evidence the object errored, **not** evidence the named rule fired.
@@ -237,12 +254,15 @@ Nine new rejection runs here, message-probed one file at a time.
 
 ## Open Questions
 
-1. **Should `require_org_id` accept a list?** DESIGN-0027 OQ 1 —
-   resolved **(a) single string**; widening a validated string to a
-   validated list later is additive.
+1. **Should `require_org_ids` accept a list?** DESIGN-0027 OQ 1 —
+   **resolved (b), operator 2026-09-09: yes, a list.** The fleet
+   spans multiple organizations. Named `require_org_ids`,
+   `list(string)`, `[]` default. Consequence for testing: the
+   single-element-set collapse becomes load-bearing, so both
+   cardinalities need their own assertion (task 1.4/1.5).
 2. **Does `pod-identity-access` need an apply-tier run for these
-   rules?** Deferred to task 3.2 with the reasoning recorded there
-   rather than assumed now.
+   rules?** **Resolved: no** — Pro-gated *and* unobservable at that
+   tier. See task 3.2 and DESIGN-0027 OQ 3.
 
 ## References
 
