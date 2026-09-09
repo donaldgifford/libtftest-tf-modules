@@ -474,7 +474,8 @@ Tracked in git. As of this writing:
   FINDINGS.md, config-surface assertions only per OQ 2a).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
-- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, implemented).
+- **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, implemented;
+  **shipped as `v0.23.0`**, PR #112 merged 2026-09-09).
   One generic **trust-boundary** role module replacing the queued
   `iam/deploy-role` + `iam/cross-account-role` pair — identical resource
   surfaces, so the inputs define what an instance is. Producer-only (no

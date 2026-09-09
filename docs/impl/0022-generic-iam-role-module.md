@@ -1,7 +1,7 @@
 ---
 id: IMPL-0022
 title: "Generic IAM role module"
-status: In Progress
+status: Completed
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -32,6 +32,7 @@ created: 2026-09-04
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
 - [Verifying the fail-closed tests fail for the right reason](#verifying-the-fail-closed-tests-fail-for-the-right-reason)
+- [Adversarial security review (task 4.6, 2026-09-08)](#adversarial-security-review-task-46-2026-09-08)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -267,7 +268,8 @@ Pure IAM API — token-free Community, no Pro, no named volume.
       static`).
 - [x] 4.4 `docz update` + the mangle-set restore; `just docs lint`.
 - [x] 4.5 PR labeled `minor`; `### RELEASE NOTES` names the new
-      module and the adoption runbook. **Opened: PR #112.**
+      module and the adoption runbook. **PR #112, squash-merged
+      2026-09-09, tagged `v0.23.0`.**
 - [x] 4.6 Adversarial `iac-security` review before merge (the
       IMPL-0020 precedent). Four real defects found and fixed on the
       branch, six regression runs added (18 → 25 plan runs), the
