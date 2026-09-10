@@ -221,8 +221,15 @@ control that survives it.
 - [x] 3.4 DESIGN-0025 Follow-up 1 marked delivered, pointing at
       DESIGN-0027. CLAUDE.md: the conditions surface, the mirrored
       policy-channel standard, and the Part C guard.
-- [x] 3.5 `just static`; `docz update` + the mangle-set restore;
-      `just docs lint`.
+- [x] 3.5 `just static`; **`just readme`** (the module table — a
+      SEPARATE `readme-check` CI job that `just static` does not
+      cover, and which failed on the first push here because both
+      modules moved to `unreleased` and their plan-file counts
+      changed); `docz update` + the mangle-set restore;
+      `just docs lint`. Note the mangle-set `git checkout` does not
+      help for a doc you are actively editing — DESIGN-0027's
+      `create_role` TOC anchor loses its underscore on every
+      `docz update` and must be repaired by hand.
 - [ ] 3.6 PR labeled `minor`. `### RELEASE NOTES` **must** call the
       `pod-identity-access` change out as possibly-plan-breaking and
       list the four rejected shapes — it can fail a
