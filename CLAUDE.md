@@ -12,6 +12,19 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+  **`pod-identity-access` hardened by DESIGN-0027 Part B / IMPL-0024**
+  (the four policy-channel validations, 5 → 9 plan runs). Its
+  **Mode B (`create_role = false`) accepts and IGNORES the four Mode A
+  policy inputs** — deliberate, regression-tested in
+  `mode_b.tftest.hcl`, and documented on every affected variable +
+  the README after DESIGN-0027 Part C proposed rejecting the
+  combination and was **withdrawn**: Terragrunt injects a uniform
+  input set into every module regardless of use (IMPL-0015 Q6a), so
+  failing on an unused input would break the fleet's normal calling
+  pattern. **Reusable rule: "this input is silently ignored" is a
+  documentation defect by default, and a validation defect only when
+  nothing yet depends on the tolerance — look for the regression test
+  before assuming the silence was an accident.**
   **Hub posture shipped as `v0.21.0` (IMPL-0020 / DESIGN-0024, PR #106
   merged 2026-09-01)** — the hub-unblock milestone tag the management-cluster
   buildout pins; one minor tag carries all three modules (OQ 1a's three-PR
@@ -490,11 +503,16 @@ Tracked in git. As of this writing:
   service-principal channel and no raw-JSON trust escape hatch**
   (resource-owning modules mint their own
   service roles). Policy channels mirror `eks/pod-identity-access` in
-  shape, with one deviation: `inline_policies` gains a
-  `can(jsondecode())` validation (IMPL-0022 OQ 1a) moving a guaranteed
-  apply-time `MalformedPolicyDocument` to plan — **a backport of that one
-  validation to `pod-identity-access` is an open follow-up** so the mirror
-  stays honest both ways. **`aws_iam_policy_document` rendering gotcha
+  shape, and as of **DESIGN-0027 Part B / IMPL-0024 the mirror is
+  honest in both directions**: all four validations (the two channel
+  regexes, `can(jsondecode())` on `inline_policies`, and the
+  null-or-ARN rule on `permissions_boundary`) now exist on **both**
+  modules. That backport was not cosmetic — `pod-identity-access`
+  had **zero** validation on that surface, so it carried IMPL-0022's
+  F1 (an empty-string boundary yielding an unbounded role) and F2
+  (cross-channel duplicate ARNs silently surviving a revocation) as
+  live defects on a module shipped since `v0.21.0`.
+  **`aws_iam_policy_document` rendering gotcha
   (probed, pinned by two runs):** it collapses single-element sets, so
   `Principal.AWS` is a **string** with one principal and a **list** with
   two or more (`Action` likewise, being a single action) — an assertion

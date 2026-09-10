@@ -34,9 +34,46 @@ once). There is deliberately **no raw-JSON trust channel**: a JSON
 escape hatch bypasses every one of those rules, which is the
 fail-open this typed surface exists to prevent.
 
-Trust conditions (`sts:ExternalId` first) are a recorded follow-up,
-additive — the v1 single-statement composition is built so a
-conditions block slots in without reshaping the variable.
+## Trust conditions
+
+Two optional inputs narrow *who* may assume the role beyond naming
+them. Both are unset by default and add nothing:
+
+| Input | Renders |
+|---|---|
+| `require_org_ids` (`list(string)`) | `StringEquals` on `aws:PrincipalOrgID` |
+| `external_id` (`string`) | `StringEquals` on `sts:ExternalId` |
+
+```hcl
+require_org_ids = ["o-a1b2c3d4e5"]   # principals must be in this org
+external_id     = "hub-to-spoke-42"  # ...AND present this external id
+```
+
+**`require_org_ids` is what mitigates the cross-account dangling
+principal** described below: a squatted role in an account outside
+your organizations cannot assume this role no matter what the trust
+list literally says. Its limit, stated plainly — it does **nothing**
+for a typo naming a nonexistent role *inside* the org. It shrinks the
+blast radius; correct ARNs remain the primary control.
+
+### How these combine (IAM's three rules disagree)
+
+| Level | Combines as |
+|---|---|
+| values inside one condition | **OR** — "in **any** of these orgs" |
+| conditions inside one statement | **AND** — org **and** external id |
+| statements inside one document | **OR** |
+
+Both conditions therefore compose into the module's **single**
+statement, and that is a security property rather than a style
+choice: splitting them across statements would turn the AND into an
+OR, letting either condition alone grant the assume. The plan suite
+pins the statement count at 1 in every conditions run.
+
+One rendering detail if you write your own assertions: conditions
+sharing a test operator **merge**, so both keys land inside one
+`StringEquals` object — `length(Condition)` is 1, not 2. And a single
+org id renders as a bare string where two render a list.
 
 ## Worked example 1 — the per-account deploy role
 
@@ -158,9 +195,10 @@ handoff.
 - Treat `trusted_role_arns` as unverified input. Copy ARNs from
   `aws iam get-role` output, never by hand.
 - The **cross-account instances should carry a trust condition**
-  before they hold real privilege (DESIGN-0025 Follow-up 1).
-  `aws:PrincipalOrgID` is the higher-value one here — it is valid in
-  an `sts:AssumeRole` trust policy, needs no per-caller
+  before they hold real privilege. This shipped in DESIGN-0027: set
+  `require_org_ids` (see [Trust conditions](#trust-conditions)).
+  `aws:PrincipalOrgID` is the higher-value control here — it is
+  valid in an `sts:AssumeRole` trust policy, needs no per-caller
   coordination, and survives a dangling principal, which
   `sts:ExternalId` alone does not. Both v1 consumers are intra-org.
 
@@ -227,7 +265,7 @@ consumer: a spoke's platform-access stack reading a hub principal's
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` | plan (the gate) | Both §4 shapes with the trust JSON asserted by content; a bare call pinning every default; the three policy channels and their address stability; seventeen fail-closed rejections, each verified to fire its own rule |
-| `tests-localstack/` | Community apply | The IAM surface round-trips live — see `FINDINGS.md` for what a LocalStack apply can and cannot prove about trust |
+| `tests/` | plan (the gate) | Both §4 shapes with the trust JSON asserted by content; a bare call pinning every default; trust conditions at both org-id cardinalities plus the AND-within-one-statement invariant; the three policy channels and their address stability; twenty-two fail-closed rejections, each verified to fire its own rule |
+| `tests-localstack/` | Community apply | The IAM surface **and both trust conditions** round-trip live (5 runs) — see `FINDINGS.md` for what a LocalStack apply can and cannot prove about trust |
 
 Full variable/output reference: [USAGE.md](USAGE.md).

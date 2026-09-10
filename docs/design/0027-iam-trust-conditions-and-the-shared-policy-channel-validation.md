@@ -41,14 +41,18 @@ a **prerequisite for the cross-account instances**. **Part B**
 backports that review's four policy-channel validations to
 `modules/eks/pod-identity-access`, the only other module in the fleet
 carrying the same four-input policy surface, where all four inputs are
-today entirely unvalidated. **Part C** closes a coherence gap found
-while reading that module: with `create_role = false`, every policy
-input is silently discarded.
+today entirely unvalidated. **Part C** examined a coherence gap
+found while reading that module — with `create_role = false`, every
+policy input is silently discarded — and **withdrew** the guard it
+proposed once IMPL-0024 task 2.4 showed the tolerance is deliberate,
+tested, and relied on by the fleet's Terragrunt calling pattern. It
+ships as documentation instead.
 
-The root cause shared by A, B and C is the lesson IMPL-0020 recorded
+The root cause shared by A and B is the lesson IMPL-0020 recorded
 and IMPL-0022 re-learned: **a permissive default plus a
 partially-specified input is a silent widening**, and a mirrored
-surface is only as strong as its weakest copy.
+surface is only as strong as its weakest copy. Part C is the
+counterexample that bounds it — see its section.
 
 ## Goals and Non-Goals
 
@@ -64,8 +68,10 @@ surface is only as strong as its weakest copy.
 - Bring `eks/pod-identity-access`'s policy surface to parity with
   `iam/role`'s, so the "mirror" claim in both READMEs is true in both
   directions rather than aspirational.
-- Reject, at plan, policy inputs that `create_role = false` would
-  silently discard.
+- Make visible — in variable descriptions and the README — that
+  `create_role = false` discards the four Mode A policy inputs.
+  (This goal was originally "reject at plan"; see Part C for why
+  rejecting was withdrawn in favour of documenting.)
 
 ### Non-Goals
 
