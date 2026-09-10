@@ -25,6 +25,16 @@ Tracked in git. As of this writing:
   documentation defect by default, and a validation defect only when
   nothing yet depends on the tolerance — look for the regression test
   before assuming the silence was an accident.**
+  **The Part B backport is possibly plan-breaking** — four shapes that
+  planned green since `v0.21.0` now fail (a malformed ARN in either
+  channel, non-JSON `inline_policies`, `permissions_boundary = ""`),
+  and because the two channel regexes partition on the account field,
+  **an ARN in the wrong channel is now an error** where before both
+  channels emitted an identical attachment and either worked. Moving
+  one between channels is **not address-neutral**: the attachment is
+  keyed by channel, so it plans as destroy + create — a real brief
+  detach window, not something to fold into an unrelated apply. Both
+  the README's upgrade section and the release notes say so.
   **Hub posture shipped as `v0.21.0` (IMPL-0020 / DESIGN-0024, PR #106
   merged 2026-09-01)** — the hub-unblock milestone tag the management-cluster
   buildout pins; one minor tag carries all three modules (OQ 1a's three-PR
@@ -602,6 +612,34 @@ Tracked in git. As of this writing:
   for an **out-of-org** account and does **nothing** for a typo
   naming a nonexistent role inside the org. Correct ARNs stay the
   primary control.
+  **Adversarial security review (IMPL-0024, `iac-security`,
+  pre-merge): no HIGH, and no path found to widen the trust surface** —
+  the structural fixes from the IMPL-0022 review held under direct
+  attack. Worth carrying: `ForAllValues:StringEquals` **with an absent
+  key evaluates TRUE**, the commonest way an IAM condition is silently
+  ineffective — unreachable here only because `test` is hardcoded
+  `StringEquals` with no set-operator prefix anywhere, which is what
+  the `keys(Condition) == {StringEquals}` assertion exists to force
+  review on. The one MEDIUM is a **composition hazard, not a module
+  defect: never set `external_id` on the deploy role** — all 12
+  `data.terraform_remote_state` `assume_role` blocks pass only
+  `role_arn` + `session_name`, so every consumer plan fleet-wide dies
+  `AccessDenied` on the **next** plan, separated from the apply that
+  caused it (the backend does accept `external_id`; the fix is one
+  line per block, in the same change). Two LOWs, both documentation:
+  an external id is **not a secret** (AWS says so, and it lands in
+  CloudTrail on both sides), and `require_org_ids` covers the
+  **account-number** half of the typo space — the dangerous half,
+  since a mistyped account is one you don't control. Deliberately not
+  shipped: a `require_trust_conditions` guard for a computed input
+  resolving to empty (IMPL-0020's fence-expands-to-nothing shape) —
+  recorded as DESIGN-0027 Follow-up 1 with an explicit revisit
+  trigger, because no consumer computes these inputs yet. **Reusable
+  test lesson: `toset()` on a bare string is a conversion *error*, not
+  a silent pass**, so the two-org assertion self-defends against the
+  single-element collapse; and a run whose only assert is true of a
+  pre-existing resource in shared state (`startswith(role_unique_id,
+  "AROA")`) proves the apply didn't error and nothing more.
   **Open follow-up:** policy *creation* (`iam/policy` sibling),
   additive and expected soon.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →

@@ -71,6 +71,18 @@ run "single_org_id_renders_a_string" {
     condition     = length(jsondecode(aws_iam_role.this.assume_role_policy).Statement) == 1
     error_message = "adding a condition must not add a statement — a second statement would OR, not AND"
   }
+
+  # The mirror of external_id_alone's absence assert. Without it the
+  # org-only path had no "and nothing else rendered" guard at all.
+  assert {
+    condition     = !contains(keys(one(jsondecode(aws_iam_role.this.assume_role_policy).Statement).Condition.StringEquals), "sts:ExternalId")
+    error_message = "an unset external_id must contribute no condition key"
+  }
+
+  assert {
+    condition     = toset(keys(one(jsondecode(aws_iam_role.this.assume_role_policy).Statement).Condition)) == toset(["StringEquals"])
+    error_message = "the org condition must use StringEquals and no other operator — a StringLike or ForAnyValue: variant here would change the matching semantics"
+  }
 }
 
 # TWO org ids: the same key now carries a LIST. This is the run that
@@ -145,5 +157,20 @@ run "both_conditions_and_within_one_statement" {
   assert {
     condition     = toset(keys(one(jsondecode(aws_iam_role.this.assume_role_policy).Statement).Condition)) == toset(["StringEquals"])
     error_message = "both conditions share the StringEquals operator, so exactly one operator block may render"
+  }
+
+  # The rest of the statement must survive the dynamic "condition"
+  # block. Nothing else in this file re-asserts Principal or Action,
+  # so a refactor that perturbed them while editing the conditions
+  # would only be caught over in trust.tftest.hcl. One principal, so
+  # Principal.AWS is a bare STRING here (the collapse rule).
+  assert {
+    condition     = one(jsondecode(aws_iam_role.this.assume_role_policy).Statement).Principal.AWS == "arn:aws:iam::000000000000:role/hub-argocd-deployer"
+    error_message = "adding conditions must not disturb the trusted principal"
+  }
+
+  assert {
+    condition     = one(jsondecode(aws_iam_role.this.assume_role_policy).Statement).Action == "sts:AssumeRole"
+    error_message = "the statement's only action must remain sts:AssumeRole — sts:ExternalId is evaluated for that action alone, so a second action would slip past the condition"
   }
 }

@@ -491,6 +491,48 @@ fleet, and the hub buildout should re-plan before adopting it.
       isolation, but a resource that exists only to hold a check is
       noise when a correct site already exists.
 
+## Follow-ups
+
+1. **A `require_trust_conditions` opt-in guard** (raised by the
+   IMPL-0024 pre-merge security review, deliberately not shipped).
+   A computed input that resolves to unset — `try(..., [])`, a
+   `compact()` that empties, or an explicit `null` coerced to `[]` by
+   `nullable = false` — renders **no condition**, indistinguishable
+   from never having asked for one. That is the same shape as
+   IMPL-0020's HIGH, where a prefix-list fence expanding to nothing
+   fell through to `0.0.0.0/0`, and it is why that module grew
+   `rejects_fence_that_expands_to_nothing`.
+
+   Not shipped now for two reasons. The mitigation is partly real: on
+   an **existing** role the plan shows an `assume_role_policy` JSON
+   diff a reviewer can see — it is only invisible on a *new* role.
+   And the fix is a third input hedging a scenario no live consumer
+   has, since no instance sets either condition yet; adding it now
+   would be speculative surface on a module shipping this week.
+
+   The shape if it is ever wanted — a precondition, not a validation,
+   because it spans two variables:
+
+   ```hcl
+   precondition {
+     condition     = !var.require_trust_conditions || length(local.trust_conditions) > 0
+     error_message = "require_trust_conditions is set but no condition resolved — check that require_org_ids / external_id did not compute to empty."
+   }
+   ```
+
+   **Trigger to revisit:** the first consumer that computes either
+   input from a `dependency` output or a `try()` rather than writing
+   it literally.
+
+2. **`aws:PrincipalOrgPaths` with `ForAnyValue:StringLike`** for
+   OU-level scoping. Narrower than `aws:PrincipalOrgID`, not
+   correcter, and it would introduce the first set-operator condition
+   in this module — which is exactly the change the shipped
+   `keys(Condition) == {StringEquals}` assertion is designed to force
+   review on. `ForAllValues:StringEquals` with an absent key
+   evaluates **true**, so any set-operator work here needs its own
+   fail-open analysis.
+
 ## References
 
 - DESIGN-0025 — the `iam/role` module; Follow-up 1 reserved this

@@ -367,6 +367,158 @@ With both inputs unset the statement renders **no `Condition` key at
 all** — not an empty map — so every `v0.23.0` invocation is
 byte-identical. Pinned first in the suite, asserting key *absence*.
 
+## Adversarial security review (pre-merge, `iac-security`)
+
+Run against the PR #114 diff, scoped to attack the four claims this
+IMPL makes rather than restate them. **Verdict: no HIGH, and no path
+found to widen the trust surface, bypass a condition, or render
+something that looks restrictive but is not.** The IMPL-0022 review
+found four real defects; this one found one operational trap and two
+documentation errors. The difference is worth recording — the
+structural fixes from that review (channel partitioning, normalized
+comparison) held under direct attack here.
+
+What was attacked and held, briefly, because knowing what was *tried*
+is most of the value:
+
+- **`ForAllValues:StringEquals` with an absent key evaluates TRUE** —
+  the single most common way an IAM condition is silently ineffective.
+  Unreachable here: `test` is hardcoded `StringEquals` in `locals.tf`
+  with no set-operator prefix anywhere, so the module cannot express
+  it. Likewise no `StringNotEquals`/`Null` negation path.
+- **Empty `values`.** Unreachable from both directions — the org list
+  only contributes at `length > 0` and its regex rejects `""`; the
+  external id only contributes non-null with a length floor of 2.
+- **Type unification.** `concat` of `list(string)` and
+  `tuple([string])` unifies rather than dropping a condition
+  (confirmed live by `external_id_alone`).
+- **Set collapse.** `statement.condition` is a `TypeSet`; the two
+  blocks hash differently so neither collapses, and the merged key
+  order is Go-map-sorted, so no perpetual diff.
+- **Action escape.** `sts:ExternalId` is only evaluated for
+  `sts:AssumeRole`, which is the statement's only action — there is
+  no second action to slip past the condition.
+- **All four regexes**, probed empirically. `^o-[a-z0-9]{10,32}$` and
+  the external-id charset are AWS's own documented patterns verbatim;
+  the RE2 split is confirmed *necessary and correctly done* (the
+  charset pattern was verified to discriminate, so `can()` is not
+  swallowing a compile error). The two policy-channel regexes accept
+  `job-function/`, `service-role/`, and path-bearing customer ARNs.
+- **`aws:PrincipalOrgID` + `StringEquals` is the correct and complete
+  spelling.** It is populated from the calling principal's account
+  org (correct under role chaining), absent for anonymous and service
+  principals (so absent + `StringEquals` → deny, fail-closed). The
+  only narrower option is `aws:PrincipalOrgPaths` with
+  `ForAnyValue:StringLike` for OU scoping — narrower, not correcter,
+  and it drags in the footguns this module currently cannot express.
+  Recorded as a possible additive, not a defect.
+
+### MEDIUM — `external_id` on the deploy role breaks all 12 remote-state readers
+
+Verified independently before fixing: **zero** `external_id` appears
+in any `assume_role` block fleet-wide outside this module. The
+module's own worked example 1 is the per-account deploy role, so the
+hazard sits on its primary instance.
+
+Set `external_id` there and every consumer plan dies `AccessDenied`
+on the **next** plan — separated from the apply that caused it. The
+S3 backend's `assume_role` does accept `external_id`, so the fix is
+one line per block, but it must land in the same change; under time
+pressure the tempting move is to strip the id back off, which retires
+the control rather than adopting it.
+
+This is a **composition hazard, not a module defect** — `external_id`
+is correct for a third-party trust, which is what it is for. Fixed as
+documentation: a new README subsection and an explicit warning in the
+variable description.
+
+### LOW — `external_id` was described as a "shared secret"; it is not
+
+AWS documents an external id as unique and unpredictable but
+explicitly **not a secret**, and it lands in CloudTrail
+`requestParameters.externalId` on **both** sides of the AssumeRole,
+plus plan output and state. Leaving `sensitive` off was the right
+call; the description was what invited an operator to rely on its
+confidentiality — and it contradicted the README's own correct
+ordering (`aws:PrincipalOrgID` survives a dangling principal,
+`sts:ExternalId` alone does not). Reworded.
+
+### LOW — the README named the typo space without splitting it
+
+`require_org_ids` covers a mistyped **account number** (which almost
+always lands outside the orgs, and is the dangerous half — an account
+whose owner can create the dangling role). It does not cover a role-
+name typo inside the org, nor a hostile insider in a member account.
+The README said the second half; it now says which half *is* covered
+and why that is the one that matters.
+
+### Accepted, not fixed
+
+- **Partition hardcoding.** `arn:aws-us-gov:` / `arn:aws-cn:` managed
+  policy ARNs are rejected (probed). The fleet is commercial-only, so
+  this is inert; recorded so it reads as known-and-accepted rather
+  than an oversight. The `variables.tf` comment already warns that
+  loosening for another partition must preserve the account-field
+  exclusivity that makes IMPL-0022's F2 unrepresentable.
+- **A UTF-8 BOM fails `can(jsondecode())`.** The only false-rejection
+  candidate found; `PutRolePolicy` would almost certainly reject it
+  too. Trailing newline, CRLF, tab indentation, leading whitespace
+  and duplicate keys all pass.
+- **A computed input resolving to unset silently drops the control**
+  (`try(..., [])`, `compact()` emptying, `nullable = false` coercing
+  an explicit `null` to `[]`). This is the *shape* of IMPL-0020's
+  HIGH — the fence that expands to nothing. Not built: the review
+  rated it LOW because on an existing role the plan shows a visible
+  `assume_role_policy` diff, and the proposed fix is a third input
+  (`require_trust_conditions`) hedging a scenario no live consumer
+  has — no instance sets either condition yet. **Recorded as a
+  DESIGN-0027 follow-up rather than shipped**, so the decision is
+  visible if a consumer ever computes these inputs.
+- **Org/trust-list coherence.** A principal in an account outside
+  every listed org yields an un-assumable role with no plan signal.
+  Fails closed, and the account→org mapping is not plan-knowable, so
+  it cannot be validated here.
+
+### Test-precision gaps closed (2 of 3)
+
+The review confirmed the two load-bearing assertion idioms are real
+evidence, by probe rather than assumption: `toset()` on a *bare
+string* is a **conversion error**, so a two-org run regressing to a
+collapsed string errors rather than passing; and `one()` errors on a
+2-element list, so every conditions run double-pins the statement
+count. It also re-ran the AND-invariant mutation independently and
+got the same two reds.
+
+Two gaps were real and are fixed:
+
+1. `single_org_id_renders_a_string` had **no "nothing else rendered"
+   guard** — the mirror of `external_id_alone`'s absence assert was
+   missing. Added, plus the `keys(Condition) == {StringEquals}`
+   operator pin. **Mutation-verified**: forcing the external id to
+   render always turns this run red at the new assert, where before
+   the change it passed.
+2. No conditions run re-asserted `Principal` or `Action`, so a
+   refactor perturbing them while editing the `dynamic "condition"`
+   block would only have been caught in `trust.tftest.hcl`. Both
+   added to `both_conditions_and_within_one_statement`.
+
+The third — that `apply_with_trust_conditions`' lone
+`startswith(role_unique_id, "AROA")` assert is true of the
+pre-existing role in shared state and would pass with both conditions
+dropped — is **left as-is and documented**: the real evidence is
+`verify_conditions_readback`, which reads the document back through
+`data.aws_iam_role`. The run is not wrong; it simply must not be
+counted as conditions coverage.
+
+### Release-notes gap found
+
+Moving an ARN between the two policy channels on
+`eks/pod-identity-access` is **not address-neutral** — it is a
+destroy + create of the attachment, i.e. a real if brief detach
+window. The channel-partition validations make that move necessary
+for any caller who had put everything in one channel, so the
+migration note now says so.
+
 ## File Changes
 
 | File | Action | Description |

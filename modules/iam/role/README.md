@@ -52,9 +52,35 @@ external_id     = "hub-to-spoke-42"  # ...AND present this external id
 **`require_org_ids` is what mitigates the cross-account dangling
 principal** described below: a squatted role in an account outside
 your organizations cannot assume this role no matter what the trust
-list literally says. Its limit, stated plainly — it does **nothing**
-for a typo naming a nonexistent role *inside* the org. It shrinks the
-blast radius; correct ARNs remain the primary control.
+list literally says.
+
+Which half of the typo space that covers, precisely: a mistyped
+**account number** almost always lands outside your orgs, and that is
+the dangerous half — an account you do not control, whose owner can
+create a role by the dangling name. `require_org_ids` blocks it. A
+typo in the **role name** of an account that *is* in your org is not
+covered at all, and neither is a hostile insider in a member account.
+It shrinks the blast radius; correct ARNs remain the primary control.
+
+### Do not put `external_id` on the deploy role
+
+Every cross-module read in this fleet assumes the per-account deploy
+role through a `data.terraform_remote_state` `assume_role` block that
+passes only `role_arn` and `session_name` — **twelve of them, none
+passing an external id.** Set `external_id` on that role and every
+consumer plan fleet-wide dies `AccessDenied`, and it dies on the
+*next* plan rather than on the apply that caused it, so the blast
+radius is separated from its cause.
+
+The S3 backend's `assume_role` block does accept `external_id`, so
+threading it through is one line per block — but it has to happen in
+the same change. Under time pressure the tempting fix is to strip the
+external id back off, which quietly retires the control instead of
+adopting it.
+
+This is a composition hazard, not a module defect: `external_id` is
+correct for a third-party trust (worked example 2's shape), which is
+what it is for.
 
 ### How these combine (IAM's three rules disagree)
 

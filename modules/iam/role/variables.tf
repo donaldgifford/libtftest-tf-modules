@@ -139,7 +139,7 @@ variable "require_org_ids" {
 }
 
 variable "external_id" {
-  description = "Value the caller must present as sts:ExternalId to assume this role — the classic confused-deputy control for a trust granted to a third party. Null (default) adds no condition. Singular by design: an external id is the shared secret one relationship is keyed on, so a list of accepted values would mean \"any of these secrets will do\"."
+  description = "Value the caller must present as sts:ExternalId to assume this role — the classic confused-deputy control for a trust granted to a third party. Null (default) adds no condition. It is a unique, unpredictable identifier and NOT a secret: AWS documents it as such, and it appears in CloudTrail requestParameters.externalId on both sides of the AssumeRole as well as in plan output and state. Singular by design: it keys one relationship, so a list of accepted values would mean \"any of these will do\". DO NOT set this on a role the fleet's data.terraform_remote_state blocks assume (the deploy role) unless you add a matching external_id to every one of those blocks in the same change — otherwise every consumer plan fleet-wide fails AccessDenied on the NEXT plan, not on the apply that caused it."
   type        = string
   default     = null
 
