@@ -196,13 +196,13 @@ control that survives it.
 
 #### Tasks
 
-- [ ] 3.1 `iam/role` Community apply: a conditions run reading the
+- [x] 3.1 `iam/role` Community apply: a conditions run reading the
       trust document back through `tests-localstack/fixtures/verify`,
       asserting IAM **stored** the condition. FINDINGS records that
       LocalStack cannot *enforce* it (its STS mints credentials for
       any role ARN, IMPL-0015 Phase 1) — surface only, and the note
       says so rather than implying more.
-- [ ] 3.2 **RESOLVED — no apply-tier runs for `pod-identity-access`**
+- [x] 3.2 **RESOLVED — no apply-tier runs for `pod-identity-access`**
       (operator: "only if it can be done without LocalStack Pro").
       Verified it cannot: every apply creates an
       `aws_eks_pod_identity_association`, and its own FINDINGS.md
@@ -213,15 +213,15 @@ control that survives it.
       tier could not observe them anyway. Record both reasons in
       FINDINGS so the constraint is not mistaken for the whole
       argument.
-- [ ] 3.3 READMEs: `iam/role` gains a trust-conditions section stating
+- [x] 3.3 READMEs: `iam/role` gains a trust-conditions section stating
       the `aws:PrincipalOrgID` scope honestly (mitigates an
       out-of-org dangling principal, no help in-org) and updated run
       counts; `pod-identity-access` documents the four rejected shapes
       and the `create_role` coherence rule.
-- [ ] 3.4 DESIGN-0025 Follow-up 1 marked delivered, pointing at
+- [x] 3.4 DESIGN-0025 Follow-up 1 marked delivered, pointing at
       DESIGN-0027. CLAUDE.md: the conditions surface, the mirrored
       policy-channel standard, and the Part C guard.
-- [ ] 3.5 `just static`; `docz update` + the mangle-set restore;
+- [x] 3.5 `just static`; `docz update` + the mangle-set restore;
       `just docs lint`.
 - [ ] 3.6 PR labeled `minor`. `### RELEASE NOTES` **must** call the
       `pod-identity-access` change out as possibly-plan-breaking and
