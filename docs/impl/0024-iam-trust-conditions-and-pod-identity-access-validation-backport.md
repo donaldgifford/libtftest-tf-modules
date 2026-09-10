@@ -230,7 +230,7 @@ control that survives it.
       help for a doc you are actively editing — DESIGN-0027's
       `create_role` TOC anchor loses its underscore on every
       `docz update` and must be repaired by hand.
-- [ ] 3.6 PR labeled `minor`. `### RELEASE NOTES` **must** call the
+- [x] 3.6 PR labeled `minor`. **Opened: PR #114**, CI green. `### RELEASE NOTES` **must** call the
       `pod-identity-access` change out as possibly-plan-breaking and
       list the four rejected shapes — it can fail a
       previously-succeeding plan, and that is the one thing a consumer
