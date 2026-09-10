@@ -239,6 +239,16 @@ statement carries no `Condition` key at all — asserting an *empty*
 condition map would pass on a document that renders
 `"Condition": {}`, which is a different document.
 
+> **Correction from the IMPL-0024 task 1.4 probe.** The rendered
+> document does **not** carry two condition entries. Conditions
+> sharing a test operator merge into ONE `StringEquals` object with
+> two variable keys — `{"StringEquals": {"aws:PrincipalOrgID": ...,
+> "sts:ExternalId": ...}}`. The AND invariant above is unaffected
+> (IAM ANDs keys within an operator block just as it ANDs operator
+> blocks), but the assertion shape is: `length(Condition) == 2` is
+> false, and the suite pins
+> `keys(Condition.StringEquals)` instead.
+
 **The single-element collapse applies here too.**
 `aws_iam_policy_document` collapses single-element sets, which
 IMPL-0022 found on `Principal.AWS`. Condition `values` are a set, so
@@ -283,16 +293,53 @@ the precondition.
 and silently do nothing. A caller who sets `create_role = false` and
 passes a policy ARN believes they granted a permission they did not.
 
-This is the IMPL-0021 `object_lock` shape exactly — retention set,
-lock disabled, retention silently discarded — and gets the same
-treatment: a **coherence precondition** rejecting the combination at
-plan rather than a silent no-op. It lands on the existing
-`aws_eks_pod_identity_association.this` precondition site, which
-already enforces the `create_role`/`existing_role_arn` invariant, so
-no new resource and no version bump.
+The first draft of this design called for a **coherence
+precondition** rejecting the combination at plan, on the IMPL-0021
+`object_lock` precedent (retention set, lock disabled, retention
+silently discarded → reject).
 
-Error message names the fix, not just the fault: policies for a
-pre-existing role belong to whatever stack owns that role.
+> **WITHDRAWN — IMPL-0024 task 2.4, operator decision 2026-09-09.**
+> Task 2.4 exists to reproduce a gap before guarding it. It
+> reproduced the discard *and* found three reasons the guard is
+> wrong:
+>
+> 1. **It is deliberately tested today.**
+>    `tests/mode_b.tftest.hcl` passes `managed_policy_arns` and
+>    `inline_policies` *with* `create_role = false`, commented
+>    "Policy inputs intentionally non-empty to prove gating," and
+>    asserts zero attachments. The precondition would fail that run.
+>    This is a considered behavior with a regression, not an
+>    oversight.
+> 2. **The module already has an accept-and-ignore idiom.**
+>    DESIGN-0004 says of `role_name_override`: "When
+>    `create_role = false`, the input is ignored." Its Validation
+>    section defines two cross-variable rules and deliberately says
+>    nothing about the policy channels.
+> 3. **It collides with the fleet's Terragrunt convention.**
+>    Terragrunt "injects these via includes into **every** module
+>    regardless of use" (CLAUDE.md), and IMPL-0015 Q6a resolved that
+>    unused inputs must not error. A wrapper passing a uniform input
+>    set across Mode A and Mode B instances is the expected shape.
+>
+> **Why the IMPL-0021 precedent does not transfer.** `object_lock`
+> guarded a **brand-new surface with zero consumers**, where the only
+> cost fell on a hypothetical future caller. This is an **existing
+> accepted combination on a module shipped since `v0.21.0`** whose
+> callers this repo cannot see (the ADR-0020 blind spot). Same
+> shape, materially different blast radius — and "reject the
+> incoherent combination" is only cheap when nobody is relying on it.
+>
+> **Instead:** document it. The `create_role` description and the
+> four policy-channel descriptions state plainly that Mode B ignores
+> them, and the README says so where a caller configuring Mode B will
+> read it. Making the discard *visible* is the part that was actually
+> missing; making it *fatal* would break working callers to tell them
+> something a sentence can.
+
+The lesson worth carrying: **"this input is silently ignored" is a
+documentation defect by default and a validation defect only when
+nothing yet depends on the tolerance.** Check for the regression
+test before assuming the silence was an accident.
 
 ## API / Interface Changes
 

@@ -242,3 +242,64 @@ run "customer_arn_in_aws_managed_channel_rejected" {
 
   expect_failures = [var.managed_policy_arns]
 }
+
+# --- trust conditions (DESIGN-0027 Part A) ---
+
+run "malformed_org_id_rejected" {
+  command = plan
+
+  variables {
+    require_org_ids = ["org-a1b2c3d4e5"]
+  }
+
+  expect_failures = [var.require_org_ids]
+}
+
+# The F1 shape, pre-empted: an empty string would render
+# "aws:PrincipalOrgID": [""] — a condition nobody can satisfy. It
+# fails closed, so it is a lockout rather than a hole, but an
+# unexplained one.
+run "empty_string_org_id_rejected" {
+  command = plan
+
+  variables {
+    require_org_ids = [""]
+  }
+
+  expect_failures = [var.require_org_ids]
+}
+
+# An audit rule, like duplicate principals: the condition should
+# state each organization exactly once.
+run "duplicate_org_id_rejected" {
+  command = plan
+
+  variables {
+    require_org_ids = ["o-a1b2c3d4e5", "o-a1b2c3d4e5"]
+  }
+
+  expect_failures = [var.require_org_ids]
+}
+
+run "external_id_bad_charset_rejected" {
+  command = plan
+
+  variables {
+    external_id = "has spaces and \"quotes\""
+  }
+
+  expect_failures = [var.external_id]
+}
+
+# Length is its own rule because Go's RE2 caps a bounded repeat at
+# 1000, making the obvious "{2,1224}" charset+length regex INVALID —
+# can() would swallow that and reject everything. See variables.tf.
+run "external_id_too_short_rejected" {
+  command = plan
+
+  variables {
+    external_id = "x"
+  }
+
+  expect_failures = [var.external_id]
+}

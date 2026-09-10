@@ -41,7 +41,9 @@ Implement DESIGN-0027: the typed trust-conditions surface on
 `modules/iam/role` (`require_org_ids` / `external_id`), the four
 policy-channel validations backported to
 `modules/eks/pod-identity-access`, and the `create_role = false`
-coherence guard found while reading that module.
+coherence gap found while reading that module — which task 2.4's
+evidence turned from a guard into a documentation fix (Part C
+withdrawn).
 
 The trust-conditions half is the **prerequisite** the IMPL-0022
 security review attached to `iam/role`'s cross-account instances: the
@@ -58,8 +60,9 @@ control that survives it.
   trust statement**, with the zero-diff invariant pinned by a test.
 - `eks/pod-identity-access`: validations on `permissions_boundary`,
   `managed_policy_arns`, `customer_managed_policy_arns`,
-  `inline_policies`; precondition rejecting policy inputs under
-  `create_role = false`.
+  `inline_policies`. **Not** a precondition on the
+  `create_role = false` policy discard — Part C was withdrawn after
+  task 2.4; the discard is documented instead.
 - Plan-suite runs for every new rule, each verified against the rule
   it names.
 - A conditions run in `iam/role`'s Community apply suite, read back
@@ -85,22 +88,22 @@ control that survives it.
 
 #### Tasks
 
-- [ ] 1.1 `variables.tf`: `require_org_ids` (`list(string)`, `[]`
+- [x] 1.1 `variables.tf`: `require_org_ids` (`list(string)`, `[]`
       default, `nullable = false`; per-entry `^o-[a-z0-9]{10,32}$`
       and a no-duplicates rule, each its own block) and `external_id`
       (null default, 2–1224 chars, `[\w+=,.@:\/-]*`). Descriptions
       carry the honest scope — org id mitigates a dangling principal
       in an account *outside* the org and does nothing for a typo
       inside it.
-- [ ] 1.2 `locals.tf` (new): `trust_conditions`, the compact list built
+- [x] 1.2 `locals.tf` (new): `trust_conditions`, the compact list built
       from the two inputs so an unset one contributes no block.
-- [ ] 1.3 `trust.tf`: `dynamic "condition"` inside the **existing**
+- [x] 1.3 `trust.tf`: `dynamic "condition"` inside the **existing**
       statement. Comment states all three IAM combining rules —
       values OR inside a condition, conditions AND inside a
       statement, statements OR inside a document — because the middle
       one is the invariant and the other two are what make it
       counterintuitive.
-- [ ] 1.4 **Probe before asserting**: render the document with one org
+- [x] 1.4 **Probe before asserting**: render the document with one org
       id, two org ids, and both conditions, and read the JSON.
       `aws_iam_policy_document` collapses single-element sets (the
       IMPL-0022 finding on `Principal.AWS`); condition `values` are a
@@ -108,16 +111,16 @@ control that survives it.
       assertion. With the list resolution this is no longer a
       nicety — a one-org assertion would silently prove nothing about
       the multi-org case the surface exists for.
-- [ ] 1.5 `tests/trust_conditions.tftest.hcl` (new): the zero-diff run
+- [x] 1.5 `tests/trust_conditions.tftest.hcl` (new): the zero-diff run
       (**no `Condition` key at all**, not an empty map), one org id,
       **two** org ids, external-id alone, and both-together asserting
       **one** statement with **two** conditions.
-- [ ] 1.6 Five rejection runs (malformed org id, empty-string org id,
+- [x] 1.6 Five rejection runs (malformed org id, empty-string org id,
       duplicate org id, out-of-range external id, bad-charset
       external id), each message-probed — three rules now sit on
       `require_org_ids` alone and `expect_failures` proves only that
       the variable errored.
-- [ ] 1.7 `just tf fmt|lint|test iam/role`; regenerate USAGE.md
+- [x] 1.7 `just tf fmt|lint|test iam/role`; regenerate USAGE.md
       lock-free.
 
 #### Success Criteria
@@ -136,36 +139,50 @@ control that survives it.
 
 #### Tasks
 
-- [ ] 2.1 `variables.tf`: the four validations, mirrored **verbatim**
+- [x] 2.1 `variables.tf`: the four validations, mirrored **verbatim**
       from `iam/role` (same regexes, same error-message wording where
       the input names match) so the two surfaces are diffable.
-- [ ] 2.2 The `managed_policy_arns` comment carrying the F2 note — the
+- [x] 2.2 The `managed_policy_arns` comment carrying the F2 note — the
       channel partition is what makes cross-channel duplication
       unrepresentable; anyone loosening the regexes for `aws-cn` /
       `aws-us-gov` must keep the account field mutually exclusive or
       restore the precondition.
-- [ ] 2.3 `main.tf`: the Part C coherence precondition on
-      `aws_eks_pod_identity_association.this` — policy inputs with
-      `create_role = false` fail at plan instead of silently doing
-      nothing. Sited on the association because it is the one resource
-      that exists in **both** modes; a precondition on the count-gated
-      role would evaluate zero times in exactly the mode it must catch.
-- [ ] 2.4 **Verify the gap before fixing it**: confirm on the current
-      module that `create_role = false` + `managed_policy_arns` plans
-      green and attaches nothing. A guard written against an assumed
-      bug is a guard nobody has seen fire.
-- [ ] 2.5 Five `expect_failures` runs (four validations + the
-      precondition), each message-probed.
-- [ ] 2.6 `just tf fmt|lint|test eks/pod-identity-access`; regenerate
+- [x] 2.3 **WITHDRAWN, replaced by documentation** (operator
+      decision 2026-09-09, after task 2.4's evidence). No
+      precondition. Instead the discard is made *visible*: the
+      `create_role` description states that the four Mode A policy
+      inputs are accepted and ignored in Mode B and why the
+      tolerance is deliberate, each of the four inputs carries a
+      "MODE B: ignored" note, and the README gains a
+      "Mode B ignores the four policy inputs" section ending with
+      the symptom a confused caller would actually search for.
+- [x] 2.4 **Verify the gap before fixing it**: confirmed —
+      `create_role = false` + `managed_policy_arns` plans green and
+      attaches nothing. It also surfaced that this is **deliberate
+      and already regression-tested** (`mode_b.tftest.hcl` passes
+      policy inputs on purpose "to prove gating"), which is what
+      withdrew 2.3. A guard written against an assumed bug is a guard
+      nobody has seen fire.
+- [x] 2.5 `expect_failures` runs, each message-probed. **Four
+      landed** (one per validation); the fifth belonged to the withdrawn
+      2.3 precondition and is not written. Note these runs each need
+      an `override_data` on the eks remote state: a
+      variable-validation failure does **not** short-circuit
+      data-source evaluation, so without it the run dies on real
+      credentials rather than the rule under test.
+- [x] 2.6 `just tf fmt|lint|test eks/pod-identity-access`; regenerate
       USAGE.md lock-free.
 
 #### Success Criteria
 
-- Every pre-existing `pod-identity-access` run passes unchanged.
-- The five new rejections each fire their own rule, verified by
+- Every pre-existing `pod-identity-access` run passes unchanged
+  (9 runs green, including `mode_b`, which the withdrawn Part C
+  guard would have broken).
+- The four new rejections each fire their own rule, verified by
   message.
-- Task 2.4's before/after evidence recorded in this doc — the
-  silent-discard reproduced, then rejected.
+- Task 2.4's evidence recorded in this doc — the silent discard
+  reproduced, and found to be deliberate and already regression-
+  tested, which is what withdrew Part C.
 
 ---
 
@@ -214,6 +231,128 @@ control that survives it.
 - Release notes name the breaking-shaped change; release tagged.
 
 ---
+
+## Phase 2 finding: task 2.4 contradicts Part C
+
+Task 2.4 exists to reproduce the silent discard before guarding it.
+It did reproduce — and it also found three reasons the guard is
+probably **wrong**, which is exactly what "verify before fixing"
+is for.
+
+**1. The combination is deliberately tested today.**
+`tests/mode_b.tftest.hcl` passes `managed_policy_arns` and
+`inline_policies` *with* `create_role = false`, commented
+"**Policy inputs intentionally non-empty to prove gating**", and
+asserts zero attachments result. A Part C precondition would fail
+that run at plan. It is not an accidental gap nobody considered; it
+is a deliberate regression proving the count-gating works.
+
+**2. The module already has an "ignored in Mode B" idiom.**
+DESIGN-0004 says of `role_name_override`: "When `create_role =
+false`, the input is ignored." Its Validation section lists two
+cross-variable rules and says nothing about policy inputs — so the
+accept-and-ignore behavior is the module's established posture, not
+an oversight.
+
+**3. It collides with the fleet's own Terragrunt convention.**
+CLAUDE.md records that "in production Terragrunt injects these via
+includes into **every** module regardless of use," and IMPL-0015
+Q6a resolved that producer-only modules receiving unused inputs is
+normal and must not error. A wrapper that passes a uniform input set
+across many instances — some Mode A, some Mode B — is the *expected*
+shape here. Part C would make that pattern a plan failure on a
+module shipped since `v0.21.0`.
+
+**Why the IMPL-0021 precedent does not transfer cleanly.** The
+`object_lock` coherence guard rejected retention-without-lock on a
+**brand-new surface with zero consumers**, where the only cost was
+to a hypothetical future caller. `create_role = false` plus policy
+inputs is an **existing accepted combination** on a shipped module
+whose callers this repo cannot see (the ADR-0020 blind spot). Same
+shape, materially different blast radius.
+
+**Resolution (operator, 2026-09-09): Part C withdrawn, documented
+instead.** Making the discard *visible* was the part actually
+missing; making it *fatal* would break working callers to tell them
+something a sentence can. The Part B validations have none of these
+problems — they reject *malformed* values, not *unused* ones — and
+shipped unchanged.
+
+**The lesson worth carrying: "this input is silently ignored" is a
+documentation defect by default, and a validation defect only when
+nothing yet depends on the tolerance.** Look for the regression test
+before assuming the silence was an accident.
+
+## Phase 1 probe findings (task 1.4)
+
+The probe ran **before** any assertion was written, and it changed
+both the code and the tests. Three of the four findings were not in
+DESIGN-0027.
+
+### 1. Go's RE2 caps a bounded repeat at 1000 — `{2,1224}` is an invalid regex
+
+The obvious spelling of the `external_id` rule,
+`can(regex("^[\w+=,.@:/-]{2,1224}$", ...))`, is not a working
+validation. RE2 rejects the pattern outright
+(`invalid repeat count in {2,1224}`), and **`can()` swallows that
+error and returns `false`** — so the rule would have rejected *every*
+non-null `external_id`. Fail-closed, but total: the variable would
+have been unusable, and no test in the plan would have said why.
+
+Split into two rules — charset by regex, length by `length()` — which
+is better independent of the bug: they are different failures and now
+carry different messages. `variables.tf` comments the trap so nobody
+re-merges them.
+
+**Reusable:** `can()` cannot distinguish "the input failed the
+pattern" from "the pattern is broken." A validation built on
+`can(regex(...))` should be probed against a value that must PASS,
+not only against values that must fail — every fail-case test would
+have been green here.
+
+### 2. One org id renders a STRING, two render a LIST
+
+The `aws_iam_policy_document` single-element-set collapse (IMPL-0022,
+`Principal.AWS`) applies to condition `values` as predicted:
+
+```json
+"aws:PrincipalOrgID": "o-a1b2c3d4e5"                    // one
+"aws:PrincipalOrgID": ["o-a1b2c3d4e5","o-f6g7h8i9j0"]   // two
+```
+
+This is why OQ 1's list resolution made the probe mandatory rather
+than nice-to-have: a single-org assertion is vacuous for the
+multi-org case the list exists to serve. Both cardinalities have
+their own run.
+
+### 3. Two conditions sharing an operator MERGE — not predicted by the design
+
+DESIGN-0027 describes "two conditions in one statement." The rendered
+document does not have two condition entries; conditions sharing the
+same test operator collapse into **one** `StringEquals` object with
+two variable keys:
+
+```json
+"Condition": {"StringEquals": {
+  "aws:PrincipalOrgID": "o-a1b2c3d4e5",
+  "sts:ExternalId": "hub-to-spoke-42"
+}}
+```
+
+The AND invariant is unaffected — IAM ANDs keys within an operator
+block exactly as it ANDs operator blocks — but the **assertion shape
+is not what the design implied**. `length(Condition) == 2` is simply
+false (it is 1). The suite asserts
+`keys(Condition.StringEquals) == {both}` plus
+`keys(Condition) == {StringEquals}`. Written from the design text
+instead of the probe, the AND-invariant test would have failed for
+the wrong reason and likely been "fixed" into something weaker.
+
+### 4. Zero-diff confirmed
+
+With both inputs unset the statement renders **no `Condition` key at
+all** — not an empty map — so every `v0.23.0` invocation is
+byte-identical. Pinned first in the suite, asserting key *absence*.
 
 ## File Changes
 

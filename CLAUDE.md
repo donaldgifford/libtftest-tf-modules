@@ -556,11 +556,36 @@ Tracked in git. As of this writing:
   had pinned the module's *defaults* (every run overrode
   `max_session_duration` and `permissions_boundary`), which is how
   defect 1 stayed invisible — a bare-call run now pins them.
-  **Open follow-ups:** trust conditions — now a **prerequisite for the
-  cross-account instances**, not a nice-to-have, with
-  `aws:PrincipalOrgID` preferred over `sts:ExternalId` since it is the
-  one that survives a dangling principal — and policy *creation*
-  (`iam/policy` sibling), additive and expected soon.
+  **Trust conditions shipped (DESIGN-0027 / IMPL-0024 Phase 1):**
+  `require_org_ids` (list — the fleet spans several orgs; `[]`
+  default) and `external_id` (null default), composed by
+  `local.trust_conditions` into a `dynamic "condition"` inside the
+  **existing single statement**. That placement is a **security
+  invariant**: IAM's three combining rules disagree — values within
+  one condition **OR**, conditions within one statement **AND**,
+  statements within one document **OR** — so splitting the two
+  conditions across statements would silently turn "in our org AND
+  presenting the external id" into "…OR…". Statement count is pinned
+  at 1 in every conditions run. **Three probe findings worth
+  carrying** (all from rendering the JSON *before* writing
+  assertions): (1) **Go RE2 caps a bounded repeat at 1000**, so
+  `regex("...{2,1224}$")` is an *invalid pattern* and `can()`
+  swallows that into `false` — the rule would have rejected every
+  value; charset and length are now separate rules, and the general
+  lesson is that a `can(regex(...))` validation must be probed with a
+  value that must **pass**, since every fail-case test stays green
+  either way; (2) condition `values` collapse like `Principal.AWS` —
+  one org id renders a **string**, two a **list**, so both
+  cardinalities need their own run; (3) conditions sharing a test
+  operator **merge** into one `StringEquals` object with two variable
+  keys, so `length(Condition) == 2` is false — assert
+  `keys(Condition.StringEquals)`. `aws:PrincipalOrgID`'s scope is
+  documented honestly: it shrinks a dangling principal's blast radius
+  for an **out-of-org** account and does **nothing** for a typo
+  naming a nonexistent role inside the org. Correct ARNs stay the
+  primary control.
+  **Open follow-up:** policy *creation* (`iam/policy` sibling),
+  additive and expected soon.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
   IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a

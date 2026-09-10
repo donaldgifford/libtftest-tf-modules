@@ -81,6 +81,26 @@ module "shared_alb_grant" {
 }
 ```
 
+### Mode B ignores the four policy inputs
+
+`managed_policy_arns`, `customer_managed_policy_arns`,
+`inline_policies` and `permissions_boundary` are **accepted and
+silently ignored** when `create_role = false`. The module attaches
+nothing to a role it does not own — policies for a pre-existing role
+belong to whatever stack owns that role.
+
+They are ignored rather than rejected **on purpose**: Terragrunt
+injects a uniform input set into every module regardless of use
+(ADR-0020 / IMPL-0015 Q6a), so a wrapper passing the same policy
+inputs across both Mode A and Mode B instances is the expected
+calling pattern, and failing on an unused input would break it.
+DESIGN-0027 Part C proposed rejecting the combination and was
+**withdrawn** for this reason.
+
+If you set a policy input in Mode B and wonder why the permission
+never appeared: this is why. Nothing in the plan will say so — the
+attachments simply do not exist.
+
 ## Naming
 
 The IAM role name (Mode A) defaults to:
