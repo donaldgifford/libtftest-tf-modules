@@ -364,6 +364,61 @@ Tracked in git. As of this writing:
   run and passing 3/3 against token-free `localstack/localstack:4.4`
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
+  `security-group` (DESIGN-0026 → IMPL-0023, implemented) — the
+  standalone **ingress-allowlist** SG producer, generalizing INV-0011
+  F1 batch 4's Gateway frontend-SG proposal. It productizes
+  `eks/cluster`'s granular-rule idiom: typed `ingress_rules` /
+  `egress_rules` `map(object)` driving one
+  `aws_vpc_security_group_{ingress,egress}_rule` per entry keyed by
+  **logical name**, so removing one allowlist entry is a single destroy
+  that never churns a sibling. Each rule names exactly one of
+  `cidr_ipv4` / `cidr_ipv6` / `prefix_list_id` /
+  `referenced_security_group_id`. **Prefix-list rules are LIVE** — the
+  deliberate counterpart to `eks/cluster`'s endpoint fence, which
+  expands lists at *plan* time because the EKS API takes literal CIDRs;
+  the two READMEs now cross-link in both directions. Seventh vpc
+  consumer; publishes at the NEW ADR-0020 **`sg`** shape
+  (`<acct>/<region>/sg/<name>`), reserved ahead of its first consumer
+  the way `iam` and `secrets` were. **The fleet's first
+  `required_version = ">= 1.9"`**: the world-open guard is a
+  *cross-variable* validation (`ingress_rules` reading
+  `allow_world_open_ingress`), which TF only accepts from 1.9 — and the
+  failure mode of lowering the floor is quiet, since below it the guard
+  stops being accepted rather than erroring loudly. **The guard's
+  boundary is deliberate and documented, not closed:** it inspects
+  literal CIDR fields only, so a prefix list containing `0.0.0.0/0`
+  admits the world invisibly — expanding a *live* reference at plan
+  would be false assurance, so prefix-list contents are the list
+  owner's audit surface. (`referenced_security_group_id` has no
+  equivalent hole: an SG reference admits that SG's members, never the
+  world.) Egress deliberately has **no** world-open guard (OQ 2a) —
+  world egress *is* the default posture: `allow_all_egress = true`
+  emits one explicit all-protocols rule (the `nodes_all` shape), which
+  exists because **the provider revokes AWS's default egress at
+  create**, so a surface-less module would ship SGs that silently fail
+  ALB health checks; the typed map is **additive** to it, not a
+  replacement. `name_prefix` + `create_before_destroy` (never a fixed
+  name: SG name/description are create-time, and a destroy-first
+  replacement of an ALB-attached SG deadlocks on
+  `DependencyViolation`) — but a replacement still mints a new SG id,
+  which CBD does *not* fix. **DESIGN-0026 deviation, recorded:** the
+  design's object spec makes `from_port` required *and* requires `-1`
+  to omit ports — mutually exclusive, and it would have made the
+  module's own all-egress default illegal under its own guard; the
+  type is `optional(number)` with the coherence moved to validation.
+  Tests: plan `tests/` 21 runs (the gate — all four source types in one
+  plan, each asserting its own field is set *and* the other three null;
+  a bare call pinning every default; ten rejections each **verified by
+  isolated message-probe** to fire its own rule at its own line, since
+  four validations stack on `ingress_rules` alone) + Community apply
+  4/4 on token-free 4.4 (`SERVICES=ec2,sts,s3`). **New fleet finding:
+  token-free Community 4.4 serves managed prefix lists *including
+  entries*** — previously only proven under **Pro** (the `eks/cluster`
+  fence fixture), so what needed Pro there was EKS, not the prefix
+  lists beside it. The apply reads the rule back through
+  `data.aws_vpc_security_group_rule` and asserts the `pl-…` survived
+  (mutation-verified): asserting only that the rule got an `sgr-…` id
+  would pass even if the live reference had been dropped.
 - **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
   IMPL-0018; extended by DESIGN-0022 → IMPL-0021 with the evidence
   tier + lifecycle tiering). Architecture: thin purpose modules over one shared

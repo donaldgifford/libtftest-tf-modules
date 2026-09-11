@@ -31,6 +31,9 @@ created: 2026-09-04
   - [Phase 4: Closure](#phase-4-closure)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+- [Phase 1 deviation from DESIGN-0026: `from_port` is optional](#phase-1-deviation-from-design-0026-from_port-is-optional)
+- [Phase 1 guard verification (task 1.8)](#phase-1-guard-verification-task-18)
+  - [The two runs that are passes, not rejections](#the-two-runs-that-are-passes-not-rejections)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -270,15 +273,15 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
 
 #### Tasks
 
-- [ ] 4.1 ADR-0020: join the vpc **consumer** table (the seventh
+- [x] 4.1 ADR-0020: join the vpc **consumer** table (the seventh
       vpc consumer) and add the NEW **`sg` shape row** (OQ 5a — a
       producer publishing into an undocumented shape is a CI
       failure, so the row is the only honest option).
-- [ ] 4.2 CLAUDE.md: the `modules/network/` section gains the
+- [x] 4.2 CLAUDE.md: the `modules/network/` section gains the
       module (idiom, guards, the world-open boundary, the
       live-vs-plan-time contrast); INV-0011 delivery note (F1
       batch 4 generalized and delivered).
-- [ ] 4.3 `just readme` — the module table row (the separate
+- [x] 4.3 `just readme` — the module table row (the separate
       `readme-check` CI job); `docz update` + the mangle-set
       restore; `just docs lint`.
 - [ ] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module

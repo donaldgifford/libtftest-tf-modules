@@ -683,6 +683,49 @@ apply without the block → 409 `EntityAlreadyExists`) proves the
 import did the work. Live deploy-role adoption stays live-repo work
 (OQ 4a); this repo ships the module plus the runbook.
 
+**Gateway frontend SG delivery (2026-09-11, IMPL-0023):** the F1 batch 4
+proposal is built, generalized as **`modules/network/security-group`**
+per the 2026-08-28 queue revision — not a Gateway-specific module, so
+any frontend-style standalone SG uses it, with the scope guardrail
+(resource-owning modules keep their own SGs; the LBC keeps backend and
+node-SG rules) stated at the top of the README rather than implied.
+
+The proposal's three operator-stated requirements all hold as stated:
+**native prefix-list rules are live** (proved on the emulator — the rule
+reads back carrying its `pl-…` rather than an expansion), the **hairpin
+posture** is documented at the worked example so the allowlist gets the
+corp *public* egress ranges rather than the internal ones, and
+**backend rules stay with the LBC** as a Non-Goal.
+
+Two things the proposal did not anticipate, both worth recording here
+because they constrain future `network/*` siblings:
+
+- The fail-closed **world-open guard** needs a *cross-variable*
+  validation, which makes this the fleet's first
+  `required_version = ">= 1.9"` module. Below that floor the guard stops
+  being accepted rather than erroring, so the floor is load-bearing
+  rather than housekeeping.
+- That guard **cannot see inside a prefix list**, and deliberately does
+  not try: expanding a live reference at plan time would be false
+  assurance, since the list can be edited world-open a minute after the
+  apply. Prefix-list contents are the list owner's audit surface — which
+  is an argument for the parked `network/prefix-list` sibling having a
+  real job when it arrives.
+
+**The sequencing note's build-manually-now, adopt-later tier is
+unchanged and now has a runbook:** piecewise imports (the SG by `sg-…`,
+each rule by `sgr-…` into its logical key), match-reality-first, and
+adds-before-removes when tightening a live allowlist — because a rule's
+*description* updates in place but a source or port change **replaces**
+that rule, which is a real gap on an SG serving traffic.
+
+Plan suite 21 runs (ten rejections, each verified by isolated
+message-probe against its own rule); Community apply 4/4 on token-free
+4.4. **New fleet finding:** token-free Community 4.4 serves managed
+prefix lists *including entries* — previously proved only under **Pro**,
+so what needed Pro in the `eks/cluster` fence fixture was EKS, not the
+prefix lists beside it.
+
 **S3 delivery (2026-09-04, IMPL-0021):** the evidence bucket and the
 lifecycle tiering exposure are built — F2, F4, and F5 are all closed.
 The core carries `object_lock` (default = hard no-op; explicit
