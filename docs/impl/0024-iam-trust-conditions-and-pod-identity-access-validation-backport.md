@@ -1,7 +1,7 @@
 ---
 id: IMPL-0024
 title: "IAM trust conditions and pod-identity-access validation backport"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-09-09
 ---
@@ -9,7 +9,7 @@ created: 2026-09-09
 
 # IMPL 0024: IAM trust conditions and pod-identity-access validation backport
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-09-09
 
@@ -34,6 +34,13 @@ created: 2026-09-09
   - [2. One org id renders a STRING, two render a LIST](#2-one-org-id-renders-a-string-two-render-a-list)
   - [3. Two conditions sharing an operator MERGE — not predicted by the design](#3-two-conditions-sharing-an-operator-merge--not-predicted-by-the-design)
   - [4. Zero-diff confirmed](#4-zero-diff-confirmed)
+- [Adversarial security review (pre-merge, `iac-security`)](#adversarial-security-review-pre-merge-iac-security)
+  - [MEDIUM — `external_id` on the deploy role breaks all 12 remote-state readers](#medium--external_id-on-the-deploy-role-breaks-all-12-remote-state-readers)
+  - [LOW — `external_id` was described as a "shared secret"; it is not](#low--external_id-was-described-as-a-shared-secret-it-is-not)
+  - [LOW — the README named the typo space without splitting it](#low--the-readme-named-the-typo-space-without-splitting-it)
+  - [Accepted, not fixed](#accepted-not-fixed)
+  - [Test-precision gaps closed (2 of 3)](#test-precision-gaps-closed-2-of-3)
+  - [Release-notes gap found](#release-notes-gap-found)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -230,11 +237,15 @@ control that survives it.
       help for a doc you are actively editing — DESIGN-0027's
       `create_role` TOC anchor loses its underscore on every
       `docz update` and must be repaired by hand.
-- [x] 3.6 PR labeled `minor`. **Opened: PR #114**, CI green. `### RELEASE NOTES` **must** call the
+- [x] 3.6 PR labeled `minor`. **Merged as PR #114 → shipped as
+      `v0.24.0`** (2026-09-11; tag verified against the merge commit
+      `6221ad7`). `### RELEASE NOTES` **must** call the
       `pod-identity-access` change out as possibly-plan-breaking and
       list the four rejected shapes — it can fail a
       previously-succeeding plan, and that is the one thing a consumer
-      needs told.
+      needs told. Done, and extended after the security review with
+      the channel-move detach window and the rejected non-commercial
+      partitions.
 
 #### Success Criteria
 

@@ -57,5 +57,5 @@ docz create design "Your Design Title"
 | DESIGN-0024 | EKS hub posture access entries endpoint fence and workload classes | Implemented | 2026-08-27 | Donald Gifford | [0024-eks-hub-posture-access-entries-endpoint-fence-and-workload.md](0024-eks-hub-posture-access-entries-endpoint-fence-and-workload.md) |
 | DESIGN-0025 | Generic IAM role module | Implemented | 2026-08-28 | Donald Gifford | [0025-generic-iam-role-module.md](0025-generic-iam-role-module.md) |
 | DESIGN-0026 | Generic security group module | Draft | 2026-08-28 | Donald Gifford | [0026-generic-security-group-module.md](0026-generic-security-group-module.md) |
-| DESIGN-0027 | IAM trust conditions and the shared policy-channel validation surface | Draft | 2026-09-09 | Donald Gifford | [0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md](0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md) |
+| DESIGN-0027 | IAM trust conditions and the shared policy-channel validation surface | Implemented | 2026-09-09 | Donald Gifford | [0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md](0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md) |
 <!-- END DOCZ AUTO-GENERATED -->
