@@ -103,7 +103,7 @@ its tasks are checked off and its success criteria are met.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/network/security-group` per the
+- [x] 1.1 Scaffold `modules/network/security-group` per the
       design's layout (`main.tf`, `data.tf`, `variables.tf`,
       `outputs.tf`, `versions.tf`, `.tflint.hcl`, README/USAGE
       stubs, `tests/`, `tests-localstack/`). `versions.tf`: aws
@@ -112,7 +112,7 @@ its tasks are checked off and its success criteria are met.
       feature; the fleet's first 1.9 floor, beside the two
       existing 1.11 modules. Do not "simplify" it down: the guard
       silently stops compiling below 1.9).
-- [ ] 1.2 `data.tf`: the standard vpc remote-state read —
+- [x] 1.2 `data.tf`: the standard vpc remote-state read —
       `vpc_name` + the six Terragrunt globals compose the
       account-scoped ADR-0020 vpc key with the standard
       `assume_role` block (`role_arn` from
@@ -120,7 +120,7 @@ its tasks are checked off and its success criteria are met.
       "Deploy-Tf"`, `region = remote_state_bucket_region`);
       `vpc_id` read at the use site (ADR-0001 — no aliasing
       locals).
-- [ ] 1.3 `main.tf`: `aws_security_group.this` — `name_prefix =
+- [x] 1.3 `main.tf`: `aws_security_group.this` — `name_prefix =
       "${var.name}-"`, `create_before_destroy = true`, `Name` tag
       = `var.name`, `description` defaulting from `var.name` with
       the ForceNew note in the variable description (name and
