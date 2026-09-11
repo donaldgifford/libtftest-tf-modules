@@ -153,7 +153,7 @@ its tasks are checked off and its success criteria are met.
       `0.0.0.0/0` is invisible **by design** (the reference is
       live — plan-time expansion would give false assurance), so
       the boundary is documented (task 2.2), not closed.
-- [ ] 1.6 `outputs.tf`: `security_group_id` (the operator's stated
+- [x] 1.6 `outputs.tf`: `security_group_id` (the operator's stated
       point), `security_group_arn`, `security_group_name` (the
       physical suffixed name), and `ingress_rule_ids` /
       `egress_rule_ids` maps (logical name → `sgr-…` id — the
