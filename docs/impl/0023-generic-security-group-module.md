@@ -127,7 +127,7 @@ its tasks are checked off and its success criteria are met.
       description are create-time; CBD + prefix makes the rare
       replacement survivable — the README records what it does not
       fix: a new SG id still needs the chart-side value update).
-- [ ] 1.4 The rules surface: `ingress_rules` + `egress_rules` typed
+- [x] 1.4 The rules surface: `ingress_rules` + `egress_rules` typed
       maps (the design's object spec verbatim — required
       `description`, `from_port`, optional `to_port` null-collapsing
       to `from_port`, `ip_protocol` default `"tcp"`, the four

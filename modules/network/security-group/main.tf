@@ -38,3 +38,67 @@ resource "aws_security_group" "this" {
     create_before_destroy = true
   }
 }
+
+#--------------------------------------------------------------
+# Rules
+#--------------------------------------------------------------
+
+# for_each by LOGICAL rule name, so every rule has its own address and
+# its own lifecycle. Removing one allowlist entry plans as exactly one
+# destroy; it never churns a sibling.
+#
+# to_port null-collapses to from_port (the single-port case, which is
+# most of them). An explicit ternary rather than coalesce(): coalesce
+# ERRORS when every argument is null, which is exactly the legal
+# all-protocols shape where both ports are absent.
+resource "aws_vpc_security_group_ingress_rule" "this" {
+  for_each = var.ingress_rules
+
+  security_group_id = aws_security_group.this.id
+
+  description = each.value.description
+  ip_protocol = each.value.ip_protocol
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port != null ? each.value.to_port : each.value.from_port
+
+  # Exactly one of these is non-null, enforced at validation.
+  cidr_ipv4                    = each.value.cidr_ipv4
+  cidr_ipv6                    = each.value.cidr_ipv6
+  prefix_list_id               = each.value.prefix_list_id
+  referenced_security_group_id = each.value.referenced_security_group_id
+
+  tags = merge(var.tags, { Name = "${var.name}-${each.key}" })
+}
+
+resource "aws_vpc_security_group_egress_rule" "this" {
+  for_each = var.egress_rules
+
+  security_group_id = aws_security_group.this.id
+
+  description = each.value.description
+  ip_protocol = each.value.ip_protocol
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port != null ? each.value.to_port : each.value.from_port
+
+  cidr_ipv4                    = each.value.cidr_ipv4
+  cidr_ipv6                    = each.value.cidr_ipv6
+  prefix_list_id               = each.value.prefix_list_id
+  referenced_security_group_id = each.value.referenced_security_group_id
+
+  tags = merge(var.tags, { Name = "${var.name}-${each.key}" })
+}
+
+# The visible all-egress default — byte-for-byte the eks/cluster
+# `nodes_all` shape. Count-gated rather than folded into egress_rules so
+# that turning it off is one boolean in the plan, not the absence of a
+# map entry nobody remembers was there.
+resource "aws_vpc_security_group_egress_rule" "all" {
+  count = var.allow_all_egress ? 1 : 0
+
+  security_group_id = aws_security_group.this.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  description       = "All egress"
+
+  tags = merge(var.tags, { Name = "${var.name}-all-egress" })
+}
