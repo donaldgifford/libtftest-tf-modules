@@ -284,7 +284,7 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
 - [x] 4.3 `just readme` — the module table row (the separate
       `readme-check` CI job); `docz update` + the mangle-set
       restore; `just docs lint`.
-- [ ] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module
+- [x] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module
       and the world-open guard posture.
 
 #### Success Criteria
