@@ -158,7 +158,7 @@ its tasks are checked off and its success criteria are met.
       physical suffixed name), and `ingress_rule_ids` /
       `egress_rule_ids` maps (logical name → `sgr-…` id — the
       adoption and ops surface).
-- [ ] 1.7 Plan suite (`tests/`; `override_data` stubs the vpc read
+- [x] 1.7 Plan suite (`tests/`; `override_data` stubs the vpc read
       with the full nine-key contract — the IMPL-0014 Phase 4
       convention): a Gateway-shaped rule map pinning per-rule
       attributes and stable addresses across **all four source
