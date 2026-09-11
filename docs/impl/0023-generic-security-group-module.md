@@ -191,10 +191,10 @@ its tasks are checked off and its success criteria are met.
 
 #### Tasks
 
-- [ ] 2.1 The scope guardrail **up top**: frontend-style standalone
+- [x] 2.1 The scope guardrail **up top**: frontend-style standalone
       SGs only — resource-owning modules keep their own SGs, the
       LBC keeps backend + node-SG rules.
-- [ ] 2.2 The `gateway-frontend-public` worked example: 443 from
+- [x] 2.2 The `gateway-frontend-public` worked example: 443 from
       the GitHub-webhooks prefix list with the **live-reference
       callout** (edits propagate without an apply — the contrast
       with the EKS fence's plan-time expansion stated explicitly)
@@ -204,22 +204,22 @@ its tasks are checked off and its success criteria are met.
       CIDRs with the hairpin note; the consumption path (SG id →
       LBC frontend-SG annotation through live-repo chart values;
       backend stays the controller's).
-- [ ] 2.3 The adoption runbook: piecewise imports (the SG by
+- [x] 2.3 The adoption runbook: piecewise imports (the SG by
       `sg-…` id, each rule by `sgr-…` id, into the module's named
       addresses); match-reality-first, converge second; rule
       descriptions update in place but a source/port change
       **replaces** that one rule — sequence adds before removes
       when tightening on a live ALB SG.
-- [ ] 2.4 The fence cross-link pair: this README points at the
+- [x] 2.4 The fence cross-link pair: this README points at the
       `eks/cluster` fence README's plan-time warning; the cluster
       side already points here ("the live version of this
       pattern") — close the loop.
-- [ ] 2.5 The remote-state key contract section: the `sg` shape
+- [x] 2.5 The remote-state key contract section: the `sg` shape
       (`<account_name>/<region>/sg/<name>/terraform.tfstate`),
       triple coupling, foreseeable consumers (cross-stack
       `referenced_security_group_id`, `eks/cluster` additional
       SGs).
-- [ ] 2.6 `just tf docs network/security-group`; conventional
+- [x] 2.6 `just tf docs network/security-group`; conventional
       commit.
 
 #### Success Criteria

@@ -10,7 +10,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| aws | ~> 6.2 |
+| aws | 6.64.0 |
 | terraform | n/a |
 
 ## Modules
