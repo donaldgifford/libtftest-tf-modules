@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0027
 title: "IAM trust conditions and the shared policy-channel validation surface"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-09-09
 ---
@@ -9,7 +9,7 @@ created: 2026-09-09
 
 # DESIGN 0027: IAM trust conditions and the shared policy-channel validation surface
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-09-09
 
@@ -22,16 +22,25 @@ created: 2026-09-09
 - [Detailed Design](#detailed-design)
   - [Part A — trust conditions on iam/role](#part-a--trust-conditions-on-iamrole)
   - [Part B — the shared policy-channel validation surface](#part-b--the-shared-policy-channel-validation-surface)
-  - [Part C — the create_role = false coherence gap](#part-c--the-create_role--false-coherence-gap)
+  - [Part C — the `create_role = false` coherence gap](#part-c--the-create_role--false-coherence-gap)
 - [API / Interface Changes](#api--interface-changes)
 - [Data Model](#data-model)
 - [Testing Strategy](#testing-strategy)
 - [Migration / Rollout Plan](#migration--rollout-plan)
 - [Open Questions](#open-questions)
+- [Follow-ups](#follow-ups)
 - [References](#references)
 <!--toc:end-->
 
 ## Overview
+
+> **Shipped as `v0.24.0`** (IMPL-0024, PR #114 merged 2026-09-11).
+> Parts A and B as designed; **Part C withdrawn** on task 2.4's
+> evidence and replaced by documentation — see the withdrawal block in
+> Part C. A pre-merge adversarial security review found no HIGH and no
+> path to widen the trust surface; its one MEDIUM is a composition
+> hazard recorded in the README (never set `external_id` on the deploy
+> role), and its deferred guard is Follow-up 1 below.
 
 Two changes that share a root cause. **Part A** adds the typed trust
 conditions DESIGN-0025 Follow-up 1 reserved — `aws:PrincipalOrgID`

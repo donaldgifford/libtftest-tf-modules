@@ -12,8 +12,9 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
-  **`pod-identity-access` hardened by DESIGN-0027 Part B / IMPL-0024**
-  (the four policy-channel validations, 5 → 9 plan runs). Its
+  **`pod-identity-access` hardened by DESIGN-0027 Part B / IMPL-0024,
+  shipped as `v0.24.0`** (PR #114 merged 2026-09-11 — the four
+  policy-channel validations, 5 → 9 plan runs). Its
   **Mode B (`create_role = false`) accepts and IGNORES the four Mode A
   policy inputs** — deliberate, regression-tested in
   `mode_b.tftest.hcl`, and documented on every affected variable +
@@ -584,7 +585,8 @@ Tracked in git. As of this writing:
   had pinned the module's *defaults* (every run overrode
   `max_session_duration` and `permissions_boundary`), which is how
   defect 1 stayed invisible — a bare-call run now pins them.
-  **Trust conditions shipped (DESIGN-0027 / IMPL-0024 Phase 1):**
+  **Trust conditions shipped as `v0.24.0` (DESIGN-0027 / IMPL-0024
+  Phase 1, PR #114 merged 2026-09-11):**
   `require_org_ids` (list — the fleet spans several orgs; `[]`
   default) and `external_id` (null default), composed by
   `local.trust_conditions` into a `dynamic "condition"` inside the
