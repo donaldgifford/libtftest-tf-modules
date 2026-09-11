@@ -128,8 +128,8 @@ its tasks are checked off and its success criteria are met.
       replacement survivable — the README records what it does not
       fix: a new SG id still needs the chart-side value update).
 - [x] 1.4 The rules surface: `ingress_rules` + `egress_rules` typed
-      maps (the design's object spec verbatim — required
-      `description`, `from_port`, optional `to_port` null-collapsing
+      maps (required `description`, **`from_port` optional — see the
+      deviation below**, optional `to_port` null-collapsing
       to `from_port`, `ip_protocol` default `"tcp"`, the four
       exclusive source fields) driving
       `aws_vpc_security_group_ingress_rule` / `_egress_rule`
@@ -169,11 +169,11 @@ its tasks are checked off and its success criteria are met.
       (default all-egress rule present; `allow_all_egress = false`
       + typed egress map); the ADR-0020 composed-key assertion; the
       `name_prefix` + CBD pin.
-- [ ] 1.8 Per-rule verification of every `expect_failures` run
+- [x] 1.8 Per-rule verification of every `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) —
       four-plus guards stack on the one `ingress_rules` variable,
       and a passing run proves only that the variable errored.
-- [ ] 1.9 `just tf all network/security-group`; conventional
+- [x] 1.9 `just tf all network/security-group`; conventional
       commit.
 
 #### Success Criteria
@@ -290,6 +290,83 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
   all doc gates green; release tagged.
 
 ---
+
+## Phase 1 deviation from DESIGN-0026: `from_port` is optional
+
+The design's object spec (Detailed Design → The rules surface) writes
+`from_port = number` — **required** — while the same section also
+requires that `ip_protocol = "-1"` "requires no ports (validated — the
+API rejects ports with all-protocols)."
+
+**Those two cannot both hold.** A required `from_port` means every rule
+carries a port, so an all-protocols rule would always trip the
+ports-with-`-1` rejection and `"-1"` would be unrepresentable.
+
+Checked against the fleet before deviating: **every** `"-1"` rule in
+`eks/cluster`, `rds/cluster` and `rds/serverless` omits ports — and this
+module's own `allow_all_egress` default emits exactly that shape, so the
+design would have made the module's default posture illegal under its
+own guard.
+
+Resolution: `from_port` is `optional(number)`, and the coherence moves
+into validation — ports **required** for tcp/udp, **rejected** for
+`"-1"`. The guard the design asked for is fully present; only the type
+that made it self-contradictory changed. Pinned by
+`all_protocols_rule_omits_ports` and `tcp_rule_without_a_port_rejected`,
+so reverting the deviation turns one of them red.
+
+## Phase 1 guard verification (task 1.8)
+
+`expect_failures` asserts that the named object errored — **never which
+rule fired**. Four validations stack on `var.ingress_rules` alone, so
+every rejection run could in principle pass off a neighbouring rule and
+look identically green.
+
+All ten rejection runs were therefore **message-probed in isolation**
+(one scratch single-run file each, no `expect_failures`, the real error
+read). Isolation matters: a failing run *skips* its siblings, so a
+combined probe file reports only the first failure.
+
+| Run | Rule that fired | `variables.tf` |
+|---|---|---|
+| `malformed_name_rejected` | name charset/length | 9 |
+| `caller_supplied_name_tag_rejected` | tags must not set `Name` | 28 |
+| `ingress_rule_with_no_source_rejected` | exactly-one-source | 78 |
+| `ingress_rule_with_two_sources_rejected` | exactly-one-source | 78 |
+| `ingress_rule_with_blank_description_rejected` | description non-empty | 86 |
+| `ports_with_all_protocols_rejected` | port coherence | 91 |
+| `tcp_rule_without_a_port_rejected` | port coherence | 91 |
+| `world_open_ipv4_rejected` | world-open guard | 114 |
+| `world_open_ipv6_rejected` | world-open guard | 114 |
+| `egress_rule_with_two_destinations_rejected` | egress exactly-one-source | **154** |
+
+Seven distinct rules across seven distinct lines, each naming **only**
+its own offending map keys — the three-rule world-open probe listed
+`public, six` and correctly excluded the legitimate corp rule.
+
+Line 154 is load-bearing on its own: it proves the egress guards
+reference `var.egress_rules` and are not a copy-paste of the ingress
+ones, which is a defect a green suite would otherwise hide entirely.
+
+### The two runs that are passes, not rejections
+
+**`world_open_permitted_by_explicit_toggle`.** The world-open guard is
+the cross-variable validation that sets the module's `>= 1.9` floor, and
+a fail-case-only probe cannot distinguish a working cross-variable
+reference from a rule that rejects *everything* — both satisfy
+`expect_failures` identically. This is the same trap as IMPL-0024's RE2
+bounded-repeat bug, where `can()` swallowed an invalid pattern into a
+rule that would have rejected every value. The toggled-ON run passing is
+what proves the `>= 1.9` mechanism actually resolves on this Terraform
+rather than being assumed from the design.
+
+**`world_open_egress_is_permitted_by_design`.** Egress deliberately has
+no world-open guard (DESIGN-0026 OQ 2a). Pinned as a pass so that adding
+a symmetric guard later is a deliberate, visible change rather than a
+silent tightening.
+
+The `name` regex is likewise proven to *discriminate* rather than reject
+everything: every other run in the suite passes a valid name through it.
 
 ## File Changes
 
