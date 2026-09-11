@@ -67,7 +67,7 @@ variable "service_account" {
 #--------------------------------------------------------------
 
 variable "create_role" {
-  description = "When true (default), the module creates a Pod-Identity-trusting IAM role and binds the association to it. When false, the caller must pass existing_role_arn — the module creates the association only."
+  description = "When true (default), the module creates a Pod-Identity-trusting IAM role and binds the association to it. When false, the caller must pass existing_role_arn — the module creates the association only, and the four Mode A policy inputs (managed_policy_arns, customer_managed_policy_arns, inline_policies, permissions_boundary) are ACCEPTED AND IGNORED rather than rejected. That tolerance is deliberate: Terragrunt injects a uniform input set into every module regardless of use, so failing on an unused input would break the fleet's normal calling pattern (DESIGN-0027 Part C, withdrawn). Policies for a pre-existing role belong to whatever stack owns that role."
   type        = bool
   default     = true
 }
@@ -93,27 +93,68 @@ variable "role_name_override" {
 #--------------------------------------------------------------
 
 variable "managed_policy_arns" {
-  description = "AWS-managed policy ARNs to attach to the Mode A role (e.g. arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy)."
+  description = "AWS-managed policy ARNs to attach to the Mode A role (e.g. arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy). Only the aws-owned pseudo-account spelling is accepted — caller-owned ARNs belong in customer_managed_policy_arns. MODE B: ignored when create_role = false — the module attaches nothing to a role it does not own, so policies for a pre-existing role belong to whatever stack owns that role."
   type        = list(string)
   default     = []
+
+  # DESIGN-0027 Part B — mirrored verbatim from iam/role, where the
+  # IMPL-0022 security review added it. The channel split is
+  # advertised as a plan-readability contract, so enforce it rather
+  # than trust it. This partition ALSO closes the cross-channel
+  # duplicate hazard structurally: an ARN cannot match both this rule
+  # and the customer one (the account field is "aws" or 12 digits,
+  # never both), so the same policy can no longer be listed in two
+  # channels. That mattered because AttachRolePolicy is idempotent —
+  # two resources would manage one real attachment, and dropping the
+  # ARN from one channel would DETACH the policy while the other
+  # channel still declared it, printing "1 to destroy" with no hint
+  # the grant survives in config. Anyone loosening these regexes
+  # (e.g. for aws-cn / aws-us-gov) must keep the account field
+  # mutually exclusive or restore that guard as a precondition.
+  validation {
+    condition     = alltrue([for a in var.managed_policy_arns : can(regex("^arn:aws:iam::aws:policy/.+$", a))])
+    error_message = "Every managed_policy_arns entry must be an AWS-managed policy ARN (arn:aws:iam::aws:policy/...). Caller-owned policies belong in customer_managed_policy_arns."
+  }
 }
 
 variable "customer_managed_policy_arns" {
-  description = "Customer-managed policy ARNs to attach to the Mode A role. Separate from managed_policy_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance."
+  description = "Customer-managed policy ARNs to attach to the Mode A role. Separate from managed_policy_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance, and so the same ARN cannot be listed in both channels. MODE B: ignored when create_role = false."
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for a in var.customer_managed_policy_arns : can(regex("^arn:aws:iam::[0-9]{12}:policy/.+$", a))])
+    error_message = "Every customer_managed_policy_arns entry must be a customer-managed policy ARN (arn:aws:iam::<12-digit-account>:policy/...). AWS-managed policies belong in managed_policy_arns."
+  }
 }
 
 variable "inline_policies" {
-  description = "Inline IAM policy documents to attach to the Mode A role, keyed by policy name. Values are JSON strings."
+  description = "Inline IAM policy documents to attach to the Mode A role, keyed by policy name. Values are JSON strings. MODE B: ignored when create_role = false."
   type        = map(string)
   default     = {}
+
+  # Scope, precisely: this proves the value PARSES, nothing more. A
+  # well-formed document that is not a policy ({"foo":1}) passes here
+  # and still fails at apply. Statement-level validity is the
+  # caller's concern by design.
+  validation {
+    condition     = alltrue([for doc in values(var.inline_policies) : can(jsondecode(doc))])
+    error_message = "Every inline_policies value must parse as JSON — unparseable documents are a guaranteed apply-time MalformedPolicyDocument; this catches that class at plan."
+  }
 }
 
 variable "permissions_boundary" {
-  description = "ARN of an IAM permissions boundary policy to attach to the Mode A role. Null (default) attaches no boundary."
+  description = "ARN of an IAM permissions boundary policy to attach to the Mode A role. MODE B: ignored when create_role = false. Null (default) attaches no boundary. An EMPTY STRING is rejected rather than treated as null: the provider omits the argument on create and takes the DeleteRolePermissionsBoundary branch on update, so \"\" reads as \"bounded\" in a plan and applies as NO boundary — including silently stripping the boundary off an existing role. Pass null explicitly, never a defaulted-to-empty lookup."
   type        = string
   default     = null
+
+  # The empty string is the one value here that is both accepted by
+  # the provider's ARN validator and semantically the opposite of
+  # what it looks like (IMPL-0022 F1, found live on iam/role).
+  validation {
+    condition     = var.permissions_boundary == null || can(regex("^arn:aws:iam::(aws|[0-9]{12}):policy/.+$", var.permissions_boundary))
+    error_message = "permissions_boundary must be null (no boundary) or an IAM policy ARN — an empty string reads as \"bounded\" in a plan and applies as NO boundary."
+  }
 }
 
 #--------------------------------------------------------------

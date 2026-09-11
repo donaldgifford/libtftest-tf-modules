@@ -12,6 +12,29 @@ Tracked in git. As of this writing:
 
 - **`modules/eks/`** — `cluster` (IMPL-0001), `managed-node-group` (IMPL-0002),
   `addons` (IMPL-0003), `pod-identity-access` (IMPL-0004). All four implemented.
+  **`pod-identity-access` hardened by DESIGN-0027 Part B / IMPL-0024**
+  (the four policy-channel validations, 5 → 9 plan runs). Its
+  **Mode B (`create_role = false`) accepts and IGNORES the four Mode A
+  policy inputs** — deliberate, regression-tested in
+  `mode_b.tftest.hcl`, and documented on every affected variable +
+  the README after DESIGN-0027 Part C proposed rejecting the
+  combination and was **withdrawn**: Terragrunt injects a uniform
+  input set into every module regardless of use (IMPL-0015 Q6a), so
+  failing on an unused input would break the fleet's normal calling
+  pattern. **Reusable rule: "this input is silently ignored" is a
+  documentation defect by default, and a validation defect only when
+  nothing yet depends on the tolerance — look for the regression test
+  before assuming the silence was an accident.**
+  **The Part B backport is possibly plan-breaking** — four shapes that
+  planned green since `v0.21.0` now fail (a malformed ARN in either
+  channel, non-JSON `inline_policies`, `permissions_boundary = ""`),
+  and because the two channel regexes partition on the account field,
+  **an ARN in the wrong channel is now an error** where before both
+  channels emitted an identical attachment and either worked. Moving
+  one between channels is **not address-neutral**: the attachment is
+  keyed by channel, so it plans as destroy + create — a real brief
+  detach window, not something to fold into an unrelated apply. Both
+  the README's upgrade section and the release notes say so.
   **Hub posture shipped as `v0.21.0` (IMPL-0020 / DESIGN-0024, PR #106
   merged 2026-09-01)** — the hub-unblock milestone tag the management-cluster
   buildout pins; one minor tag carries all three modules (OQ 1a's three-PR
@@ -490,11 +513,16 @@ Tracked in git. As of this writing:
   service-principal channel and no raw-JSON trust escape hatch**
   (resource-owning modules mint their own
   service roles). Policy channels mirror `eks/pod-identity-access` in
-  shape, with one deviation: `inline_policies` gains a
-  `can(jsondecode())` validation (IMPL-0022 OQ 1a) moving a guaranteed
-  apply-time `MalformedPolicyDocument` to plan — **a backport of that one
-  validation to `pod-identity-access` is an open follow-up** so the mirror
-  stays honest both ways. **`aws_iam_policy_document` rendering gotcha
+  shape, and as of **DESIGN-0027 Part B / IMPL-0024 the mirror is
+  honest in both directions**: all four validations (the two channel
+  regexes, `can(jsondecode())` on `inline_policies`, and the
+  null-or-ARN rule on `permissions_boundary`) now exist on **both**
+  modules. That backport was not cosmetic — `pod-identity-access`
+  had **zero** validation on that surface, so it carried IMPL-0022's
+  F1 (an empty-string boundary yielding an unbounded role) and F2
+  (cross-channel duplicate ARNs silently surviving a revocation) as
+  live defects on a module shipped since `v0.21.0`.
+  **`aws_iam_policy_document` rendering gotcha
   (probed, pinned by two runs):** it collapses single-element sets, so
   `Principal.AWS` is a **string** with one principal and a **list** with
   two or more (`Action` likewise, being a single action) — an assertion
@@ -556,11 +584,64 @@ Tracked in git. As of this writing:
   had pinned the module's *defaults* (every run overrode
   `max_session_duration` and `permissions_boundary`), which is how
   defect 1 stayed invisible — a bare-call run now pins them.
-  **Open follow-ups:** trust conditions — now a **prerequisite for the
-  cross-account instances**, not a nice-to-have, with
-  `aws:PrincipalOrgID` preferred over `sts:ExternalId` since it is the
-  one that survives a dangling principal — and policy *creation*
-  (`iam/policy` sibling), additive and expected soon.
+  **Trust conditions shipped (DESIGN-0027 / IMPL-0024 Phase 1):**
+  `require_org_ids` (list — the fleet spans several orgs; `[]`
+  default) and `external_id` (null default), composed by
+  `local.trust_conditions` into a `dynamic "condition"` inside the
+  **existing single statement**. That placement is a **security
+  invariant**: IAM's three combining rules disagree — values within
+  one condition **OR**, conditions within one statement **AND**,
+  statements within one document **OR** — so splitting the two
+  conditions across statements would silently turn "in our org AND
+  presenting the external id" into "…OR…". Statement count is pinned
+  at 1 in every conditions run. **Three probe findings worth
+  carrying** (all from rendering the JSON *before* writing
+  assertions): (1) **Go RE2 caps a bounded repeat at 1000**, so
+  `regex("...{2,1224}$")` is an *invalid pattern* and `can()`
+  swallows that into `false` — the rule would have rejected every
+  value; charset and length are now separate rules, and the general
+  lesson is that a `can(regex(...))` validation must be probed with a
+  value that must **pass**, since every fail-case test stays green
+  either way; (2) condition `values` collapse like `Principal.AWS` —
+  one org id renders a **string**, two a **list**, so both
+  cardinalities need their own run; (3) conditions sharing a test
+  operator **merge** into one `StringEquals` object with two variable
+  keys, so `length(Condition) == 2` is false — assert
+  `keys(Condition.StringEquals)`. `aws:PrincipalOrgID`'s scope is
+  documented honestly: it shrinks a dangling principal's blast radius
+  for an **out-of-org** account and does **nothing** for a typo
+  naming a nonexistent role inside the org. Correct ARNs stay the
+  primary control.
+  **Adversarial security review (IMPL-0024, `iac-security`,
+  pre-merge): no HIGH, and no path found to widen the trust surface** —
+  the structural fixes from the IMPL-0022 review held under direct
+  attack. Worth carrying: `ForAllValues:StringEquals` **with an absent
+  key evaluates TRUE**, the commonest way an IAM condition is silently
+  ineffective — unreachable here only because `test` is hardcoded
+  `StringEquals` with no set-operator prefix anywhere, which is what
+  the `keys(Condition) == {StringEquals}` assertion exists to force
+  review on. The one MEDIUM is a **composition hazard, not a module
+  defect: never set `external_id` on the deploy role** — all 12
+  `data.terraform_remote_state` `assume_role` blocks pass only
+  `role_arn` + `session_name`, so every consumer plan fleet-wide dies
+  `AccessDenied` on the **next** plan, separated from the apply that
+  caused it (the backend does accept `external_id`; the fix is one
+  line per block, in the same change). Two LOWs, both documentation:
+  an external id is **not a secret** (AWS says so, and it lands in
+  CloudTrail on both sides), and `require_org_ids` covers the
+  **account-number** half of the typo space — the dangerous half,
+  since a mistyped account is one you don't control. Deliberately not
+  shipped: a `require_trust_conditions` guard for a computed input
+  resolving to empty (IMPL-0020's fence-expands-to-nothing shape) —
+  recorded as DESIGN-0027 Follow-up 1 with an explicit revisit
+  trigger, because no consumer computes these inputs yet. **Reusable
+  test lesson: `toset()` on a bare string is a conversion *error*, not
+  a silent pass**, so the two-org assertion self-defends against the
+  single-element collapse; and a run whose only assert is true of a
+  pre-existing resource in shared state (`startswith(role_unique_id,
+  "AROA")`) proves the apply didn't error and nothing more.
+  **Open follow-up:** policy *creation* (`iam/policy` sibling),
+  additive and expected soon.
 - **`modules/secretsmanager/`** — `secret` (INV-0010 → DESIGN-0020 →
   IMPL-0019, implemented). The fleet's SM secret producer (INV-0010
   resolution 1b: producer first; the RDS reference mode follows): creates a

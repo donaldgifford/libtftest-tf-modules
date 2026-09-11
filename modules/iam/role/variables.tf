@@ -102,6 +102,65 @@ variable "trusted_role_arns" {
   nullable = false
 }
 
+#--------------------------------------------------------------
+# Trust conditions (DESIGN-0027 Part A — the DESIGN-0025 Follow-up 1
+# surface, promoted by the IMPL-0022 security review from
+# "expected sooner rather than later" to a PREREQUISITE for the
+# cross-account instances.
+#
+# Both compose into the SINGLE existing trust statement. See
+# trust.tf for why that placement is a security invariant.)
+#--------------------------------------------------------------
+
+variable "require_org_ids" {
+  description = "AWS Organization ids (o-...) whose principals may assume this role, ANDed onto the trust statement as StringEquals on aws:PrincipalOrgID. Empty (default) adds no condition. SCOPE, stated honestly: this mitigates the cross-account dangling-principal hazard — IAM stores a cross-account principal ARN unvalidated, so a typo grants nobody but leaves the name claimable, and an org condition means whoever claims it must ALSO be in one of these organizations. It does NOTHING for a typo naming a nonexistent role INSIDE the org. Correct ARNs remain the primary control."
+  type        = list(string)
+  default     = []
+
+  # Empty-string entries are the F1 lesson applied preemptively: one
+  # would render "aws:PrincipalOrgID": [""], a condition no principal
+  # can satisfy. That fails CLOSED, so it is not a hole — but it is an
+  # unexplained total lockout, and the regex costs one block.
+  validation {
+    condition     = alltrue([for o in var.require_org_ids : can(regex("^o-[a-z0-9]{10,32}$", o))])
+    error_message = "Every require_org_ids entry must be an AWS organization id: o- followed by 10-32 lowercase alphanumerics (e.g. o-a1b2c3d4e5)."
+  }
+
+  # An audit surface, like trusted_role_arns. Unlike ARNs, org ids are
+  # lowercase-canonical by format and have no path or case variants —
+  # so a plain distinct() is sufficient here and normalizing would be
+  # theatre (DESIGN-0027).
+  validation {
+    condition     = length(var.require_org_ids) == length(distinct(var.require_org_ids))
+    error_message = "require_org_ids must not repeat an organization — the condition is an audit surface and states each org exactly once."
+  }
+
+  nullable = false
+}
+
+variable "external_id" {
+  description = "Value the caller must present as sts:ExternalId to assume this role — the classic confused-deputy control for a trust granted to a third party. Null (default) adds no condition. It is a unique, unpredictable identifier and NOT a secret: AWS documents it as such, and it appears in CloudTrail requestParameters.externalId on both sides of the AssumeRole as well as in plan output and state. Singular by design: it keys one relationship, so a list of accepted values would mean \"any of these will do\". DO NOT set this on a role the fleet's data.terraform_remote_state blocks assume (the deploy role) unless you add a matching external_id to every one of those blocks in the same change — otherwise every consumer plan fleet-wide fails AccessDenied on the NEXT plan, not on the apply that caused it."
+  type        = string
+  default     = null
+
+  # Charset and length are SEPARATE rules, and not only for the usual
+  # one-rule-one-message reason: Go's RE2 caps a bounded repeat at
+  # 1000, so the obvious "{2,1224}" spelling is an INVALID regex.
+  # can() swallows that error and returns false, which would have made
+  # this rule reject every non-null value — fail-closed, but total.
+  # Probed and caught before a single test was written (IMPL-0024
+  # task 1.4); do not re-merge these into one bounded-repeat regex.
+  validation {
+    condition     = var.external_id == null || can(regex("^[\\w+=,.@:/-]+$", var.external_id))
+    error_message = "external_id must use the AWS-documented external-id charset: alphanumerics, underscore, and +=,.@:/- only."
+  }
+
+  validation {
+    condition     = var.external_id == null || (length(var.external_id) >= 2 && length(var.external_id) <= 1224)
+    error_message = "external_id must be between 2 and 1224 characters (the AWS-enforced range)."
+  }
+}
+
 variable "max_session_duration" {
   description = "Maximum session duration in seconds for sessions assumed into this role (AWS default 3600 = 1 hour, maximum 43200 = 12 hours)."
   type        = number

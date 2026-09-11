@@ -161,3 +161,64 @@ run "verify_readback" {
     error_message = "IAM must have stored the caller's tags"
   }
 }
+
+# Trust conditions round-tripped through the API (DESIGN-0027 Part A,
+# IMPL-0024 task 3.1). Applies the SAME role with both conditions set,
+# then reads the trust document back out of IAM.
+#
+# WHAT THIS PROVES: that IAM stored the conditions — the far side, not
+# what the provider recorded. WHAT IT DOES NOT PROVE: that they are
+# ENFORCED. LocalStack's STS mints credentials for any role ARN
+# (IMPL-0015 Phase 1), so an AssumeRole here would succeed against any
+# condition at all. Enforcement is untestable in this tier by
+# construction, which FINDINGS.md states rather than implying more.
+#
+# Two org ids on purpose: aws_iam_policy_document collapses
+# single-element sets, so a one-org run would round-trip a bare string
+# and say nothing about the list shape the multi-org surface exists
+# for.
+run "apply_with_trust_conditions" {
+  command = apply
+
+  variables {
+    require_org_ids = ["o-a1b2c3d4e5", "o-f6g7h8i9j0"]
+    external_id     = "hub-to-spoke-42"
+  }
+
+  assert {
+    condition     = startswith(output.role_unique_id, "AROA")
+    error_message = "the conditioned role must still land in IAM"
+  }
+}
+
+run "verify_conditions_readback" {
+  command = apply
+
+  variables {
+    role_name          = run.apply_with_trust_conditions.role_name
+    inline_policy_name = "eks-access"
+  }
+
+  module {
+    source = "./tests-localstack/fixtures/verify"
+  }
+
+  # Both conditions must survive the round trip in ONE statement.
+  assert {
+    condition     = length(jsondecode(output.assume_role_policy).Statement) == 1
+    error_message = "IAM must have stored both conditions on the single trust statement — separate statements would be OR-ed"
+  }
+
+  assert {
+    condition = toset(one(jsondecode(output.assume_role_policy).Statement).Condition.StringEquals["aws:PrincipalOrgID"]) == toset([
+      "o-a1b2c3d4e5",
+      "o-f6g7h8i9j0",
+    ])
+    error_message = "IAM must have stored both organization ids and nothing else"
+  }
+
+  assert {
+    condition     = one(jsondecode(output.assume_role_policy).Statement).Condition.StringEquals["sts:ExternalId"] == "hub-to-spoke-42"
+    error_message = "IAM must have stored the external id alongside the org condition"
+  }
+}

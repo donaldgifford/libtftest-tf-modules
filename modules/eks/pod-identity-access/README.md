@@ -81,6 +81,56 @@ module "shared_alb_grant" {
 }
 ```
 
+### Mode B ignores the four policy inputs
+
+`managed_policy_arns`, `customer_managed_policy_arns`,
+`inline_policies` and `permissions_boundary` are **accepted and
+silently ignored** when `create_role = false`. The module attaches
+nothing to a role it does not own — policies for a pre-existing role
+belong to whatever stack owns that role.
+
+They are ignored rather than rejected **on purpose**: Terragrunt
+injects a uniform input set into every module regardless of use
+(ADR-0020 / IMPL-0015 Q6a), so a wrapper passing the same policy
+inputs across both Mode A and Mode B instances is the expected
+calling pattern, and failing on an unused input would break it.
+DESIGN-0027 Part C proposed rejecting the combination and was
+**withdrawn** for this reason.
+
+If you set a policy input in Mode B and wonder why the permission
+never appeared: this is why. Nothing in the plan will say so — the
+attachments simply do not exist.
+
+## Upgrading past v0.23.0 — re-plan first
+
+DESIGN-0027 Part B gave the four policy inputs the validations they
+had never had. This module shipped from `v0.21.0` with **zero**
+validation on that surface, so four input shapes that used to plan
+green now **fail at plan**:
+
+| Shape | Why it is now rejected |
+|---|---|
+| A malformed or non-policy ARN in `managed_policy_arns` | Must match `arn:aws:iam::aws:policy/…` |
+| A malformed ARN in `customer_managed_policy_arns` | Must match `arn:aws:iam::<12 digits>:policy/…` |
+| A non-JSON string in `inline_policies` | `can(jsondecode())` |
+| `permissions_boundary = ""` | Reads as "bounded" in a plan and applies as **no boundary** |
+
+The two channel regexes partition on the account field, which is what
+makes the same ARN in both channels unrepresentable (IMPL-0022's F2).
+The consequence for callers: **an ARN in the wrong channel is now an
+error**, where before both channels emitted an identical
+`aws_iam_role_policy_attachment` and either worked.
+
+**Moving an ARN between channels is not address-neutral.** The
+attachment is keyed by channel, so the move plans as a **destroy +
+create** — a real, brief window in which the policy is detached from
+the role. Schedule it accordingly rather than folding it into an
+unrelated apply.
+
+Non-commercial partitions (`aws-us-gov`, `aws-cn`) are rejected by
+both regexes. That is inert for this fleet; loosening it must
+preserve the account-field exclusivity above.
+
 ## Naming
 
 The IAM role name (Mode A) defaults to:

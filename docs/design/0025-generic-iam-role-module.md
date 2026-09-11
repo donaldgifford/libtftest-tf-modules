@@ -327,12 +327,21 @@ expected **sooner rather than later**, not parked-until-someday.
 They are deliberately additive (no v1 shape blocks either), and each
 fires its own DESIGN (or a documented minor change) when picked up:
 
-1. **Trust conditions (from OQ 2):** the typed conditions surface —
-   `external_id` first (the third-party confused-deputy control),
-   then broader typed conditions if needed. Additive to
-   `trusted_role_arns`; the v1 single-statement composition is built
-   so a conditions block slots in without reshaping the variable.
-   Trigger: the first third-party or cross-org trust requirement.
+1. **Trust conditions (from OQ 2): DELIVERED** —
+   [DESIGN-0027](0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md)
+   / IMPL-0024, 2026-09-09. Shipped as `require_org_ids`
+   (`list(string)` — the fleet spans several organizations) and
+   `external_id`, composed into the v1 single statement exactly as
+   this entry anticipated, with no reshaping of
+   `trusted_role_arns`.
+   Two departures from what was written here: **`aws:PrincipalOrgID`
+   led rather than `external_id`**, because the IMPL-0022 security
+   review found the cross-account dangling-principal hazard (F4) and
+   the org condition is the control that survives it, while
+   `external_id` still has no consumer; and the trigger was that
+   review promoting this from "expected sooner rather than later" to
+   a **prerequisite for the cross-account instances**, not a
+   third-party requirement arriving.
 2. **Policy management (from OQ 3):** customer-managed policy
    *creation* — either an in-module `policies` map (name → JSON
    minting `aws_iam_policy` + attaching) or, more likely, the

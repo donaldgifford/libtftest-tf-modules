@@ -2,7 +2,8 @@
 
 Community apply suite (`apply_localstack.tftest.hcl`) against
 **token-free `localstack/localstack:4.4` (Community),
-`SERVICES=iam,sts`**. Run and passing, 3/3 (2026-09-04). Pure IAM +
+`SERVICES=iam,sts`**. Run and passing, **5/5** (2026-09-09; was 3/3
+on 2026-09-04, +2 for the DESIGN-0027 trust conditions). Pure IAM +
 STS: no Pro tier, no auth token, no named volume.
 
 ## ⚠️ Read first: STS AssumeRole against LocalStack proves NOTHING about trust
@@ -33,6 +34,31 @@ the far side rather than of what the provider recorded. It confirms
 4.4 stores and serves back: the path, `max_session_duration`, tags,
 the permissions boundary, and the **full trust document** (one
 statement, exactly `sts:AssumeRole`, both principals).
+
+## Trust conditions round-trip on 4.4 Community — POSITIVE
+
+`run "apply_with_trust_conditions"` applies the role with **two**
+organization ids and an external id;
+`run "verify_conditions_readback"` reads the document back through
+`data.aws_iam_role`. LocalStack 4.4 stores and serves back both
+conditions on the single statement, with the org list intact.
+
+Two org ids on purpose: `aws_iam_policy_document` collapses
+single-element sets, so a one-org run would round-trip a bare string
+and prove nothing about the list shape the multi-org surface exists
+for.
+
+**What this does NOT prove — and cannot.** That the conditions are
+**enforced**. LocalStack's STS mints credentials for any role ARN
+regardless of trust (the caveat this file opens with), so an
+`AssumeRole` here would succeed against `aws:PrincipalOrgID` naming
+an organization the caller is not in. Enforcement is untestable in
+this tier *by construction*, not by omission — the suite asserts
+storage and the plan gate asserts composition.
+
+That split is worth stating plainly because a green apply run is
+exactly the kind of evidence someone later mistakes for "the org
+condition works."
 
 ## Probe: the empty-string permissions boundary — POSITIVE
 

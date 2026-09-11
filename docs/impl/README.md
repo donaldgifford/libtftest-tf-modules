@@ -55,4 +55,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0021 | S3 evidence bucket and lifecycle tiering exposure | Completed | 2026-09-04 | Donald Gifford | [0021-s3-evidence-bucket-and-lifecycle-tiering-exposure.md](0021-s3-evidence-bucket-and-lifecycle-tiering-exposure.md) |
 | IMPL-0022 | Generic IAM role module | Completed | 2026-09-04 | Donald Gifford | [0022-generic-iam-role-module.md](0022-generic-iam-role-module.md) |
 | IMPL-0023 | Generic security group module | Draft | 2026-09-04 | Donald Gifford | [0023-generic-security-group-module.md](0023-generic-security-group-module.md) |
+| IMPL-0024 | IAM trust conditions and pod-identity-access validation backport | Draft | 2026-09-09 | Donald Gifford | [0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md](0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md) |
 <!-- END DOCZ AUTO-GENERATED -->
