@@ -239,23 +239,23 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
 
 #### Tasks
 
-- [ ] 3.1 Fixture: `run "setup"` sources the shared
+- [x] 3.1 Fixture: `run "setup"` sources the shared
       `test/fixtures/reference-vpc` (DESIGN-0016 — consumer apply
       tests never hand-roll VPCs; the ~1–2 min NAT cost is the
       accepted price) and creates a small populated
       `aws_ec2_managed_prefix_list` so a live prefix-list rule
       round-trips.
-- [ ] 3.2 Apply suite: the SG lands in the contract VPC; CIDR +
+- [x] 3.2 Apply suite: the SG lands in the contract VPC; CIDR +
       prefix-list + referenced-SG rules round-trip; the all-egress
       rule exists.
-- [ ] 3.3 Run live (`just tf test-localstack
+- [x] 3.3 Run live (`just tf test-localstack
       network/security-group`, `SERVICES=ec2,sts`); FINDINGS.md
       records parity per the assert-what-round-trips discipline —
       including whether token-free 4.4 serves managed prefix lists
       at all (the fleet has proved prefix-list `entries` only under
       the **Pro** container, in the eks/cluster fence fixture; this
       is the first Community-tier probe of that surface).
-- [ ] 3.4 Conventional commit.
+- [x] 3.4 Conventional commit.
 
 #### Success Criteria
 
