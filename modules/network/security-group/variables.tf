@@ -67,6 +67,66 @@ variable "ingress_rules" {
   }))
   default = {}
 
+  # Each guard is its own block so a rejection run can be verified
+  # against the rule it names. Four-plus validations stack on this one
+  # variable, and `expect_failures` proves only that the variable
+  # errored — never which rule fired (the IMPL-0020 lesson).
+  #
+  # Every message names the offending keys. With a map of rules, "one of
+  # your rules is wrong" is close to useless on a 30-entry allowlist.
+
+  validation {
+    condition = alltrue([
+      for k, r in var.ingress_rules :
+      length(compact([r.cidr_ipv4, r.cidr_ipv6, r.prefix_list_id, r.referenced_security_group_id])) == 1
+    ])
+    error_message = "Every ingress rule must name EXACTLY ONE source — cidr_ipv4, cidr_ipv6, prefix_list_id or referenced_security_group_id. Rules naming zero or several: ${join(", ", [for k, r in var.ingress_rules : k if length(compact([r.cidr_ipv4, r.cidr_ipv6, r.prefix_list_id, r.referenced_security_group_id])) != 1])}."
+  }
+
+  validation {
+    condition     = alltrue([for k, r in var.ingress_rules : trimspace(r.description) != ""])
+    error_message = "Every ingress rule needs a non-empty description — the allowlist is an audit surface, and a rule nobody can explain is a rule nobody can safely remove. Rules missing one: ${join(", ", [for k, r in var.ingress_rules : k if trimspace(r.description) == ""])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.ingress_rules :
+      r.ip_protocol == "-1" ? r.from_port == null && r.to_port == null : r.from_port != null
+    ])
+    error_message = "Port coherence: ip_protocol \"-1\" (all protocols) must omit from_port and to_port — the EC2 API rejects ports with all-protocols — and every other protocol must set from_port. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if r.ip_protocol == "-1" ? r.from_port != null || r.to_port != null : r.from_port == null])}."
+  }
+
+  # THE WORLD-OPEN GUARD (DESIGN-0026 OQ 4a). This is the cross-variable
+  # validation that sets the module's >= 1.9 floor — see versions.tf.
+  #
+  # Its boundary is deliberate and documented, not an oversight: it
+  # inspects the LITERAL cidr fields only. A prefix_list_id whose list
+  # contains 0.0.0.0/0 admits the world and this guard cannot see it,
+  # BY DESIGN — the reference is live, so expanding the list at plan
+  # would give false assurance (the list can be edited world-open a
+  # minute after the apply, which is what "live" means). That is the
+  # shape of IMPL-0020's HIGH fence finding, with the difference that
+  # here resolution is impossible on purpose, so the boundary is
+  # documented in the README instead of closed.
+  #
+  # referenced_security_group_id has no equivalent hole: an SG
+  # reference admits that SG's members, never the world.
+  validation {
+    condition = var.allow_world_open_ingress || alltrue([
+      for k, r in var.ingress_rules :
+      r.cidr_ipv4 != "0.0.0.0/0" && r.cidr_ipv6 != "::/0"
+    ])
+    error_message = "World-open ingress is fail-closed: set allow_world_open_ingress = true to permit 0.0.0.0/0 or ::/0. A deliberately public frontend is one explicit, reviewable line; the guard exists for the pasted-wide-open accident. Rules opening to the world: ${join(", ", [for k, r in var.ingress_rules : k if r.cidr_ipv4 == "0.0.0.0/0" || r.cidr_ipv6 == "::/0"])}."
+  }
+
+  nullable = false
+}
+
+variable "allow_world_open_ingress" {
+  description = "Permit ingress rules whose source is 0.0.0.0/0 or ::/0 (default false — fail-closed). A deliberately public frontend sets this to true, which is one explicit line a reviewer can see. SCOPE, stated honestly: the guard this disables inspects literal CIDR fields only. It does NOT and cannot look inside a prefix list — a prefix_list_id source whose list contains 0.0.0.0/0 admits the world with this left false, because the prefix-list reference is live and plan-time expansion would be false assurance. Prefix-list contents are the list owner's audit surface."
+  type        = bool
+  default     = false
+
   nullable = false
 }
 
@@ -83,6 +143,34 @@ variable "egress_rules" {
     referenced_security_group_id = optional(string)
   }))
   default = {}
+
+  # The same three API-shape guards as ingress. Deliberately NO
+  # world-open guard here (DESIGN-0026 OQ 2a): world egress IS the
+  # module's default posture, so rejecting 0.0.0.0/0 in the typed map
+  # would reject a shape allow_all_egress already grants by default. A
+  # restricted-egress caller writing 0.0.0.0/0 has visibly re-created
+  # the default they turned off, in a reviewed plan.
+
+  validation {
+    condition = alltrue([
+      for k, r in var.egress_rules :
+      length(compact([r.cidr_ipv4, r.cidr_ipv6, r.prefix_list_id, r.referenced_security_group_id])) == 1
+    ])
+    error_message = "Every egress rule must name EXACTLY ONE destination — cidr_ipv4, cidr_ipv6, prefix_list_id or referenced_security_group_id. Rules naming zero or several: ${join(", ", [for k, r in var.egress_rules : k if length(compact([r.cidr_ipv4, r.cidr_ipv6, r.prefix_list_id, r.referenced_security_group_id])) != 1])}."
+  }
+
+  validation {
+    condition     = alltrue([for k, r in var.egress_rules : trimspace(r.description) != ""])
+    error_message = "Every egress rule needs a non-empty description. Rules missing one: ${join(", ", [for k, r in var.egress_rules : k if trimspace(r.description) == ""])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.egress_rules :
+      r.ip_protocol == "-1" ? r.from_port == null && r.to_port == null : r.from_port != null
+    ])
+    error_message = "Port coherence: ip_protocol \"-1\" must omit from_port and to_port; every other protocol must set from_port. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if r.ip_protocol == "-1" ? r.from_port != null || r.to_port != null : r.from_port == null])}."
+  }
 
   nullable = false
 }

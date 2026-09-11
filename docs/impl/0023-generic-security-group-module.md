@@ -138,7 +138,7 @@ its tasks are checked off and its success criteria are met.
       `eks/cluster` `nodes_all` shape — the provider revokes AWS's
       default egress at create, so the default keeps ALB health
       checks working and the posture visible in every plan).
-- [ ] 1.5 Guards, all fail-closed at plan: **exactly-one-source**
+- [x] 1.5 Guards, all fail-closed at plan: **exactly-one-source**
       (zero or two-plus of the four source fields rejected, all
       four named in the message); **description non-empty** (the
       allowlist is an audit surface); **ports-with-`-1`** rejection
