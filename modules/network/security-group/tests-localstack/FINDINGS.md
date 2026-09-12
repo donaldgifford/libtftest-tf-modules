@@ -158,3 +158,18 @@ runs client-side in the provider's read, so LocalStack is a faithful
 stand-in here. The consequence (`create_before_destroy` survives it,
 but the SG **id changes** on a live ALB-attached group) is now the
 loudest thing in the README's adoption section.
+
+**No test pins this**, and that is a deliberate limit rather than an
+oversight: `terraform test` has no way to assert *that a plan is a
+replacement* — there is no plan-diff introspection, only assertions on
+resource attributes. So the README's warning rests on this probe. If
+the provider ever starts inferring `name_prefix` for arbitrary names,
+the warning silently becomes wrong and nothing goes red. Re-probe
+before trusting it across a major provider bump; the two commands above
+are the whole procedure.
+
+It generalizes beyond this module: `secretsmanager/secret` is the only
+other module using the provider's `name_prefix` argument and reproduces
+the behaviour exactly — with a worse consequence, since that resource
+has no `create_before_destroy` and mints a **new secret value** on
+create.
