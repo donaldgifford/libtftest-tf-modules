@@ -84,15 +84,39 @@ emits one. That is the behavior `allow_all_egress = true` exists for
 (DESIGN-0026 OQ 3a), reproduced on the emulator rather than taken on
 faith from the provider docs.
 
+## NEGATIVE: LocalStack does not enforce AWS string-charset constraints
+
+The EC2 API restricts a security group description to ASCII
+`a-z A-Z 0-9`, spaces and `._-:/()#,@[]+=&;{}!$*`; rule descriptions are
+narrower still (no `&`). **4.4 accepts anything.** This suite applied a
+description containing a U+2014 em dash (`e2 80 94`) and LocalStack
+created the group, returned it, and read it back byte-identical. Real
+AWS returns `InvalidParameterValue` after the create call.
+
+This is not a curiosity — the module's own **default** description
+carried that em dash, so every invocation that did not override it would
+have failed against real AWS, and this suite **pinned the broken value
+as expected**. A green apply tier was actively misleading here.
+
+The general shape, worth carrying past this module: **an emulator proves
+shape and wiring, never the provider's server-side string contracts.**
+Charset, length and format constraints have to be validated at plan or
+they are not validated at all. The module now does so for both
+`var.description` and every rule description, and the fail cases live in
+`tests/validation.tftest.hcl` where an emulator's tolerance cannot hide
+them.
+
 ## What this suite does NOT prove
 
 - **That any rule is enforced.** LocalStack does not carry traffic;
   this is a configuration-surface suite. Whether `203.0.113.0/24`
   actually reaches port 443 is not a question an emulator answers.
 - **The world-open guard.** It is a plan-time validation, so it is
-  tested where it lives (`tests/validation.tftest.hcl`, ten rejections
-  each verified against its own rule). Nothing about it is reachable
-  from an apply.
+  tested where it lives (`tests/validation.tftest.hcl`, 22 rejections
+  each verified against its own rule by isolated message probe). Nothing
+  about it is reachable from an apply — including the IPv6
+  spelling-evasion regressions, which are the ones that matter.
+- **Any description charset constraint** — see the NEGATIVE above.
 - **A zero-diff import.** The README's adoption runbook is exercised
   nowhere here; the actual imports are live-repo work against real
   SGs, which is why the runbook says match reality first.

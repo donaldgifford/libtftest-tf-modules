@@ -29,7 +29,7 @@
 # collision; the chart-side value update is still the caller's.
 resource "aws_security_group" "this" {
   name_prefix = "${var.name}-"
-  description = coalesce(var.description, "Managed by Terraform — ${var.name}")
+  description = coalesce(var.description, "Managed by Terraform - ${var.name}")
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
 
   tags = merge(var.tags, { Name = var.name })

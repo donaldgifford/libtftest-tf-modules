@@ -15,9 +15,25 @@ variable "name" {
 }
 
 variable "description" {
-  description = "Security group description. Defaults to a line composed from var.name. NOTE: description is create-time on AWS (ForceNew) — editing it REPLACES the security group. The module's name_prefix + create_before_destroy make that replacement survivable, but it still mints a new security group id, so any chart-side or cross-stack consumer of the id needs updating in the same change."
+  description = "Security group description. Defaults to a line composed from var.name. NOTE: description is create-time on AWS (ForceNew) — editing it REPLACES the security group. The module's name_prefix + create_before_destroy make that replacement survivable, but it still mints a new security group id, so any chart-side or cross-stack consumer of the id needs updating in the same change. AWS restricts this field to ASCII: a-z A-Z 0-9 spaces and ._-:/()#,@[]+=&;{}!$* — a typographic dash or quote pasted from a doc or a chat window fails at APPLY, not at plan."
   type        = string
   default     = null
+
+  # CreateSecurityGroup's GroupDescription charset, enforced server-side
+  # by AWS and by nothing else in the pipeline. This validation exists
+  # because the module's OWN default violated it: it contained a U+2014
+  # EM DASH, so every invocation that did not override description would
+  # have failed at apply against real AWS — after the create call, with
+  # partial state.
+  #
+  # Nothing caught it. The plan gate cannot (the constraint is
+  # server-side) and LOCALSTACK DOES NOT ENFORCE AWS STRING-CHARSET
+  # CONSTRAINTS, so the Community apply accepted it and the suite
+  # actively pinned the broken value. See tests-localstack/FINDINGS.md.
+  validation {
+    condition     = var.description == null || can(regex("^[a-zA-Z0-9 ._:/()#,@\\[\\]+=&;{}!$*-]+$", var.description))
+    error_message = "description must use only the characters AWS accepts for a security group description: a-z A-Z 0-9 spaces and ._-:/()#,@[]+=&;{}!$* — no typographic dashes or quotes. AWS rejects the rest at apply, not at plan."
+  }
 }
 
 variable "tags" {
@@ -88,12 +104,52 @@ variable "ingress_rules" {
     error_message = "Every ingress rule needs a non-empty description — the allowlist is an audit surface, and a rule nobody can explain is a rule nobody can safely remove. Rules missing one: ${join(", ", [for k, r in var.ingress_rules : k if trimspace(r.description) == ""])}."
   }
 
+  # Rule descriptions take a NARROWER charset than the group description
+  # — no "&". Same server-side-only enforcement, same reason for the
+  # rule: this field is explicitly the audit surface, so it is the one
+  # most likely to be pasted in from a ticket or a chat window.
+  validation {
+    condition     = alltrue([for k, r in var.ingress_rules : can(regex("^[a-zA-Z0-9 ._:/()#,@\\[\\]+=;{}!$*-]+$", r.description))])
+    error_message = "Ingress rule descriptions must use only the characters AWS accepts: a-z A-Z 0-9 spaces and ._-:/()#,@[]+=;{}!$* (note: no \"&\", unlike the group description). AWS rejects the rest at apply, not at plan. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if !can(regex("^[a-zA-Z0-9 ._:/()#,@\\[\\]+=;{}!$*-]+$", r.description))])}."
+  }
+
+  # PORT COHERENCE, three-way — AWS gives from_port/to_port three
+  # different meanings depending on the protocol:
+  #
+  #   tcp / udp        ports. to_port null-collapses to from_port.
+  #   icmp / icmpv6    from_port is the TYPE and to_port is the CODE.
+  #                    Both are REQUIRED here, because the collapse
+  #                    would otherwise silently produce code == type:
+  #                    `{ from_port = 8, ip_protocol = "icmp" }` reads
+  #                    as "allow ping" and plans as type 8 / code 8,
+  #                    which matches nothing (echo requests are code 0).
+  #                    The intended spelling is to_port = -1 (any code).
+  #   anything else    ports are IGNORED by AWS, so a rule carrying them
+  #                    reads as port-scoped and is not. Rejected.
   validation {
     condition = alltrue([
       for k, r in var.ingress_rules :
-      r.ip_protocol == "-1" ? r.from_port == null && r.to_port == null : r.from_port != null
+      contains(["tcp", "udp"], r.ip_protocol) ? r.from_port != null : (
+        contains(["icmp", "icmpv6"], r.ip_protocol) ? r.from_port != null && r.to_port != null : r.from_port == null && r.to_port == null
+      )
     ])
-    error_message = "Port coherence: ip_protocol \"-1\" (all protocols) must omit from_port and to_port — the EC2 API rejects ports with all-protocols — and every other protocol must set from_port. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if r.ip_protocol == "-1" ? r.from_port != null || r.to_port != null : r.from_port == null])}."
+    error_message = "Port coherence. tcp/udp must set from_port. icmp/icmpv6 must set BOTH from_port (the ICMP type) and to_port (the CODE — use -1 for any code; omitting it would silently set code = type). Every other protocol, including \"-1\", must omit both ports because AWS ignores them there. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if contains(["tcp", "udp"], r.ip_protocol) ? r.from_port == null : (contains(["icmp", "icmpv6"], r.ip_protocol) ? r.from_port == null || r.to_port == null : r.from_port != null || r.to_port != null)])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.ingress_rules :
+      r.from_port == null || r.to_port == null || r.to_port >= r.from_port || contains(["icmp", "icmpv6"], r.ip_protocol)
+    ])
+    error_message = "to_port must be >= from_port (the pair is a range). This does not apply to icmp/icmpv6, where the two are a type and a code rather than a range. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if r.from_port != null && r.to_port != null && r.to_port < r.from_port && !contains(["icmp", "icmpv6"], r.ip_protocol)])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.ingress_rules :
+      contains(["tcp", "udp", "icmp", "icmpv6"], r.ip_protocol) || (can(tonumber(r.ip_protocol)) && tonumber(r.ip_protocol) >= -1 && tonumber(r.ip_protocol) <= 255)
+    ])
+    error_message = "ip_protocol must be tcp, udp, icmp, icmpv6, \"-1\" (all protocols), or an IANA protocol number 0-255. A typo like \"https\" would otherwise plan clean and fail at apply. Offending rules: ${join(", ", [for k, r in var.ingress_rules : k if !contains(["tcp", "udp", "icmp", "icmpv6"], r.ip_protocol) && !(can(tonumber(r.ip_protocol)) && tonumber(r.ip_protocol) >= -1 && tonumber(r.ip_protocol) <= 255)])}."
   }
 
   # THE WORLD-OPEN GUARD (DESIGN-0026 OQ 4a). This is the cross-variable
@@ -111,19 +167,39 @@ variable "ingress_rules" {
   #
   # referenced_security_group_id has no equivalent hole: an SG
   # reference admits that SG's members, never the world.
+  #
+  # THE GUARD TESTS THE PREFIX LENGTH, NOT THE SPELLING. An earlier
+  # version compared strings (cidr_ipv4 != "0.0.0.0/0" && cidr_ipv6 !=
+  # "::/0") and was evaded by IPv6, which has many legal spellings of
+  # the same prefix: "0::/0" and the fully expanded
+  # "0000:0000:0000:0000:0000:0000:0000:0000/0" both passed the guard,
+  # both are accepted by the provider's CIDR validator, and AWS creates
+  # the rule. (The v4 side happened to be safe only because the
+  # provider's network-address validator leaves "0.0.0.0/0" as the sole
+  # accepted v4 /0 spelling — luck, not design.)
+  #
+  # endswith(c, "/0") is exact: no other prefix length ends in the
+  # literal "/0" — "10.0.0.0/10" ends in "10", not "/0". The "unset/32"
+  # fallback is what a rule with no CIDR source at all (prefix list,
+  # referenced SG) collapses to, and it is deliberately not world-open.
+  #
+  # This is the IMPL-0020 rule applied inward: validate the RESOLVED
+  # value, not the raw input. Where resolution is impossible — a live
+  # prefix list — the boundary is documented instead (above). Here
+  # resolution is trivial, so there is no excuse for testing spelling.
   validation {
     condition = var.allow_world_open_ingress || alltrue([
       for k, r in var.ingress_rules :
-      r.cidr_ipv4 != "0.0.0.0/0" && r.cidr_ipv6 != "::/0"
+      !endswith(coalesce(r.cidr_ipv4, r.cidr_ipv6, "unset/32"), "/0")
     ])
-    error_message = "World-open ingress is fail-closed: set allow_world_open_ingress = true to permit 0.0.0.0/0 or ::/0. A deliberately public frontend is one explicit, reviewable line; the guard exists for the pasted-wide-open accident. Rules opening to the world: ${join(", ", [for k, r in var.ingress_rules : k if r.cidr_ipv4 == "0.0.0.0/0" || r.cidr_ipv6 == "::/0"])}."
+    error_message = "World-open ingress is fail-closed: set allow_world_open_ingress = true to permit a /0 prefix (0.0.0.0/0, ::/0, and every other spelling of them). A deliberately public frontend is one explicit, reviewable line; the guard exists for the pasted-wide-open accident. Rules opening to the world: ${join(", ", [for k, r in var.ingress_rules : k if endswith(coalesce(r.cidr_ipv4, r.cidr_ipv6, "unset/32"), "/0")])}."
   }
 
   nullable = false
 }
 
 variable "allow_world_open_ingress" {
-  description = "Permit ingress rules whose source is 0.0.0.0/0 or ::/0 (default false — fail-closed). A deliberately public frontend sets this to true, which is one explicit line a reviewer can see. SCOPE, stated honestly: the guard this disables inspects literal CIDR fields only. It does NOT and cannot look inside a prefix list — a prefix_list_id source whose list contains 0.0.0.0/0 admits the world with this left false, because the prefix-list reference is live and plan-time expansion would be false assurance. Prefix-list contents are the list owner's audit surface."
+  description = "Permit ingress rules whose literal source CIDR is a /0 — 0.0.0.0/0, ::/0, and every other legal spelling of them, since the guard tests the /0 suffix rather than comparing strings (IPv6 spells the world several ways). Default false, fail-closed. A deliberately public frontend sets this to true, which is one explicit line a reviewer can see. SCOPE, stated honestly — this is a guard against the accident, not a proof of non-exposure. It inspects literal CIDR fields only, so it does NOT look inside a prefix list (a prefix_list_id whose list contains 0.0.0.0/0 admits the world with this left false — the reference is live, and plan-time expansion would be false assurance; list contents are the list owner's audit surface), and it does not catch a /1 split: 0.0.0.0/1 plus 128.0.0.0/1 is the whole internet in two rules that are not /0s."
   type        = bool
   default     = false
 
@@ -131,7 +207,7 @@ variable "allow_world_open_ingress" {
 }
 
 variable "egress_rules" {
-  description = "Egress rules, keyed by logical rule name. Same object shape as ingress_rules. Additive to allow_all_egress — set allow_all_egress = false to make this map the whole egress posture, otherwise the all-egress rule is already wider than anything you add here."
+  description = "Egress rules, keyed by logical rule name. Same object shape as ingress_rules. Setting this REQUIRES allow_all_egress = false: the two together are rejected at plan, because the all-egress rule is wider than anything written here and shows up in the plan only as an unchanged resource. The logical key \"all-egress\" is reserved (the module's own default rule already claims that Name tag)."
   type = map(object({
     description                  = string
     from_port                    = optional(number)
@@ -165,18 +241,74 @@ variable "egress_rules" {
   }
 
   validation {
+    condition     = alltrue([for k, r in var.egress_rules : can(regex("^[a-zA-Z0-9 ._:/()#,@\\[\\]+=;{}!$*-]+$", r.description))])
+    error_message = "Egress rule descriptions must use only the characters AWS accepts: a-z A-Z 0-9 spaces and ._-:/()#,@[]+=;{}!$*. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if !can(regex("^[a-zA-Z0-9 ._:/()#,@\\[\\]+=;{}!$*-]+$", r.description))])}."
+  }
+
+  validation {
     condition = alltrue([
       for k, r in var.egress_rules :
-      r.ip_protocol == "-1" ? r.from_port == null && r.to_port == null : r.from_port != null
+      contains(["tcp", "udp"], r.ip_protocol) ? r.from_port != null : (
+        contains(["icmp", "icmpv6"], r.ip_protocol) ? r.from_port != null && r.to_port != null : r.from_port == null && r.to_port == null
+      )
     ])
-    error_message = "Port coherence: ip_protocol \"-1\" must omit from_port and to_port; every other protocol must set from_port. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if r.ip_protocol == "-1" ? r.from_port != null || r.to_port != null : r.from_port == null])}."
+    error_message = "Port coherence. tcp/udp must set from_port. icmp/icmpv6 must set BOTH from_port (type) and to_port (code). Every other protocol, including \"-1\", must omit both. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if contains(["tcp", "udp"], r.ip_protocol) ? r.from_port == null : (contains(["icmp", "icmpv6"], r.ip_protocol) ? r.from_port == null || r.to_port == null : r.from_port != null || r.to_port != null)])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.egress_rules :
+      r.from_port == null || r.to_port == null || r.to_port >= r.from_port || contains(["icmp", "icmpv6"], r.ip_protocol)
+    ])
+    error_message = "to_port must be >= from_port. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if r.from_port != null && r.to_port != null && r.to_port < r.from_port && !contains(["icmp", "icmpv6"], r.ip_protocol)])}."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, r in var.egress_rules :
+      contains(["tcp", "udp", "icmp", "icmpv6"], r.ip_protocol) || (can(tonumber(r.ip_protocol)) && tonumber(r.ip_protocol) >= -1 && tonumber(r.ip_protocol) <= 255)
+    ])
+    error_message = "ip_protocol must be tcp, udp, icmp, icmpv6, \"-1\", or an IANA protocol number 0-255. Offending rules: ${join(", ", [for k, r in var.egress_rules : k if !contains(["tcp", "udp", "icmp", "icmpv6"], r.ip_protocol) && !(can(tonumber(r.ip_protocol)) && tonumber(r.ip_protocol) >= -1 && tonumber(r.ip_protocol) <= 255)])}."
+  }
+
+  # "all-egress" is RESERVED. The module's own all-egress rule tags
+  # itself Name = "<name>-all-egress", so a caller rule by that key
+  # produces two rules with an identical Name tag — defeating the
+  # console-lookup purpose the per-rule Name tag exists for. The
+  # outputs deliberately avoided exactly this collision by giving
+  # all_egress_rule_id its own output instead of a reserved map key;
+  # the tag had the same collision and did not.
+  validation {
+    condition     = !contains(keys(var.egress_rules), "all-egress")
+    error_message = "\"all-egress\" is a reserved egress rule key — the module's own allow_all_egress rule already tags itself Name = \"<name>-all-egress\", and a caller rule by that key would produce two rules with the same Name tag."
+  }
+
+  # THE COHERENCE GUARD (cross-variable, hence the >= 1.9 floor).
+  #
+  # A caller who writes egress_rules is by definition trying to RESTRICT
+  # egress — and nothing in that edit surfaces allow_all_egress, which
+  # is still true by default and still wider than anything they wrote.
+  # Their intent silently resolves to the permissive default.
+  #
+  # The plan does show the all-egress rule, but it shows it as
+  # UNCHANGED, and unchanged resources are the ones reviewers skim —
+  # the exact mechanism behind IMPL-0022's silent re-grant.
+  #
+  # This is the IMPL-0021 object_lock shape: a partially-specified
+  # intent that quietly resolves to the permissive default fails at
+  # plan instead. DESIGN-0027 Part C does not apply — that was about
+  # Terragrunt injecting a uniform GLOBAL into every module, whereas
+  # both of these are module-local inputs a caller writes deliberately.
+  validation {
+    condition     = !(var.allow_all_egress && length(var.egress_rules) > 0)
+    error_message = "allow_all_egress is true AND egress_rules is non-empty. The all-egress rule is wider than anything in that map, so the typed rules add nothing — if you meant to restrict egress, set allow_all_egress = false; if you meant wide-open egress, drop egress_rules."
   }
 
   nullable = false
 }
 
 variable "allow_all_egress" {
-  description = "Emit one explicit all-protocols egress rule to 0.0.0.0/0 (default true). This is NOT redundant with AWS's default: the provider REVOKES the default allow-all egress when it creates a security group, so a module with no egress surface would ship SGs that silently fail ALB health checks and target traffic. The rule is emitted as a real resource so the posture is visible in every plan rather than implied. Set false to make egress_rules the whole posture."
+  description = "Emit one explicit all-protocols egress rule to 0.0.0.0/0 (default true). This is NOT redundant with AWS's default: the provider REVOKES the default allow-all egress when it creates a security group, so a module with no egress surface would ship SGs that silently fail ALB health checks and target traffic. The rule is emitted as a real resource so the posture is visible in every plan rather than implied. Set false to make egress_rules the whole posture — required, not optional, whenever egress_rules is non-empty."
   type        = bool
   default     = true
 

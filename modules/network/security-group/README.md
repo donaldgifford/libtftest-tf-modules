@@ -51,8 +51,35 @@ Each rule names **exactly one** source, rejected at plan otherwise:
 `description` is required on every rule: the allowlist is an audit
 surface, and a rule nobody can explain is a rule nobody can safely
 remove. `to_port` defaults to `from_port` (the single-port case).
-`ip_protocol = "-1"` means all protocols and must omit both ports — the
-EC2 API rejects ports with all-protocols.
+
+### Ports depend on the protocol, and the module enforces which
+
+| `ip_protocol` | `from_port` | `to_port` |
+|---|---|---|
+| `tcp`, `udp` | required | optional, collapses to `from_port` |
+| `icmp`, `icmpv6` | required — the ICMP **type** | required — the ICMP **code** (`-1` for any) |
+| `-1`, a number `0`-`255` | must be absent | must be absent |
+
+ICMP is the trap: `from_port` is the type and `to_port` is the *code*,
+not a range. Left to collapse, `{ from_port = 8, ip_protocol = "icmp" }`
+reads as "allow ping" and resolves to type 8 / code 8, which matches
+nothing — echo requests carry code 0. Both are therefore required on an
+ICMP rule. For all-protocols and numeric protocols, AWS **ignores**
+ports, so accepting them would let a rule read as port-scoped when it is
+not; they are rejected instead.
+
+### Descriptions are charset-constrained by AWS, not by us
+
+EC2 accepts only `a-z A-Z 0-9`, spaces, and `._-:/()#,@[]+=;{}!$*` in a
+rule description (the security group's own description also allows `&`).
+This is enforced **server-side only** — the provider does not check it,
+and **LocalStack does not enforce it either**, so an apply suite is not
+a gate for this. The module validates both at plan.
+
+The reason this is a validation and not a note: the module's own default
+`description` once carried a U+2014 em dash, so every invocation that
+did not override it would have failed at apply against real AWS, after
+the create call, on a string nobody would think to look at.
 
 ## Worked example — `gateway-frontend-public`
 
@@ -61,7 +88,7 @@ module "gateway_frontend_public" {
   source = "../../modules/network/security-group"
 
   name        = "gateway-frontend-public"
-  description = "Public Gateway frontend — webhooks and corp hairpin"
+  description = "Public Gateway frontend - webhooks and corp hairpin"
   vpc_name    = "libtftest-vpc"
 
   ingress_rules = {
@@ -125,15 +152,37 @@ referencing it — backend stays the controller's.
 
 ## World-open ingress is fail-closed
 
-`0.0.0.0/0` or `::/0` in any **ingress** rule fails at plan unless you
-set `allow_world_open_ingress = true`. A deliberately public frontend is
-one explicit, reviewable line; the guard exists for the
+Any **ingress** rule whose literal CIDR is a `/0` fails at plan unless
+you set `allow_world_open_ingress = true`. A deliberately public
+frontend is one explicit, reviewable line; the guard exists for the
 pasted-wide-open accident. The error names the offending rule keys.
 
-**Egress has no such guard, deliberately.** World egress *is* this
-module's default posture (`allow_all_egress = true` emits exactly that
-rule), so rejecting `0.0.0.0/0` in the typed `egress_rules` map would
-reject a shape the default already grants.
+The test is `endswith(cidr, "/0")`, not a comparison against the strings
+`0.0.0.0/0` and `::/0`. That distinction is the whole guard: **IPv6 has
+many legal spellings of `::/0`** — `0::/0` and the fully expanded
+`0000:0000:...:0000/0` among them — and the provider's CIDR validator
+accepts all of them. A string compare caught one spelling and let the
+rest through (the bug this module shipped with in review; it is also
+upstream provider issue #15982). `/0` is the only prefix length whose
+literal text ends in `/0`, so the suffix test is exact.
+
+### What the guard does not catch
+
+It is a **guard against the accident, not a proof of non-exposure.**
+Three known ways to admit the world without tripping it, all deliberate:
+
+- **A `/1` split.** `0.0.0.0/1` plus `128.0.0.0/1` in two rules covers
+  the entire IPv4 space and neither is a `/0`. Catching this means
+  unioning CIDR arithmetic across the whole map — and any threshold
+  chosen there (`/1`? `/4`?) rejects legitimate large allowlists. A
+  caller who writes two half-internet rules has not slipped.
+- **A prefix list containing `0.0.0.0/0`** — see the callout above. The
+  reference is live, so expanding it at plan time would be false
+  assurance.
+- **Egress.** World egress *is* this module's default posture
+  (`allow_all_egress = true` emits exactly that rule), so rejecting
+  `0.0.0.0/0` in the typed `egress_rules` map would reject a shape the
+  default already grants.
 
 ## Egress: the default is explicit, not implied
 
@@ -147,10 +196,18 @@ fail ALB health checks and target traffic — discovered live, not at
 plan. Emitting it as a real resource keeps the posture visible in every
 plan rather than implied by its absence.
 
-For a restricted posture, set `allow_all_egress = false` and declare
-`egress_rules`. The two are **additive**: leaving the default on while
-adding typed egress rules gives you the wide-open rule *plus* the
-others, which is almost certainly not what you meant.
+For a restricted posture, set `allow_all_egress = false` **and** declare
+`egress_rules`. Doing one without the other is rejected at plan:
+`allow_all_egress = true` alongside a non-empty `egress_rules` used to
+be additive, which is a silent widening. A caller writing egress rules
+is trying to restrict egress, and the all-egress rule is wider than
+anything they can write — yet in the plan it shows up only as an
+**unchanged** resource, which is exactly what reviewers skim past.
+
+The logical key `all-egress` is **reserved** in `egress_rules`: the
+module's own default rule already tags itself
+`Name = "<name>-all-egress"`, and a caller rule by that key would
+produce two rules disputing one Name tag.
 
 ## Replacement: `name_prefix`, not a fixed name
 
@@ -230,7 +287,7 @@ This module is also the **seventh consumer** of the `vpc` shape, reading
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` | plan (the gate) | All four source types in one plan with each asserting its own field is set and the other three null; stable addresses by logical key; the `to_port` collapse and the all-protocols shape; a bare call pinning every default; both egress postures; the ADR-0020 key and the `assume_role` arn; ten rejections, each verified to fire its own rule |
+| `tests/` | plan (the gate), 33 runs | All four source types in one plan with each asserting its own field is set and the other three null; stable addresses by logical key; the `to_port` collapse, the ICMP type/code pair and the all-protocols shape; a bare call pinning every default; both egress postures; the ADR-0020 key and the `assume_role` arn; 22 rejections, each verified **by isolated message probe** to fire the rule it names |
 | `tests-localstack/` | Community apply | The SG and all rule types round-trip against a real (emulated) EC2 API — see `FINDINGS.md` |
 
 Full variable/output reference: [USAGE.md](USAGE.md).

@@ -351,6 +351,13 @@ Line 154 is load-bearing on its own: it proves the egress guards
 reference `var.egress_rules` and are not a copy-paste of the ingress
 ones, which is a defect a green suite would otherwise hide entirely.
 
+> Line numbers above are **as of Phase 1**. The security review below
+> grew the suite to 22 rejections and moved every rule; all 22 were
+> re-probed in isolation against the shipped `variables.tf`, and that
+> pass is what caught `unknown_ip_protocol_rejected` firing two rules.
+> Re-probing after changing validations is not optional — the earlier
+> table is evidence about the code as it stood, not a standing result.
+
 ### The two runs that are passes, not rejections
 
 **`world_open_permitted_by_explicit_toggle`.** The world-open guard is
@@ -370,6 +377,99 @@ silent tightening.
 
 The `name` regex is likewise proven to *discriminate* rather than reject
 everything: every other run in the suite passes a valid name through it.
+
+## Adversarial security review (pre-merge, `iac-security`)
+
+Run against the as-built module before PR #116 merged. Both HIGH
+findings were **independently reproduced before being fixed** — the
+standing discipline, and in both cases the reproduction is what turned a
+plausible-sounding claim into a defect with a regression run.
+
+### HIGH-1 — the world-open guard was evaded by IPv6 spelling
+
+The guard compared strings: `r.cidr_ipv6 != "::/0"`. IPv6 has many legal
+spellings of the world, and the provider's CIDR validator accepts them
+all. A scratch `.tftest.hcl` confirmed that **both** `0::/0` and
+`0000:0000:0000:0000:0000:0000:0000:0000/0` planned **clean** with
+`allow_world_open_ingress` at its `false` default. This is upstream
+provider issue #15982 reproduced inside our own guard.
+
+Fixed by testing the **suffix** instead:
+`!endswith(coalesce(r.cidr_ipv4, r.cidr_ipv6, "unset/32"), "/0")`. `/0`
+is the only prefix length whose literal text ends in `/0`, so the test
+is exact across every spelling and both address families. The v4 side
+was safe only by luck — the provider's network-address validator leaves
+`0.0.0.0/0` as the sole accepted v4 `/0` spelling.
+
+Regressions: `world_open_ipv6_compressed_zero_rejected` and
+`world_open_ipv6_expanded_rejected`. The pre-existing `::/0` run was
+**not** evidence of anything about the other spellings, which is the
+reusable point: a fail-case run proves the rule rejects *that input*,
+never that it rejects the class.
+
+### HIGH-2 — the module's own default description could not apply
+
+`description` defaulted to a string containing **U+2014 EM DASH**
+(`hexdump`: `e2 80 94`). The EC2 `GroupDescription` charset is ASCII
+only — `a-z A-Z 0-9`, spaces and `._-:/()#,@[]+=&;{}!$*` — so **every
+invocation that did not override the default would have failed at
+apply** against real AWS, after the create call.
+
+Neither gate could catch it. The constraint is server-side, so no plan
+sees it; and **LocalStack does not enforce AWS string-charset
+constraints**, so the apply suite created the group happily and read the
+em dash back byte-identical. The suite had *pinned the broken value as
+expected*.
+
+Fixed with charset validations on `var.description` and on both rule
+maps' descriptions (rule descriptions are narrower — no `&`), plus the
+em dashes removed from every AWS-submitted string in the module and its
+suites. Regressions: `non_ascii_description_rejected`,
+`non_ascii_rule_description_rejected`, and a FINDINGS.md NEGATIVE
+recording the emulator gap.
+
+**The lesson generalizes past this module:** an emulator proves shape
+and wiring, never a provider's server-side string contracts. Charset,
+length and format constraints must be validated at plan or they are not
+validated at all — and a green apply tier is *actively misleading*
+about them.
+
+### MEDIUM findings fixed
+
+| Finding | Fix | Regression |
+|---|---|---|
+| ICMP `to_port` collapsed to `from_port`, so `{ from_port = 8, ip_protocol = "icmp" }` read as "allow ping" and planned type 8 / **code 8** — echo requests carry code 0, so it matched nothing | three-way port coherence: tcp/udp require `from_port`; icmp/icmpv6 require **both** (type and code); everything else must have neither | `icmp_rule_without_explicit_code_rejected` **plus** `icmp_rule_with_explicit_code_accepted` — without the positive, the rejection would be satisfied by a rule that rejects all ICMP |
+| `to_port < from_port` accepted (an inverted range) | `to_port >= from_port`, ICMP-exempt since there the pair is type/code, not a range | `inverted_port_range_rejected` |
+| `ip_protocol` unvalidated — a typo like `"https"` reached the API | enum of `tcp`/`udp`/`icmp`/`icmpv6`/`-1` or a number 0-255 | `unknown_ip_protocol_rejected` |
+| `allow_all_egress` + non-empty `egress_rules` was documented as "additive" — a silent widening, since the all-egress rule is wider than anything a restricting caller writes and appears in the plan only as an **unchanged** resource | rejected at plan | `additive_egress_posture_rejected` (a converted pass — the run that used to assert the additive behavior) |
+| a caller rule keyed `all-egress` collides with the module's own `Name = "<name>-all-egress"` tag | key reserved | `reserved_all_egress_key_rejected` |
+| typed egress rules' `tags` were asserted nowhere — a mutation dropping the attribute left the whole suite green | Name-tag assertion in `restricted_egress_replaces_the_default` | (that run) |
+| four "sets X and nothing else" assertions checked **one** of the three other source fields | all three | (`rules.tftest.hcl`) |
+
+### The probe caught a defect in the new tests themselves
+
+Re-probing the additions found `unknown_ip_protocol_rejected` firing
+**two** rules — the protocol enum it names *and* the port-coherence rule,
+because the input carried a `from_port` and an unknown protocol must
+have none. `expect_failures` cannot distinguish them. The run now omits
+the port, leaving the enum as the only rule that input can violate.
+
+This is the discipline paying for itself in the same session that
+needed it: adding validations to a variable that already carried several
+is exactly how `egress_rule_with_two_destinations_rejected` silently
+started passing off the **new** coherence guard (fixed by pinning
+`allow_all_egress = false` in every egress rejection run).
+
+### Documented, not fixed — the guard's honest scope
+
+The README claimed the guard means the SG cannot admit the world without
+the toggle. That is false at the `/1` boundary: `0.0.0.0/1` plus
+`128.0.0.0/1` is the entire IPv4 space in two rules, neither a `/0`.
+Catching it means unioning CIDR arithmetic across the whole map, and any
+threshold chosen there rejects legitimate large allowlists. A caller who
+writes two half-internet rules has not slipped, so this is documented as
+a known limit alongside the prefix-list hole — the module guards against
+the **accident**, and says so.
 
 ## File Changes
 

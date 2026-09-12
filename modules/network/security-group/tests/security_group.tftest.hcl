@@ -61,7 +61,7 @@ run "bare_call_pins_defaults" {
   }
 
   assert {
-    condition     = aws_security_group.this.description == "Managed by Terraform — gateway-frontend-public"
+    condition     = aws_security_group.this.description == "Managed by Terraform - gateway-frontend-public"
     error_message = "description must default from var.name"
   }
 
@@ -148,12 +148,25 @@ run "restricted_egress_replaces_the_default" {
     condition     = aws_vpc_security_group_egress_rule.this["dns"].ip_protocol == "udp"
     error_message = "egress rules must honour a non-default ip_protocol"
   }
+
+  # Tags on the TYPED egress rules. The tag suite below covers ingress
+  # and the all-egress rule but never this resource, so a mutation
+  # dropping `tags` from aws_vpc_security_group_egress_rule.this left
+  # the whole suite green. Cost-allocation and ownership tags going
+  # missing on exactly the rules a restricted-egress posture creates is
+  # a silent gap.
+  assert {
+    condition     = aws_vpc_security_group_egress_rule.this["dns"].tags["Name"] == "gateway-frontend-public-dns"
+    error_message = "typed egress rules must carry the composed Name tag, same as ingress"
+  }
 }
 
-# allow_all_egress and egress_rules are ADDITIVE, not exclusive. Worth
-# pinning because the variable descriptions say so and a reader could
-# reasonably assume the typed map replaces the default.
-run "typed_egress_is_additive_to_the_default" {
+# allow_all_egress + a non-empty egress_rules is now REJECTED (the
+# coherence guard). It used to plan as "additive", which is the silent
+# widening: a caller writing egress_rules is trying to restrict egress,
+# and the all-egress rule is wider than anything they wrote — visible in
+# the plan only as an UNCHANGED resource, which is what reviewers skim.
+run "additive_egress_posture_rejected" {
   command = plan
 
   variables {
@@ -166,10 +179,7 @@ run "typed_egress_is_additive_to_the_default" {
     }
   }
 
-  assert {
-    condition     = length(aws_vpc_security_group_egress_rule.all) == 1 && length(aws_vpc_security_group_egress_rule.this) == 1
-    error_message = "the typed egress map must be additive to the all-egress default, not a replacement for it"
-  }
+  expect_failures = [var.egress_rules]
 }
 
 run "caller_tags_ride_every_resource" {
@@ -202,11 +212,11 @@ run "custom_description_overrides_the_default" {
   command = plan
 
   variables {
-    description = "Public Gateway frontend — webhooks and corp hairpin"
+    description = "Public Gateway frontend - webhooks and corp hairpin"
   }
 
   assert {
-    condition     = aws_security_group.this.description == "Public Gateway frontend — webhooks and corp hairpin"
+    condition     = aws_security_group.this.description == "Public Gateway frontend - webhooks and corp hairpin"
     error_message = "an explicit description must override the composed default"
   }
 }

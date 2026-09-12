@@ -384,20 +384,36 @@ Tracked in git. As of this writing:
   *cross-variable* validation (`ingress_rules` reading
   `allow_world_open_ingress`), which TF only accepts from 1.9 — and the
   failure mode of lowering the floor is quiet, since below it the guard
-  stops being accepted rather than erroring loudly. **The guard's
-  boundary is deliberate and documented, not closed:** it inspects
-  literal CIDR fields only, so a prefix list containing `0.0.0.0/0`
-  admits the world invisibly — expanding a *live* reference at plan
-  would be false assurance, so prefix-list contents are the list
-  owner's audit surface. (`referenced_security_group_id` has no
+  stops being accepted rather than erroring loudly. The guard tests
+  **`endswith(cidr, "/0")`, not string equality** — it originally
+  compared against `"::/0"`, and the security review below proved
+  `0::/0` and the fully-expanded spelling both planned *clean* with the
+  toggle false (upstream provider issue #15982, reproduced in our own
+  guard). `/0` is the only prefix length whose literal text ends in
+  `/0`, so the suffix test is exact; the v4 side was safe only by luck
+  (the provider's validator accepts exactly one v4 `/0` spelling).
+  **The guard's boundary is deliberate and documented, not closed:** it
+  inspects literal CIDR fields only, so a prefix list containing
+  `0.0.0.0/0` admits the world invisibly — expanding a *live* reference
+  at plan would be false assurance, so prefix-list contents are the
+  list owner's audit surface — and it does not catch a **`/1` split**
+  (`0.0.0.0/1` + `128.0.0.0/1` is the whole internet in two non-`/0`
+  rules; catching that means CIDR arithmetic across the whole map, and
+  any threshold chosen rejects legitimate large allowlists). It guards
+  the *accident*, and the README says exactly that.
+  (`referenced_security_group_id` has no
   equivalent hole: an SG reference admits that SG's members, never the
   world.) Egress deliberately has **no** world-open guard (OQ 2a) —
   world egress *is* the default posture: `allow_all_egress = true`
   emits one explicit all-protocols rule (the `nodes_all` shape), which
   exists because **the provider revokes AWS's default egress at
   create**, so a surface-less module would ship SGs that silently fail
-  ALB health checks; the typed map is **additive** to it, not a
-  replacement. `name_prefix` + `create_before_destroy` (never a fixed
+  ALB health checks; `allow_all_egress` **+ a non-empty `egress_rules`
+  is rejected at plan** (it used to be additive — a silent widening,
+  since the all-egress rule is wider than anything a restricting caller
+  writes and appears in the plan only as an *unchanged* resource), and
+  the logical key `all-egress` is reserved.
+  `name_prefix` + `create_before_destroy` (never a fixed
   name: SG name/description are create-time, and a destroy-first
   replacement of an ALB-attached SG deadlocks on
   `DependencyViolation`) — but a replacement still mints a new SG id,
@@ -406,12 +422,38 @@ Tracked in git. As of this writing:
   to omit ports — mutually exclusive, and it would have made the
   module's own all-egress default illegal under its own guard; the
   type is `optional(number)` with the coherence moved to validation.
-  Tests: plan `tests/` 21 runs (the gate — all four source types in one
-  plan, each asserting its own field is set *and* the other three null;
-  a bare call pinning every default; ten rejections each **verified by
+  Tests: plan `tests/` 33 runs (the gate — all four source types in one
+  plan, each asserting its own field is set *and* all three others null;
+  a bare call pinning every default; 22 rejections each **verified by
   isolated message-probe** to fire its own rule at its own line, since
-  four validations stack on `ingress_rules` alone) + Community apply
-  4/4 on token-free 4.4 (`SERVICES=ec2,sts,s3`). **New fleet finding:
+  many validations stack on `ingress_rules` alone) + Community apply
+  4/4 on token-free 4.4 (`SERVICES=ec2,sts,s3`).
+  **Adversarial security review (IMPL-0023, `iac-security`, pre-merge)**
+  closed two HIGH and several MEDIUM holes, both HIGHs reproduced before
+  fixing: the IPv6 spelling evasion above, and — the one worth carrying
+  fleet-wide — **the module's own default `description` contained a
+  U+2014 em dash**, which the EC2 `GroupDescription` ASCII charset
+  rejects, so every non-overriding invocation would have failed at
+  *apply* against real AWS. Neither gate could see it: the constraint is
+  server-side, and **LocalStack does not enforce AWS string-charset
+  constraints** — the apply suite had *pinned the broken value as
+  expected*. **Reusable rule: an emulator proves shape and wiring, never
+  a provider's server-side string contracts; charset/length/format must
+  be validated at plan or they are not validated at all, and a green
+  apply tier is actively misleading about them.** MEDIUMs: ICMP's
+  `to_port` is the **CODE**, not a range end, so the collapse made
+  `{from_port = 8, ip_protocol = "icmp"}` plan as type 8/code 8 and
+  match nothing (three-way port coherence now requires both, with a
+  *positive* ICMP run so the rejection can't be satisfied by a rule that
+  rejects all ICMP); inverted ranges; an unvalidated `ip_protocol`; the
+  additive-egress widening; the reserved `all-egress` key; untested tags
+  on typed egress rules; and four "sets X and nothing else" assertions
+  that checked one of three siblings. **The re-probe caught a defect in
+  the new tests themselves** — `unknown_ip_protocol_rejected` fired two
+  rules — which is the standing lesson paying off in the same session:
+  adding validations to a variable that already carries several is
+  exactly how a neighbouring rule starts answering for yours.
+  **New fleet finding:
   token-free Community 4.4 serves managed prefix lists *including
   entries*** — previously only proven under **Pro** (the `eks/cluster`
   fence fixture), so what needed Pro there was EKS, not the prefix

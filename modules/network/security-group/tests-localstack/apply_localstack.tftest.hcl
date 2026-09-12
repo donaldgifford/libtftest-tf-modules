@@ -192,7 +192,7 @@ run "verify_readback" {
   }
 
   assert {
-    condition     = output.description == "Managed by Terraform — gateway-frontend-public"
+    condition     = output.description == "Managed by Terraform - gateway-frontend-public"
     error_message = "the composed description must survive a real apply and read back"
   }
 

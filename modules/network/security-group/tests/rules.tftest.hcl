@@ -103,10 +103,17 @@ run "gateway_shaped_rules_all_four_source_types" {
     error_message = "the prefix-list rule must set prefix_list_id and nothing else — this is the LIVE reference the module exists for"
   }
 
+  # These three say "and nothing else" and must therefore check all
+  # THREE other arguments, not one. Checking a single sibling was the
+  # original shape and it does not earn the claim in its own error
+  # message: a rule leaking, say, cidr_ipv6 onto the IPv4 entry would
+  # have passed.
   assert {
     condition = (
       aws_vpc_security_group_ingress_rule.this["corp-egress"].cidr_ipv4 == "203.0.113.0/24" &&
-      aws_vpc_security_group_ingress_rule.this["corp-egress"].prefix_list_id == null
+      aws_vpc_security_group_ingress_rule.this["corp-egress"].cidr_ipv6 == null &&
+      aws_vpc_security_group_ingress_rule.this["corp-egress"].prefix_list_id == null &&
+      aws_vpc_security_group_ingress_rule.this["corp-egress"].referenced_security_group_id == null
     )
     error_message = "the IPv4 rule must set cidr_ipv4 and nothing else"
   }
@@ -114,7 +121,9 @@ run "gateway_shaped_rules_all_four_source_types" {
   assert {
     condition = (
       aws_vpc_security_group_ingress_rule.this["corp-egress-v6"].cidr_ipv6 == "2001:db8::/32" &&
-      aws_vpc_security_group_ingress_rule.this["corp-egress-v6"].cidr_ipv4 == null
+      aws_vpc_security_group_ingress_rule.this["corp-egress-v6"].cidr_ipv4 == null &&
+      aws_vpc_security_group_ingress_rule.this["corp-egress-v6"].prefix_list_id == null &&
+      aws_vpc_security_group_ingress_rule.this["corp-egress-v6"].referenced_security_group_id == null
     )
     error_message = "the IPv6 rule must set cidr_ipv6 and nothing else"
   }
@@ -122,7 +131,9 @@ run "gateway_shaped_rules_all_four_source_types" {
   assert {
     condition = (
       aws_vpc_security_group_ingress_rule.this["internal-mesh"].referenced_security_group_id == "sg-0fedcba9876543210" &&
-      aws_vpc_security_group_ingress_rule.this["internal-mesh"].cidr_ipv4 == null
+      aws_vpc_security_group_ingress_rule.this["internal-mesh"].cidr_ipv4 == null &&
+      aws_vpc_security_group_ingress_rule.this["internal-mesh"].cidr_ipv6 == null &&
+      aws_vpc_security_group_ingress_rule.this["internal-mesh"].prefix_list_id == null
     )
     error_message = "the referenced-SG rule must set referenced_security_group_id and nothing else"
   }
