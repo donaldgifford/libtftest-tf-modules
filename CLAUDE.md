@@ -497,9 +497,20 @@ Tracked in git. As of this writing:
   the prefix — imports with `0 to destroy`, which is what identifies
   the mechanism rather than just the symptom. CBD survives it but the
   **id changes** on a live ALB-attached group. **This applies to every
-  `name_prefix` module in the fleet** (`secretsmanager/secret` uses the
-  same idiom), so any "adopt an existing X" runbook must say so instead
-  of promising a zero-diff import.
+  `name_prefix` module in the fleet** — verified, not assumed:
+  `aws_secretsmanager_secret` reproduces it exactly (`1 to import, 1 to
+  add, 1 to destroy`), and those are the only two modules using the
+  provider's `name_prefix` *argument* (the ECR ones interpolate a
+  `var.name_prefix` string into `name`, where no inference happens). So
+  any "adopt an existing X" runbook must say so instead of promising a
+  zero-diff import. **On `secretsmanager/secret` the consequence is
+  worse than on an SG and is an open follow-up:** that resource has no
+  `create_before_destroy` and its value is a fresh
+  `ephemeral.random_password` on every create, so a replacement is
+  destroy-then-create **with a new credential** — every consumer
+  holding the old value breaks, and SM reserves the deleted name for
+  the recovery window. Its README has no adoption section today (so
+  nothing false shipped), and adding one is where that caveat belongs.
 - **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
   IMPL-0018; extended by DESIGN-0022 → IMPL-0021 with the evidence
   tier + lifecycle tiering). Architecture: thin purpose modules over one shared
@@ -796,7 +807,19 @@ Tracked in git. As of this writing:
   down). `name_prefix = "<name>-"` because SM reserves deleted names for
   the recovery window (`secret_recovery_window_days`, 0 = teardown path);
   the ADR-0020 `secrets` key couples to `var.name`, not the suffixed
-  physical name. KMS: null default = AWS-managed `aws/secretsmanager` key
+  physical name. **`name_prefix` makes this module un-adoptable without
+  a credential change — open follow-up, probed during IMPL-0023.** The
+  provider infers `name_prefix` on read by stripping exactly 26
+  characters off the physical name, so importing a hand-created
+  `app-db-master` leaves it unset and the module's value lands on a
+  ForceNew argument (`1 to import, 1 to add, 1 to destroy`, reproduced
+  against 4.4). Unlike `network/security-group` there is **no
+  `create_before_destroy`**, and the value is a fresh
+  `ephemeral.random_password` on every create — so the replacement is
+  destroy-then-create **with a new secret value**, breaking every
+  consumer, while SM holds the old name for the recovery window. No
+  adoption section exists in the README today, so nothing false has
+  shipped; write the caveat when one is added. KMS: null default = AWS-managed `aws/secretsmanager` key
   and a **faithful null `kms_key_arn` output** (rds/proxy branches on it);
   BYO CMK required for cross-account. Outputs are **pointer-only** (F7 —
   arn/id/name/kms/version/username, never the value). **Test constraint:
