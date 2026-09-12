@@ -473,6 +473,33 @@ Tracked in git. As of this writing:
   `data.aws_vpc_security_group_rule` and asserts the `pl-…` survived
   (mutation-verified): asserting only that the rule got an `sgr-…` id
   would pass even if the live reference had been dropped.
+  **Design-conformance audit (DESIGN-0026 read end-to-end against the
+  shipped code):** functional surface complete; everything that drifted
+  was prose — the same shape as IMPL-0020's audit. Corrected: the design
+  still specified the **additive** egress posture the module now rejects
+  and the **string-compare** world-open guard that was HIGH-1 (a call
+  site written from either would fail); `SERVICES=ec2,sts` where the
+  fixture needs `s3` too; the validation suite's own
+  verification-discipline header frozen at a Phase-1 snapshot; and four
+  OQ citations pointing at DESIGN-0026's OQ 1/2 (VPC resolution, naming
+  posture) for decisions that are **IMPL-0023's** — worth watching for,
+  since a design and its IMPL both have an "OQ 1". Also: task 1.7
+  claimed a `create_before_destroy` pin, but **`lifecycle` is a
+  meta-argument and is not assertable from `terraform test` at all** —
+  not merely unmet, unachievable in that form.
+  **Fleet-wide finding, probed not inferred — `name_prefix` + `import`
+  = REPLACEMENT.** The provider infers `name_prefix` on read by
+  stripping **exactly 26 characters** off the physical name, so an SG
+  created by hand as `gateway-frontend-public` leaves `name_prefix`
+  unset in state and the module's `name_prefix = "gateway-frontend-public-"`
+  lands on a **ForceNew** argument: `1 to import, 1 to add, 1 to
+  destroy`. The control — a name whose last 26 chars strip to exactly
+  the prefix — imports with `0 to destroy`, which is what identifies
+  the mechanism rather than just the symptom. CBD survives it but the
+  **id changes** on a live ALB-attached group. **This applies to every
+  `name_prefix` module in the fleet** (`secretsmanager/secret` uses the
+  same idiom), so any "adopt an existing X" runbook must say so instead
+  of promising a zero-diff import.
 - **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
   IMPL-0018; extended by DESIGN-0022 → IMPL-0021 with the evidence
   tier + lifecycle tiering). Architecture: thin purpose modules over one shared
