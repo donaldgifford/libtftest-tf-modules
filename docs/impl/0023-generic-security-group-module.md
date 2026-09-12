@@ -460,6 +460,31 @@ is exactly how `egress_rule_with_two_destinations_rejected` silently
 started passing off the **new** coherence guard (fixed by pinning
 `allow_all_egress = false` in every egress rejection run).
 
+### The fixes are mutation-verified, not just regression-covered
+
+A passing `expect_failures` run proves the object errored. It does not
+prove the *new* rule is what caught the defect, and it cannot prove the
+defect was reachable before. Each fix was therefore **mutated back** on
+a scratch copy of the module outside the repo:
+
+| Mutation | Pre-existing runs | New regression | What it proves |
+|---|---|---|---|
+| world-open guard reverted to the string compare | `world_open_ipv4_rejected`, `world_open_ipv6_rejected` **both pass** | `world_open_ipv6_compressed_zero_rejected` and `..._expanded_rejected` fail with **"Missing expected failure"** | the two spellings planned *clean* under the old guard — the plan succeeded outright, so the hole was reachable, and the old suite was green over it |
+| both charset regexes neutered to `.*` | — | `non_ascii_description_rejected` and `non_ascii_rule_description_rejected` fail with **"Missing expected failure"** | the charset rules are what reject the em dash, not a neighbouring rule on the same variable |
+| ICMP branch neutered to reject **every** ICMP rule | `icmp_rule_without_explicit_code_rejected` **passes** | `icmp_rule_with_explicit_code_accepted` **fails** | the rejection run is satisfied by a rule that rejects all ICMP; only the positive run can tell the two apart |
+
+The third row is the one to carry forward. It is the IMPL-0024 RE2 trap
+in a different costume: a fail-case run stays green whether the rule
+discriminates or rejects everything, so **any validation whose
+correctness depends on what it lets through needs a run that passes.**
+The positive ICMP run is not decoration — it is the only thing standing
+between "validated" and "all ICMP is broken".
+
+Terraform rejects a validation whose condition never references its own
+variable, so every mutation used an always-false/always-true expression
+that still reads `var.<name>` (e.g. `… && r.from_port == null` appended
+to the ICMP branch).
+
 ### Documented, not fixed — the guard's honest scope
 
 The README claimed the guard means the SG cannot admit the world without

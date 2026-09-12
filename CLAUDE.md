@@ -453,6 +453,18 @@ Tracked in git. As of this writing:
   rules — which is the standing lesson paying off in the same session:
   adding validations to a variable that already carries several is
   exactly how a neighbouring rule starts answering for yours.
+  **All three fixes are mutation-verified** (scratch copy outside the
+  repo): reverting the guard to the string compare leaves both
+  pre-existing world-open runs **green** while the two new ones fail
+  with *"Missing expected failure"* — i.e. the bad input planned
+  clean, so the hole was reachable; neutering the charset regexes to
+  `.*` reds exactly the two charset runs; and neutering the ICMP branch
+  to reject **every** ICMP rule leaves
+  `icmp_rule_without_explicit_code_rejected` **passing** while only the
+  positive run goes red. **That last one is the IMPL-0024 RE2 trap in
+  another costume: any validation whose correctness depends on what it
+  lets *through* needs a run that passes**, because a fail-case run is
+  green whether the rule discriminates or rejects everything.
   **New fleet finding:
   token-free Community 4.4 serves managed prefix lists *including
   entries*** — previously only proven under **Pro** (the `eks/cluster`
