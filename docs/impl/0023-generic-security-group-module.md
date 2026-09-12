@@ -31,6 +31,9 @@ created: 2026-09-04
   - [Phase 4: Closure](#phase-4-closure)
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
+- [Phase 1 deviation from DESIGN-0026: `from_port` is optional](#phase-1-deviation-from-design-0026-from_port-is-optional)
+- [Phase 1 guard verification (task 1.8)](#phase-1-guard-verification-task-18)
+  - [The two runs that are passes, not rejections](#the-two-runs-that-are-passes-not-rejections)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -103,7 +106,7 @@ its tasks are checked off and its success criteria are met.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/network/security-group` per the
+- [x] 1.1 Scaffold `modules/network/security-group` per the
       design's layout (`main.tf`, `data.tf`, `variables.tf`,
       `outputs.tf`, `versions.tf`, `.tflint.hcl`, README/USAGE
       stubs, `tests/`, `tests-localstack/`). `versions.tf`: aws
@@ -112,7 +115,7 @@ its tasks are checked off and its success criteria are met.
       feature; the fleet's first 1.9 floor, beside the two
       existing 1.11 modules. Do not "simplify" it down: the guard
       silently stops compiling below 1.9).
-- [ ] 1.2 `data.tf`: the standard vpc remote-state read —
+- [x] 1.2 `data.tf`: the standard vpc remote-state read —
       `vpc_name` + the six Terragrunt globals compose the
       account-scoped ADR-0020 vpc key with the standard
       `assume_role` block (`role_arn` from
@@ -120,16 +123,16 @@ its tasks are checked off and its success criteria are met.
       "Deploy-Tf"`, `region = remote_state_bucket_region`);
       `vpc_id` read at the use site (ADR-0001 — no aliasing
       locals).
-- [ ] 1.3 `main.tf`: `aws_security_group.this` — `name_prefix =
+- [x] 1.3 `main.tf`: `aws_security_group.this` — `name_prefix =
       "${var.name}-"`, `create_before_destroy = true`, `Name` tag
       = `var.name`, `description` defaulting from `var.name` with
       the ForceNew note in the variable description (name and
       description are create-time; CBD + prefix makes the rare
       replacement survivable — the README records what it does not
       fix: a new SG id still needs the chart-side value update).
-- [ ] 1.4 The rules surface: `ingress_rules` + `egress_rules` typed
-      maps (the design's object spec verbatim — required
-      `description`, `from_port`, optional `to_port` null-collapsing
+- [x] 1.4 The rules surface: `ingress_rules` + `egress_rules` typed
+      maps (required `description`, **`from_port` optional — see the
+      deviation below**, optional `to_port` null-collapsing
       to `from_port`, `ip_protocol` default `"tcp"`, the four
       exclusive source fields) driving
       `aws_vpc_security_group_ingress_rule` / `_egress_rule`
@@ -138,7 +141,7 @@ its tasks are checked off and its success criteria are met.
       `eks/cluster` `nodes_all` shape — the provider revokes AWS's
       default egress at create, so the default keeps ALB health
       checks working and the posture visible in every plan).
-- [ ] 1.5 Guards, all fail-closed at plan: **exactly-one-source**
+- [x] 1.5 Guards, all fail-closed at plan: **exactly-one-source**
       (zero or two-plus of the four source fields rejected, all
       four named in the message); **description non-empty** (the
       allowlist is an audit surface); **ports-with-`-1`** rejection
@@ -153,12 +156,12 @@ its tasks are checked off and its success criteria are met.
       `0.0.0.0/0` is invisible **by design** (the reference is
       live — plan-time expansion would give false assurance), so
       the boundary is documented (task 2.2), not closed.
-- [ ] 1.6 `outputs.tf`: `security_group_id` (the operator's stated
+- [x] 1.6 `outputs.tf`: `security_group_id` (the operator's stated
       point), `security_group_arn`, `security_group_name` (the
       physical suffixed name), and `ingress_rule_ids` /
       `egress_rule_ids` maps (logical name → `sgr-…` id — the
       adoption and ops surface).
-- [ ] 1.7 Plan suite (`tests/`; `override_data` stubs the vpc read
+- [x] 1.7 Plan suite (`tests/`; `override_data` stubs the vpc read
       with the full nine-key contract — the IMPL-0014 Phase 4
       convention): a Gateway-shaped rule map pinning per-rule
       attributes and stable addresses across **all four source
@@ -168,12 +171,19 @@ its tasks are checked off and its success criteria are met.
       the explicit-toggle **pass** run; the egress posture runs
       (default all-egress rule present; `allow_all_egress = false`
       + typed egress map); the ADR-0020 composed-key assertion; the
-      `name_prefix` + CBD pin.
-- [ ] 1.8 Per-rule verification of every `expect_failures` run
+      `name_prefix` pin. **Not the CBD pin:** `lifecycle` is a
+      meta-argument, not a resource attribute, so
+      `create_before_destroy` is not reachable from a `terraform
+      test` assertion at all. It is held by the comment at
+      `tests/security_group.tftest.hcl` beside the `name_prefix`
+      assertion and by the module comment at `main.tf`. Recorded
+      here rather than quietly dropped, because the task text
+      claimed a pin that cannot exist in that form.
+- [x] 1.8 Per-rule verification of every `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) —
       four-plus guards stack on the one `ingress_rules` variable,
       and a passing run proves only that the variable errored.
-- [ ] 1.9 `just tf all network/security-group`; conventional
+- [x] 1.9 `just tf all network/security-group`; conventional
       commit.
 
 #### Success Criteria
@@ -191,10 +201,10 @@ its tasks are checked off and its success criteria are met.
 
 #### Tasks
 
-- [ ] 2.1 The scope guardrail **up top**: frontend-style standalone
+- [x] 2.1 The scope guardrail **up top**: frontend-style standalone
       SGs only — resource-owning modules keep their own SGs, the
       LBC keeps backend + node-SG rules.
-- [ ] 2.2 The `gateway-frontend-public` worked example: 443 from
+- [x] 2.2 The `gateway-frontend-public` worked example: 443 from
       the GitHub-webhooks prefix list with the **live-reference
       callout** (edits propagate without an apply — the contrast
       with the EKS fence's plan-time expansion stated explicitly)
@@ -204,22 +214,22 @@ its tasks are checked off and its success criteria are met.
       CIDRs with the hairpin note; the consumption path (SG id →
       LBC frontend-SG annotation through live-repo chart values;
       backend stays the controller's).
-- [ ] 2.3 The adoption runbook: piecewise imports (the SG by
+- [x] 2.3 The adoption runbook: piecewise imports (the SG by
       `sg-…` id, each rule by `sgr-…` id, into the module's named
       addresses); match-reality-first, converge second; rule
       descriptions update in place but a source/port change
       **replaces** that one rule — sequence adds before removes
       when tightening on a live ALB SG.
-- [ ] 2.4 The fence cross-link pair: this README points at the
+- [x] 2.4 The fence cross-link pair: this README points at the
       `eks/cluster` fence README's plan-time warning; the cluster
       side already points here ("the live version of this
       pattern") — close the loop.
-- [ ] 2.5 The remote-state key contract section: the `sg` shape
+- [x] 2.5 The remote-state key contract section: the `sg` shape
       (`<account_name>/<region>/sg/<name>/terraform.tfstate`),
       triple coupling, foreseeable consumers (cross-stack
       `referenced_security_group_id`, `eks/cluster` additional
       SGs).
-- [ ] 2.6 `just tf docs network/security-group`; conventional
+- [x] 2.6 `just tf docs network/security-group`; conventional
       commit.
 
 #### Success Criteria
@@ -239,23 +249,23 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
 
 #### Tasks
 
-- [ ] 3.1 Fixture: `run "setup"` sources the shared
+- [x] 3.1 Fixture: `run "setup"` sources the shared
       `test/fixtures/reference-vpc` (DESIGN-0016 — consumer apply
       tests never hand-roll VPCs; the ~1–2 min NAT cost is the
       accepted price) and creates a small populated
       `aws_ec2_managed_prefix_list` so a live prefix-list rule
       round-trips.
-- [ ] 3.2 Apply suite: the SG lands in the contract VPC; CIDR +
+- [x] 3.2 Apply suite: the SG lands in the contract VPC; CIDR +
       prefix-list + referenced-SG rules round-trip; the all-egress
       rule exists.
-- [ ] 3.3 Run live (`just tf test-localstack
-      network/security-group`, `SERVICES=ec2,sts`); FINDINGS.md
+- [x] 3.3 Run live (`just tf test-localstack
+      network/security-group`, `SERVICES=ec2,sts,s3`); FINDINGS.md
       records parity per the assert-what-round-trips discipline —
       including whether token-free 4.4 serves managed prefix lists
       at all (the fleet has proved prefix-list `entries` only under
       the **Pro** container, in the eks/cluster fence fixture; this
       is the first Community-tier probe of that surface).
-- [ ] 3.4 Conventional commit.
+- [x] 3.4 Conventional commit.
 
 #### Success Criteria
 
@@ -270,18 +280,18 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
 
 #### Tasks
 
-- [ ] 4.1 ADR-0020: join the vpc **consumer** table (the seventh
+- [x] 4.1 ADR-0020: join the vpc **consumer** table (the seventh
       vpc consumer) and add the NEW **`sg` shape row** (OQ 5a — a
       producer publishing into an undocumented shape is a CI
       failure, so the row is the only honest option).
-- [ ] 4.2 CLAUDE.md: the `modules/network/` section gains the
+- [x] 4.2 CLAUDE.md: the `modules/network/` section gains the
       module (idiom, guards, the world-open boundary, the
       live-vs-plan-time contrast); INV-0011 delivery note (F1
       batch 4 generalized and delivered).
-- [ ] 4.3 `just readme` — the module table row (the separate
+- [x] 4.3 `just readme` — the module table row (the separate
       `readme-check` CI job); `docz update` + the mangle-set
       restore; `just docs lint`.
-- [ ] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module
+- [x] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module
       and the world-open guard posture.
 
 #### Success Criteria
@@ -290,6 +300,240 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
   all doc gates green; release tagged.
 
 ---
+
+## Phase 1 deviation from DESIGN-0026: `from_port` is optional
+
+The design's object spec (Detailed Design → The rules surface) writes
+`from_port = number` — **required** — while the same section also
+requires that `ip_protocol = "-1"` "requires no ports (validated — the
+API rejects ports with all-protocols)."
+
+**Those two cannot both hold.** A required `from_port` means every rule
+carries a port, so an all-protocols rule would always trip the
+ports-with-`-1` rejection and `"-1"` would be unrepresentable.
+
+Checked against the fleet before deviating: **every** `"-1"` rule in
+`eks/cluster`, `rds/cluster` and `rds/serverless` omits ports — and this
+module's own `allow_all_egress` default emits exactly that shape, so the
+design would have made the module's default posture illegal under its
+own guard.
+
+Resolution: `from_port` is `optional(number)`, and the coherence moves
+into validation — ports **required** for tcp/udp, **rejected** for
+`"-1"`. The guard the design asked for is fully present; only the type
+that made it self-contradictory changed. Pinned by
+`all_protocols_rule_omits_ports` and `tcp_rule_without_a_port_rejected`,
+so reverting the deviation turns one of them red.
+
+## Shipped but not designed (design-conformance audit)
+
+A conformance read of DESIGN-0026 against the shipped code found the
+functional surface **complete** — every designed variable, output,
+guard, OQ resolution and Non-Goal is present and honoured. Three things
+ship that the design never specified. All are additive and none changes
+a designed behaviour, but they are recorded here so the design is not
+read as the whole interface:
+
+| Shipped | Where | Why it is not in the design |
+|---|---|---|
+| `var.tags` and its "must not set `Name`" validation | `variables.tf` | the design mentions per-rule tags only in passing; a tags input is table stakes for every other module in the fleet, so it was added without a decision |
+| the `all_egress_rule_id` output | `outputs.tf` | the design enumerates exactly five outputs. This sixth exists because the all-egress rule has no logical name, so it cannot ride `egress_rule_ids` without a reserved key — and it is load-bearing in the apply suite, which asserts it is `null` under `allow_all_egress = false` |
+| `var.name`'s charset/length validation | `variables.tf` | unspecified; `name` feeds the `name_prefix`, the `Name` tag and the ADR-0020 key segment, so a malformed value fails in three places at once |
+
+The audit also confirmed the cross-references resolve in both
+directions: ADR-0020 carries both the `sg` shape row and this module's
+vpc-consumer row, and `eks/cluster`'s fence callout really does point
+back here as the live-reference counterpart it has promised since
+IMPL-0020.
+
+**What the audit found wrong was all prose**, none of it behaviour —
+the same shape as IMPL-0020's conformance audit. The corrections are
+folded into the files themselves; the ones worth naming are that
+DESIGN-0026 still described the **additive** egress posture the module
+now rejects and the **string-compare** world-open guard that was
+HIGH-1, and that the design and this doc both told an operator to start
+LocalStack with `SERVICES=ec2,sts` when the fixture's seeded remote
+state needs `s3` too. A reader following either would have hit a
+failure the tests could never catch, because tests do not read prose.
+
+## Phase 1 guard verification (task 1.8)
+
+`expect_failures` asserts that the named object errored — **never which
+rule fired**. Four validations stacked on `var.ingress_rules` at this
+point (seven after the security review), so every rejection run could in
+principle pass off a neighbouring rule and look identically green.
+
+All ten rejection runs were therefore **message-probed in isolation**
+(one scratch single-run file each, no `expect_failures`, the real error
+read). Isolation matters: a failing run *skips* its siblings, so a
+combined probe file reports only the first failure.
+
+| Run | Rule that fired | `variables.tf` |
+|---|---|---|
+| `malformed_name_rejected` | name charset/length | 9 |
+| `caller_supplied_name_tag_rejected` | tags must not set `Name` | 28 |
+| `ingress_rule_with_no_source_rejected` | exactly-one-source | 78 |
+| `ingress_rule_with_two_sources_rejected` | exactly-one-source | 78 |
+| `ingress_rule_with_blank_description_rejected` | description non-empty | 86 |
+| `ports_with_all_protocols_rejected` | port coherence | 91 |
+| `tcp_rule_without_a_port_rejected` | port coherence | 91 |
+| `world_open_ipv4_rejected` | world-open guard | 114 |
+| `world_open_ipv6_rejected` | world-open guard | 114 |
+| `egress_rule_with_two_destinations_rejected` | egress exactly-one-source | **154** |
+
+Seven distinct rules across seven distinct lines, each naming **only**
+its own offending map keys — the three-rule world-open probe listed
+`public, six` and correctly excluded the legitimate corp rule.
+
+Line 154 is load-bearing on its own: it proves the egress guards
+reference `var.egress_rules` and are not a copy-paste of the ingress
+ones, which is a defect a green suite would otherwise hide entirely.
+
+> Line numbers above are **as of Phase 1**. The security review below
+> grew the suite to 22 rejections and moved every rule; all 22 were
+> re-probed in isolation against the shipped `variables.tf`, and that
+> pass is what caught `unknown_ip_protocol_rejected` firing two rules.
+> Re-probing after changing validations is not optional — the earlier
+> table is evidence about the code as it stood, not a standing result.
+
+### The two runs that are passes, not rejections
+
+**`world_open_permitted_by_explicit_toggle`.** The world-open guard is
+the cross-variable validation that sets the module's `>= 1.9` floor, and
+a fail-case-only probe cannot distinguish a working cross-variable
+reference from a rule that rejects *everything* — both satisfy
+`expect_failures` identically. This is the same trap as IMPL-0024's RE2
+bounded-repeat bug, where `can()` swallowed an invalid pattern into a
+rule that would have rejected every value. The toggled-ON run passing is
+what proves the `>= 1.9` mechanism actually resolves on this Terraform
+rather than being assumed from the design.
+
+**`world_open_egress_is_permitted_by_design`.** Egress deliberately has
+no world-open guard (IMPL-0023 OQ 2a, below — not DESIGN-0026's OQ 2,
+which is the naming posture). Pinned as a pass so that adding
+a symmetric guard later is a deliberate, visible change rather than a
+silent tightening.
+
+The `name` regex is likewise proven to *discriminate* rather than reject
+everything: every other run in the suite passes a valid name through it.
+
+## Adversarial security review (pre-merge, `iac-security`)
+
+Run against the as-built module before PR #116 merged. Both HIGH
+findings were **independently reproduced before being fixed** — the
+standing discipline, and in both cases the reproduction is what turned a
+plausible-sounding claim into a defect with a regression run.
+
+### HIGH-1 — the world-open guard was evaded by IPv6 spelling
+
+The guard compared strings: `r.cidr_ipv6 != "::/0"`. IPv6 has many legal
+spellings of the world, and the provider's CIDR validator accepts them
+all. A scratch `.tftest.hcl` confirmed that **both** `0::/0` and
+`0000:0000:0000:0000:0000:0000:0000:0000/0` planned **clean** with
+`allow_world_open_ingress` at its `false` default. This is upstream
+provider issue #15982 reproduced inside our own guard.
+
+Fixed by testing the **suffix** instead:
+`!endswith(coalesce(r.cidr_ipv4, r.cidr_ipv6, "unset/32"), "/0")`. `/0`
+is the only prefix length whose literal text ends in `/0`, so the test
+is exact across every spelling and both address families. The v4 side
+was safe only by luck — the provider's network-address validator leaves
+`0.0.0.0/0` as the sole accepted v4 `/0` spelling.
+
+Regressions: `world_open_ipv6_compressed_zero_rejected` and
+`world_open_ipv6_expanded_rejected`. The pre-existing `::/0` run was
+**not** evidence of anything about the other spellings, which is the
+reusable point: a fail-case run proves the rule rejects *that input*,
+never that it rejects the class.
+
+### HIGH-2 — the module's own default description could not apply
+
+`description` defaulted to a string containing **U+2014 EM DASH**
+(`hexdump`: `e2 80 94`). The EC2 `GroupDescription` charset is ASCII
+only — `a-z A-Z 0-9`, spaces and `._-:/()#,@[]+=&;{}!$*` — so **every
+invocation that did not override the default would have failed at
+apply** against real AWS, after the create call.
+
+Neither gate could catch it. The constraint is server-side, so no plan
+sees it; and **LocalStack does not enforce AWS string-charset
+constraints**, so the apply suite created the group happily and read the
+em dash back byte-identical. The suite had *pinned the broken value as
+expected*.
+
+Fixed with charset validations on `var.description` and on both rule
+maps' descriptions (rule descriptions are narrower — no `&`), plus the
+em dashes removed from every AWS-submitted string in the module and its
+suites. Regressions: `non_ascii_description_rejected`,
+`non_ascii_rule_description_rejected`, and a FINDINGS.md NEGATIVE
+recording the emulator gap.
+
+**The lesson generalizes past this module:** an emulator proves shape
+and wiring, never a provider's server-side string contracts. Charset,
+length and format constraints must be validated at plan or they are not
+validated at all — and a green apply tier is *actively misleading*
+about them.
+
+### MEDIUM findings fixed
+
+| Finding | Fix | Regression |
+|---|---|---|
+| ICMP `to_port` collapsed to `from_port`, so `{ from_port = 8, ip_protocol = "icmp" }` read as "allow ping" and planned type 8 / **code 8** — echo requests carry code 0, so it matched nothing | three-way port coherence: tcp/udp require `from_port`; icmp/icmpv6 require **both** (type and code); everything else must have neither | `icmp_rule_without_explicit_code_rejected` **plus** `icmp_rule_with_explicit_code_accepted` — without the positive, the rejection would be satisfied by a rule that rejects all ICMP |
+| `to_port < from_port` accepted (an inverted range) | `to_port >= from_port`, ICMP-exempt since there the pair is type/code, not a range | `inverted_port_range_rejected` |
+| `ip_protocol` unvalidated — a typo like `"https"` reached the API | enum of `tcp`/`udp`/`icmp`/`icmpv6`/`-1` or a number 0-255 | `unknown_ip_protocol_rejected` |
+| `allow_all_egress` + non-empty `egress_rules` was documented as "additive" — a silent widening, since the all-egress rule is wider than anything a restricting caller writes and appears in the plan only as an **unchanged** resource | rejected at plan | `additive_egress_posture_rejected` (a converted pass — the run that used to assert the additive behavior) |
+| a caller rule keyed `all-egress` collides with the module's own `Name = "<name>-all-egress"` tag | key reserved | `reserved_all_egress_key_rejected` |
+| typed egress rules' `tags` were asserted nowhere — a mutation dropping the attribute left the whole suite green | Name-tag assertion in `restricted_egress_replaces_the_default` | (that run) |
+| four "sets X and nothing else" assertions checked **one** of the three other source fields | all three | (`rules.tftest.hcl`) |
+
+### The probe caught a defect in the new tests themselves
+
+Re-probing the additions found `unknown_ip_protocol_rejected` firing
+**two** rules — the protocol enum it names *and* the port-coherence rule,
+because the input carried a `from_port` and an unknown protocol must
+have none. `expect_failures` cannot distinguish them. The run now omits
+the port, leaving the enum as the only rule that input can violate.
+
+This is the discipline paying for itself in the same session that
+needed it: adding validations to a variable that already carried several
+is exactly how `egress_rule_with_two_destinations_rejected` silently
+started passing off the **new** coherence guard (fixed by pinning
+`allow_all_egress = false` in every egress rejection run).
+
+### The fixes are mutation-verified, not just regression-covered
+
+A passing `expect_failures` run proves the object errored. It does not
+prove the *new* rule is what caught the defect, and it cannot prove the
+defect was reachable before. Each fix was therefore **mutated back** on
+a scratch copy of the module outside the repo:
+
+| Mutation | Pre-existing runs | New regression | What it proves |
+|---|---|---|---|
+| world-open guard reverted to the string compare | `world_open_ipv4_rejected`, `world_open_ipv6_rejected` **both pass** | `world_open_ipv6_compressed_zero_rejected` and `..._expanded_rejected` fail with **"Missing expected failure"** | the two spellings planned *clean* under the old guard — the plan succeeded outright, so the hole was reachable, and the old suite was green over it |
+| both charset regexes neutered to `.*` | — | `non_ascii_description_rejected` and `non_ascii_rule_description_rejected` fail with **"Missing expected failure"** | the charset rules are what reject the em dash, not a neighbouring rule on the same variable |
+| ICMP branch neutered to reject **every** ICMP rule | `icmp_rule_without_explicit_code_rejected` **passes** | `icmp_rule_with_explicit_code_accepted` **fails** | the rejection run is satisfied by a rule that rejects all ICMP; only the positive run can tell the two apart |
+
+The third row is the one to carry forward. It is the IMPL-0024 RE2 trap
+in a different costume: a fail-case run stays green whether the rule
+discriminates or rejects everything, so **any validation whose
+correctness depends on what it lets through needs a run that passes.**
+The positive ICMP run is not decoration — it is the only thing standing
+between "validated" and "all ICMP is broken".
+
+Terraform rejects a validation whose condition never references its own
+variable, so every mutation used an always-false/always-true expression
+that still reads `var.<name>` (e.g. `… && r.from_port == null` appended
+to the ICMP branch).
+
+### Documented, not fixed — the guard's honest scope
+
+The README claimed the guard means the SG cannot admit the world without
+the toggle. That is false at the `/1` boundary: `0.0.0.0/1` plus
+`128.0.0.0/1` is the entire IPv4 space in two rules, neither a `/0`.
+Catching it means unioning CIDR arithmetic across the whole map, and any
+threshold chosen there rejects legitimate large allowlists. A caller who
+writes two half-internet rules has not slipped, so this is documented as
+a known limit alongside the prefix-list hole — the module guards against
+the **accident**, and says so.
 
 ## File Changes
 
@@ -312,7 +556,7 @@ The design's Testing Strategy is the authority. Fleet mechanics:
   the composed ADR-0020 key.
 - Per-rule `expect_failures` verification carried as task 1.8.
 - Community apply sources the shared reference-vpc fixture via
-  `run "setup"`; token-free 4.4, `SERVICES=ec2,sts` — no token is
+  `run "setup"`; token-free 4.4, `SERVICES=ec2,sts,s3` — no token is
   ever wired into the Community tier.
 - New module → `scripts/changed-modules.sh` picks it up
   automatically; verify with `just changed`.

@@ -364,6 +364,153 @@ Tracked in git. As of this writing:
   run and passing 3/3 against token-free `localstack/localstack:4.4`
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
+  `security-group` (DESIGN-0026 → IMPL-0023, implemented) — the
+  standalone **ingress-allowlist** SG producer, generalizing INV-0011
+  F1 batch 4's Gateway frontend-SG proposal. It productizes
+  `eks/cluster`'s granular-rule idiom: typed `ingress_rules` /
+  `egress_rules` `map(object)` driving one
+  `aws_vpc_security_group_{ingress,egress}_rule` per entry keyed by
+  **logical name**, so removing one allowlist entry is a single destroy
+  that never churns a sibling. Each rule names exactly one of
+  `cidr_ipv4` / `cidr_ipv6` / `prefix_list_id` /
+  `referenced_security_group_id`. **Prefix-list rules are LIVE** — the
+  deliberate counterpart to `eks/cluster`'s endpoint fence, which
+  expands lists at *plan* time because the EKS API takes literal CIDRs;
+  the two READMEs now cross-link in both directions. Seventh vpc
+  consumer; publishes at the NEW ADR-0020 **`sg`** shape
+  (`<acct>/<region>/sg/<name>`), reserved ahead of its first consumer
+  the way `iam` and `secrets` were. **The fleet's first
+  `required_version = ">= 1.9"`**: the world-open guard is a
+  *cross-variable* validation (`ingress_rules` reading
+  `allow_world_open_ingress`), which TF only accepts from 1.9 — and the
+  failure mode of lowering the floor is quiet, since below it the guard
+  stops being accepted rather than erroring loudly. The guard tests
+  **`endswith(cidr, "/0")`, not string equality** — it originally
+  compared against `"::/0"`, and the security review below proved
+  `0::/0` and the fully-expanded spelling both planned *clean* with the
+  toggle false (upstream provider issue #15982, reproduced in our own
+  guard). `/0` is the only prefix length whose literal text ends in
+  `/0`, so the suffix test is exact; the v4 side was safe only by luck
+  (the provider's validator accepts exactly one v4 `/0` spelling).
+  **The guard's boundary is deliberate and documented, not closed:** it
+  inspects literal CIDR fields only, so a prefix list containing
+  `0.0.0.0/0` admits the world invisibly — expanding a *live* reference
+  at plan would be false assurance, so prefix-list contents are the
+  list owner's audit surface — and it does not catch a **`/1` split**
+  (`0.0.0.0/1` + `128.0.0.0/1` is the whole internet in two non-`/0`
+  rules; catching that means CIDR arithmetic across the whole map, and
+  any threshold chosen rejects legitimate large allowlists). It guards
+  the *accident*, and the README says exactly that.
+  (`referenced_security_group_id` has no
+  equivalent hole: an SG reference admits that SG's members, never the
+  world.) Egress deliberately has **no** world-open guard (OQ 2a) —
+  world egress *is* the default posture: `allow_all_egress = true`
+  emits one explicit all-protocols rule (the `nodes_all` shape), which
+  exists because **the provider revokes AWS's default egress at
+  create**, so a surface-less module would ship SGs that silently fail
+  ALB health checks; `allow_all_egress` **+ a non-empty `egress_rules`
+  is rejected at plan** (it used to be additive — a silent widening,
+  since the all-egress rule is wider than anything a restricting caller
+  writes and appears in the plan only as an *unchanged* resource), and
+  the logical key `all-egress` is reserved.
+  `name_prefix` + `create_before_destroy` (never a fixed
+  name: SG name/description are create-time, and a destroy-first
+  replacement of an ALB-attached SG deadlocks on
+  `DependencyViolation`) — but a replacement still mints a new SG id,
+  which CBD does *not* fix. **DESIGN-0026 deviation, recorded:** the
+  design's object spec makes `from_port` required *and* requires `-1`
+  to omit ports — mutually exclusive, and it would have made the
+  module's own all-egress default illegal under its own guard; the
+  type is `optional(number)` with the coherence moved to validation.
+  Tests: plan `tests/` 33 runs (the gate — all four source types in one
+  plan, each asserting its own field is set *and* all three others null;
+  a bare call pinning every default; 22 rejections each **verified by
+  isolated message-probe** to fire its own rule at its own line, since
+  many validations stack on `ingress_rules` alone) + Community apply
+  4/4 on token-free 4.4 (`SERVICES=ec2,sts,s3`).
+  **Adversarial security review (IMPL-0023, `iac-security`, pre-merge)**
+  closed two HIGH and several MEDIUM holes, both HIGHs reproduced before
+  fixing: the IPv6 spelling evasion above, and — the one worth carrying
+  fleet-wide — **the module's own default `description` contained a
+  U+2014 em dash**, which the EC2 `GroupDescription` ASCII charset
+  rejects, so every non-overriding invocation would have failed at
+  *apply* against real AWS. Neither gate could see it: the constraint is
+  server-side, and **LocalStack does not enforce AWS string-charset
+  constraints** — the apply suite had *pinned the broken value as
+  expected*. **Reusable rule: an emulator proves shape and wiring, never
+  a provider's server-side string contracts; charset/length/format must
+  be validated at plan or they are not validated at all, and a green
+  apply tier is actively misleading about them.** MEDIUMs: ICMP's
+  `to_port` is the **CODE**, not a range end, so the collapse made
+  `{from_port = 8, ip_protocol = "icmp"}` plan as type 8/code 8 and
+  match nothing (three-way port coherence now requires both, with a
+  *positive* ICMP run so the rejection can't be satisfied by a rule that
+  rejects all ICMP); inverted ranges; an unvalidated `ip_protocol`; the
+  additive-egress widening; the reserved `all-egress` key; untested tags
+  on typed egress rules; and four "sets X and nothing else" assertions
+  that checked one of three siblings. **The re-probe caught a defect in
+  the new tests themselves** — `unknown_ip_protocol_rejected` fired two
+  rules — which is the standing lesson paying off in the same session:
+  adding validations to a variable that already carries several is
+  exactly how a neighbouring rule starts answering for yours.
+  **All three fixes are mutation-verified** (scratch copy outside the
+  repo): reverting the guard to the string compare leaves both
+  pre-existing world-open runs **green** while the two new ones fail
+  with *"Missing expected failure"* — i.e. the bad input planned
+  clean, so the hole was reachable; neutering the charset regexes to
+  `.*` reds exactly the two charset runs; and neutering the ICMP branch
+  to reject **every** ICMP rule leaves
+  `icmp_rule_without_explicit_code_rejected` **passing** while only the
+  positive run goes red. **That last one is the IMPL-0024 RE2 trap in
+  another costume: any validation whose correctness depends on what it
+  lets *through* needs a run that passes**, because a fail-case run is
+  green whether the rule discriminates or rejects everything.
+  **New fleet finding:
+  token-free Community 4.4 serves managed prefix lists *including
+  entries*** — previously only proven under **Pro** (the `eks/cluster`
+  fence fixture), so what needed Pro there was EKS, not the prefix
+  lists beside it. The apply reads the rule back through
+  `data.aws_vpc_security_group_rule` and asserts the `pl-…` survived
+  (mutation-verified): asserting only that the rule got an `sgr-…` id
+  would pass even if the live reference had been dropped.
+  **Design-conformance audit (DESIGN-0026 read end-to-end against the
+  shipped code):** functional surface complete; everything that drifted
+  was prose — the same shape as IMPL-0020's audit. Corrected: the design
+  still specified the **additive** egress posture the module now rejects
+  and the **string-compare** world-open guard that was HIGH-1 (a call
+  site written from either would fail); `SERVICES=ec2,sts` where the
+  fixture needs `s3` too; the validation suite's own
+  verification-discipline header frozen at a Phase-1 snapshot; and four
+  OQ citations pointing at DESIGN-0026's OQ 1/2 (VPC resolution, naming
+  posture) for decisions that are **IMPL-0023's** — worth watching for,
+  since a design and its IMPL both have an "OQ 1". Also: task 1.7
+  claimed a `create_before_destroy` pin, but **`lifecycle` is a
+  meta-argument and is not assertable from `terraform test` at all** —
+  not merely unmet, unachievable in that form.
+  **Fleet-wide finding, probed not inferred — `name_prefix` + `import`
+  = REPLACEMENT.** The provider infers `name_prefix` on read by
+  stripping **exactly 26 characters** off the physical name, so an SG
+  created by hand as `gateway-frontend-public` leaves `name_prefix`
+  unset in state and the module's `name_prefix = "gateway-frontend-public-"`
+  lands on a **ForceNew** argument: `1 to import, 1 to add, 1 to
+  destroy`. The control — a name whose last 26 chars strip to exactly
+  the prefix — imports with `0 to destroy`, which is what identifies
+  the mechanism rather than just the symptom. CBD survives it but the
+  **id changes** on a live ALB-attached group. **This applies to every
+  `name_prefix` module in the fleet** — verified, not assumed:
+  `aws_secretsmanager_secret` reproduces it exactly (`1 to import, 1 to
+  add, 1 to destroy`), and those are the only two modules using the
+  provider's `name_prefix` *argument* (the ECR ones interpolate a
+  `var.name_prefix` string into `name`, where no inference happens). So
+  any "adopt an existing X" runbook must say so instead of promising a
+  zero-diff import. **On `secretsmanager/secret` the consequence is
+  worse than on an SG and is an open follow-up:** that resource has no
+  `create_before_destroy` and its value is a fresh
+  `ephemeral.random_password` on every create, so a replacement is
+  destroy-then-create **with a new credential** — every consumer
+  holding the old value breaks, and SM reserves the deleted name for
+  the recovery window. Its README has no adoption section today (so
+  nothing false shipped), and adding one is where that caveat belongs.
 - **`modules/s3/`** — the S3 bucket family (INV-0009 → DESIGN-0019 →
   IMPL-0018; extended by DESIGN-0022 → IMPL-0021 with the evidence
   tier + lifecycle tiering). Architecture: thin purpose modules over one shared
@@ -660,7 +807,19 @@ Tracked in git. As of this writing:
   down). `name_prefix = "<name>-"` because SM reserves deleted names for
   the recovery window (`secret_recovery_window_days`, 0 = teardown path);
   the ADR-0020 `secrets` key couples to `var.name`, not the suffixed
-  physical name. KMS: null default = AWS-managed `aws/secretsmanager` key
+  physical name. **`name_prefix` makes this module un-adoptable without
+  a credential change — open follow-up, probed during IMPL-0023.** The
+  provider infers `name_prefix` on read by stripping exactly 26
+  characters off the physical name, so importing a hand-created
+  `app-db-master` leaves it unset and the module's value lands on a
+  ForceNew argument (`1 to import, 1 to add, 1 to destroy`, reproduced
+  against 4.4). Unlike `network/security-group` there is **no
+  `create_before_destroy`**, and the value is a fresh
+  `ephemeral.random_password` on every create — so the replacement is
+  destroy-then-create **with a new secret value**, breaking every
+  consumer, while SM holds the old name for the recovery window. No
+  adoption section exists in the README today, so nothing false has
+  shipped; write the caveat when one is added. KMS: null default = AWS-managed `aws/secretsmanager` key
   and a **faithful null `kms_key_arn` output** (rds/proxy branches on it);
   BYO CMK required for cross-account. Outputs are **pointer-only** (F7 —
   arn/id/name/kms/version/username, never the value). **Test constraint:

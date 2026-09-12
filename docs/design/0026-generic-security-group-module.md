@@ -200,9 +200,18 @@ variable "ingress_rules" {
 
 Per OQ 3 (recommended shape): `allow_all_egress = true` (default)
 emits one granular all-egress rule — byte-for-byte the
-`eks/cluster` `nodes_all` shape — plus an additive typed
-`egress_rules` map (same object type as ingress) for restricted
-setups. The default exists because the provider revokes AWS's
+`eks/cluster` `nodes_all` shape — with a typed `egress_rules` map
+(same object type as ingress) for restricted setups.
+
+> **Amended during IMPL-0023's security review.** As originally
+> written here the two were **additive**. As shipped they are
+> mutually exclusive: `allow_all_egress = true` alongside a
+> non-empty `egress_rules` is **rejected at plan**. Additive was a
+> silent widening — a caller writing egress rules is restricting
+> egress, and the all-egress rule is wider than anything they can
+> write, yet it appears in the plan only as an *unchanged*
+> resource. Writing a call site from the un-amended text above
+> would produce a plan failure. The default exists because the provider revokes AWS's
 default egress at create: a silent no-egress SG breaks the primary
 use case (ALB health checks and target traffic) in the worst
 discovery mode. The all-egress rule is explicit in every plan — the
@@ -212,9 +221,14 @@ posture is visible, not implied.
 
 - **Exactly-one-source** and **description-required** (above), plus
   the ports-with-protocol-`-1` rejection.
-- **World-open guard (OQ 4):** any ingress rule whose source is
-  `0.0.0.0/0` or `::/0` fails validation unless
-  `allow_world_open_ingress = true` — fail-closed against the
+- **World-open guard (OQ 4):** any ingress rule whose literal
+  source CIDR is a `/0` fails validation unless
+  `allow_world_open_ingress = true`. **As shipped the test is
+  `endswith(cidr, "/0")`, not a comparison against the two strings
+  named here** — IMPL-0023's security review found that IPv6 has
+  many legal spellings of `::/0` (`0::/0`, the fully expanded
+  form), all accepted by the provider, so the string form let them
+  through. The shipped guard is strictly broader than this text — fail-closed against the
   pasted-wide-open classic; a deliberately public frontend is one
   explicit, reviewable line away.
 - No at-least-one-rule floor: an SG with an empty allowlist is
@@ -291,7 +305,9 @@ DESIGN-0025's, recorded in the README.
   guard (plus its explicit-toggle pass run); the egress posture
   runs (default all-egress rule present; `allow_all_egress = false`
   + typed egress map); the ADR-0020 composed-key assertion; the
-  `name_prefix` + CBD pin. **Verification discipline
+  `name_prefix` pin (NOT a CBD pin — `lifecycle` is a
+  meta-argument and is not reachable from a `terraform test`
+  assertion; see IMPL-0023 task 1.7). **Verification discipline
   (post-IMPL-0020 review, 2026-09-01):** four-plus guards stack on
   the one `ingress_rules` variable, so a passing `expect_failures`
   run proves only that the variable errored, not that the intended
@@ -299,7 +315,8 @@ DESIGN-0025's, recorded in the README.
   (message-probe or mutation, per the CLAUDE.md recipe) as an
   explicit task.
 - **Community apply (`tests-localstack/`):** pure EC2 API — real
-  apply against token-free 4.4 (`SERVICES=ec2,sts`), no Pro, no
+  apply against token-free 4.4 (`SERVICES=ec2,sts,s3` — s3 for the
+  fixture's seeded remote state), no Pro, no
   named volume (the `vpc-lookup` precedent). The fixture sources the
   shared `test/fixtures/reference-vpc` via `run "setup"` (DESIGN-0016
   — consumer apply tests never hand-roll VPCs; the ~1–2 min NAT cost

@@ -83,7 +83,8 @@ Every cross-module state read/publish uses the account-scoped key
   `rds/instance`, `rds/cluster`, `rds/serverless`, `s3`, `secrets`
   (producer: `secretsmanager/secret`, IMPL-0019), `iam`
   (producer: `iam/role`, IMPL-0022 — the platform-reserved shape from
-  DESIGN-0001 §4).
+  DESIGN-0001 §4), `sg` (producer: `network/security-group`,
+  IMPL-0023).
 - `<name>` — the producer instance's stable identifier (see coupling below).
   Exception: the `s3/access-logs` key is **flat** — no `<name>` segment
   (see the reserved-stack-name note below).
@@ -110,12 +111,17 @@ consumer read at plan time.
 | `efs/filesystem` | vpc + eks | `<acct>/<region>/vpc/<vpc_name>/…`, `<acct>/<region>/eks/<cluster_name>/…` | `network/vpc-lookup`, `eks/cluster` |
 | `s3/bucket` | access-logs sink | `<acct>/<region>/s3/access-logs/…` — **flat, no `<name>` segment**; **count-gated** — the read exists only on the default tri-state path | `s3/access-logs-bucket` |
 | *(reserved)* `rds/{instance,cluster,serverless}` reference mode | secret | `<acct>/<region>/secrets/<name>/…` — `<name>` couples to the producer's `var.name`, **not** the suffixed physical secret name | `secretsmanager/secret` (DESIGN-0020 Follow-up 1; no consumer wired yet) |
+| `network/security-group` | vpc | `<acct>/<region>/vpc/<vpc_name>/…` | `network/vpc-lookup` |
 | *(reserved)* cross-account trust wiring | iam | `<acct>/<region>/iam/<name>/…` — `<name>` couples to the role's exact `var.name` (which is also what every `assume_role` block composes by name) | `iam/role` (DESIGN-0025 / IMPL-0022; no consumer wired yet) |
+| *(reserved)* cross-stack SG references | sg | `<acct>/<region>/sg/<name>/…` — `<name>` couples to the SG's `var.name` (the `name_prefix` base and the `Name` tag, **not** the suffixed physical group name) | `network/security-group` (DESIGN-0026 / IMPL-0023; no consumer wired yet — foreseeable first is a sibling SG stack's `referenced_security_group_id`, or an `eks/cluster` additional-SG input) |
 
-All 13 live reads carry the cross-account `assume_role`
+All 14 **unconditional** reads carry the cross-account `assume_role`
 (`arn:aws:iam::<account_id>:role/<deploy_role_name>`,
 `session_name = "Deploy-Tf"`) and `region = <remote_state_bucket_region>`
-per IMPL-0015.
+per IMPL-0015. (There are 17 `data.terraform_remote_state` blocks in
+module code; the other three are the count-gated `s3` access-logs reads
+described immediately below, which carry the same `assume_role` when
+they exist at all.)
 
 **The conditional read.** `s3/bucket` is the first consumer whose read
 is *optional*: `count = enabled && target_bucket == null ? 1 : 0`. The
