@@ -683,7 +683,8 @@ apply without the block → 409 `EntityAlreadyExists`) proves the
 import did the work. Live deploy-role adoption stays live-repo work
 (OQ 4a); this repo ships the module plus the runbook.
 
-**Gateway frontend SG delivery (2026-09-11, IMPL-0023):** the F1 batch 4
+**Gateway frontend SG delivery (shipped `v0.25.0` 2026-09-12, IMPL-0023):**
+the F1 batch 4
 proposal is built, generalized as **`modules/network/security-group`**
 per the 2026-08-28 queue revision — not a Gateway-specific module, so
 any frontend-style standalone SG uses it, with the scope guardrail
