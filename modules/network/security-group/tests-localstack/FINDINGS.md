@@ -112,11 +112,49 @@ them.
   this is a configuration-surface suite. Whether `203.0.113.0/24`
   actually reaches port 443 is not a question an emulator answers.
 - **The world-open guard.** It is a plan-time validation, so it is
-  tested where it lives (`tests/validation.tftest.hcl`, 22 rejections
+  tested where it lives (`tests/`, 22 rejections — 21 in
+  `validation.tftest.hcl` and one in `security_group.tftest.hcl`,
   each verified against its own rule by isolated message probe). Nothing
   about it is reachable from an apply — including the IPv6
   spelling-evasion regressions, which are the ones that matter.
 - **Any description charset constraint** — see the NEGATIVE above.
 - **A zero-diff import.** The README's adoption runbook is exercised
   nowhere here; the actual imports are live-repo work against real
-  SGs, which is why the runbook says match reality first.
+  SGs, which is why the runbook says match reality first. See the
+  probe below for what the runbook could NOT promise.
+
+## NEGATIVE: importing a hand-created SG forces a replacement
+
+The adoption runbook originally told operators to import and "verify
+the plan is zero-diff". For the rules that holds. For
+`aws_security_group.this` it does not, and the probe is unambiguous:
+
+```console
+# hand-created, plain name, no generated suffix
+$ aws ec2 create-security-group --group-name gateway-frontend-public …
+$ terraform plan     # with an import block for that sg-…
++ name_prefix = "gateway-frontend-public-" # forces replacement
+Plan: 1 to import, 1 to add, 0 to change, 1 to destroy.
+```
+
+The provider infers `name_prefix` on read by stripping **exactly 26
+characters** off the physical group name. Confirmed by the control — a
+name whose last 26 characters strip to exactly the configured prefix
+imports with no replacement:
+
+```console
+$ NAME=gateway-frontend-public-20260912000000000000000001   # 26-char suffix
+  name_prefix = "gateway-frontend-public-"
+Plan: 1 to import, 0 to add, 1 to change, 0 to destroy.
+```
+
+Without that second run the first would only show *that* something
+forced replacement, not *what*. The 26 is the mechanism, and it means
+only a group Terraform itself created from the same `name_prefix`
+adopts cleanly.
+
+This is **provider behaviour, not emulator behaviour** — the inference
+runs client-side in the provider's read, so LocalStack is a faithful
+stand-in here. The consequence (`create_before_destroy` survives it,
+but the SG **id changes** on a live ALB-attached group) is now the
+loudest thing in the README's adoption section.

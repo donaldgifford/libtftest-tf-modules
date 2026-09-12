@@ -249,10 +249,47 @@ import {
 ```
 
 **Match reality first, converge second.** Write the rule map to mirror
-the live SG verbatim, import, verify the plan is zero-diff, and only
-then converge conventions (descriptions, tags) in later reviewed plans.
-Converging in the same change as the import turns a provably-empty plan
-into one nobody can read.
+the live SG verbatim, import, read the plan, and only then converge
+conventions (descriptions, tags) in later reviewed plans. Converging in
+the same change as the import turns a plan you could have read into one
+nobody can.
+
+> **The security group itself will plan as a REPLACEMENT, and that is
+> not something you can converge away.** Read this before importing a
+> live, attached SG.
+>
+> The provider infers `name_prefix` on read by stripping **exactly 26
+> characters** off the physical group name. A hand-created SG named
+> `gateway-frontend-public` leaves `name_prefix` unset in state, so this
+> module's `name_prefix = "gateway-frontend-public-"` reads as a new
+> value on a **ForceNew** argument:
+>
+> ```text
+> + name_prefix = "gateway-frontend-public-" # forces replacement
+> Plan: 1 to import, 1 to add, 0 to change, 1 to destroy.
+> ```
+>
+> Probed directly, not inferred. Only a name whose last 26 characters
+> strip away to *exactly* the configured prefix imports without
+> replacement — i.e. a group Terraform itself created from this same
+> `name_prefix`:
+>
+> ```text
+>   name_prefix = "gateway-frontend-public-"
+> Plan: 1 to import, 0 to add, 1 to change, 0 to destroy.
+> ```
+>
+> `create_before_destroy` keeps this from deadlocking on
+> `DependencyViolation`, so it is survivable — but **the SG id
+> changes**, which is the consequence the replacement section above
+> warns about. Every chart-side annotation and cross-stack consumer
+> holding the old id must be updated in the same change.
+>
+> The rules import cleanly; this applies to `aws_security_group.this`
+> alone. If you need the id to be stable across adoption, the SG must be
+> re-created under Terraform's naming *before* anything depends on its
+> id — which is an argument for adopting these early, while the
+> blast radius is still small.
 
 **When tightening a live allowlist, sequence adds before removes.** A
 rule's description updates in place, but a **source or port change

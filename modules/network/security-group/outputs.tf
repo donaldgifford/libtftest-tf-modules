@@ -39,9 +39,11 @@ output "egress_rule_ids" {
 }
 
 # Deliberately its own output rather than a reserved key inside
-# egress_rule_ids: a reserved key would collide the moment a caller
-# names an egress rule "all-egress", and a silent collision in an ops
-# lookup map is a bad trade for one less output.
+# egress_rule_ids: a silent collision in an ops lookup map is a bad
+# trade for one less output. The caller-facing half of that decision is
+# now enforced rather than hoped for — "all-egress" is rejected as a key
+# in var.egress_rules at plan, so the two can never dispute one Name tag
+# either.
 output "all_egress_rule_id" {
   description = "Security-group-rule id of the module's all-protocols egress rule, or null when allow_all_egress = false."
   value       = one(aws_vpc_security_group_egress_rule.all[*].security_group_rule_id)

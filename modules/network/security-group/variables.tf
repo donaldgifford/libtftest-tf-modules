@@ -70,7 +70,7 @@ variable "tags" {
 #--------------------------------------------------------------
 
 variable "ingress_rules" {
-  description = "Ingress allowlist, keyed by logical rule name (stable addresses). Each rule names exactly ONE source: cidr_ipv4 | cidr_ipv6 | prefix_list_id | referenced_security_group_id. prefix_list_id rules are LIVE references — edits to the list propagate without a Terraform apply, unlike the eks/cluster endpoint fence's plan-time expansion. description is required: every allowlist entry says why it exists. to_port defaults to from_port (single-port rule). Set ip_protocol = \"-1\" for all protocols, in which case ports must be omitted."
+  description = "Ingress allowlist, keyed by logical rule name (stable addresses). Each rule names exactly ONE source: cidr_ipv4 | cidr_ipv6 | prefix_list_id | referenced_security_group_id. prefix_list_id rules are LIVE references — edits to the list propagate without a Terraform apply, unlike the eks/cluster endpoint fence's plan-time expansion. description is required: every allowlist entry says why it exists, and AWS constrains its charset (ASCII only) server-side, so it is validated here. Ports depend on the protocol: tcp/udp require from_port and to_port collapses to it (the single-port rule); icmp/icmpv6 require BOTH, because there from_port is the ICMP TYPE and to_port is the CODE, not a range end — letting it collapse would silently set code = type; ip_protocol = \"-1\" and numeric protocols must omit both ports, since AWS ignores them there."
   type = map(object({
     description                  = string
     from_port                    = optional(number)
@@ -220,8 +220,13 @@ variable "egress_rules" {
   }))
   default = {}
 
-  # The same three API-shape guards as ingress. Deliberately NO
-  # world-open guard here (DESIGN-0026 OQ 2a): world egress IS the
+  # The same six API-shape guards as ingress (exactly-one-source,
+  # description non-empty, description charset, port coherence,
+  # inverted range, protocol enum), plus two that only egress needs:
+  # the reserved `all-egress` key and the allow_all_egress coherence
+  # guard. Deliberately NO
+  # world-open guard here (IMPL-0023 OQ 2a — NOT DESIGN-0026's OQ 2,
+  # which is the naming and replacement posture): world egress IS the
   # module's default posture, so rejecting 0.0.0.0/0 in the typed map
   # would reject a shape allow_all_egress already grants by default. A
   # restricted-egress caller writing 0.0.0.0/0 has visibly re-created

@@ -171,7 +171,14 @@ its tasks are checked off and its success criteria are met.
       the explicit-toggle **pass** run; the egress posture runs
       (default all-egress rule present; `allow_all_egress = false`
       + typed egress map); the ADR-0020 composed-key assertion; the
-      `name_prefix` + CBD pin.
+      `name_prefix` pin. **Not the CBD pin:** `lifecycle` is a
+      meta-argument, not a resource attribute, so
+      `create_before_destroy` is not reachable from a `terraform
+      test` assertion at all. It is held by the comment at
+      `tests/security_group.tftest.hcl` beside the `name_prefix`
+      assertion and by the module comment at `main.tf`. Recorded
+      here rather than quietly dropped, because the task text
+      claimed a pin that cannot exist in that form.
 - [x] 1.8 Per-rule verification of every `expect_failures` run
       (message-probe or mutation, per the CLAUDE.md recipe) —
       four-plus guards stack on the one `ingress_rules` variable,
@@ -252,7 +259,7 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
       prefix-list + referenced-SG rules round-trip; the all-egress
       rule exists.
 - [x] 3.3 Run live (`just tf test-localstack
-      network/security-group`, `SERVICES=ec2,sts`); FINDINGS.md
+      network/security-group`, `SERVICES=ec2,sts,s3`); FINDINGS.md
       records parity per the assert-what-round-trips discipline —
       including whether token-free 4.4 serves managed prefix lists
       at all (the fleet has proved prefix-list `entries` only under
@@ -318,12 +325,43 @@ that made it self-contradictory changed. Pinned by
 `all_protocols_rule_omits_ports` and `tcp_rule_without_a_port_rejected`,
 so reverting the deviation turns one of them red.
 
+## Shipped but not designed (design-conformance audit)
+
+A conformance read of DESIGN-0026 against the shipped code found the
+functional surface **complete** — every designed variable, output,
+guard, OQ resolution and Non-Goal is present and honoured. Three things
+ship that the design never specified. All are additive and none changes
+a designed behaviour, but they are recorded here so the design is not
+read as the whole interface:
+
+| Shipped | Where | Why it is not in the design |
+|---|---|---|
+| `var.tags` and its "must not set `Name`" validation | `variables.tf` | the design mentions per-rule tags only in passing; a tags input is table stakes for every other module in the fleet, so it was added without a decision |
+| the `all_egress_rule_id` output | `outputs.tf` | the design enumerates exactly five outputs. This sixth exists because the all-egress rule has no logical name, so it cannot ride `egress_rule_ids` without a reserved key — and it is load-bearing in the apply suite, which asserts it is `null` under `allow_all_egress = false` |
+| `var.name`'s charset/length validation | `variables.tf` | unspecified; `name` feeds the `name_prefix`, the `Name` tag and the ADR-0020 key segment, so a malformed value fails in three places at once |
+
+The audit also confirmed the cross-references resolve in both
+directions: ADR-0020 carries both the `sg` shape row and this module's
+vpc-consumer row, and `eks/cluster`'s fence callout really does point
+back here as the live-reference counterpart it has promised since
+IMPL-0020.
+
+**What the audit found wrong was all prose**, none of it behaviour —
+the same shape as IMPL-0020's conformance audit. The corrections are
+folded into the files themselves; the ones worth naming are that
+DESIGN-0026 still described the **additive** egress posture the module
+now rejects and the **string-compare** world-open guard that was
+HIGH-1, and that the design and this doc both told an operator to start
+LocalStack with `SERVICES=ec2,sts` when the fixture's seeded remote
+state needs `s3` too. A reader following either would have hit a
+failure the tests could never catch, because tests do not read prose.
+
 ## Phase 1 guard verification (task 1.8)
 
 `expect_failures` asserts that the named object errored — **never which
-rule fired**. Four validations stack on `var.ingress_rules` alone, so
-every rejection run could in principle pass off a neighbouring rule and
-look identically green.
+rule fired**. Four validations stacked on `var.ingress_rules` at this
+point (seven after the security review), so every rejection run could in
+principle pass off a neighbouring rule and look identically green.
 
 All ten rejection runs were therefore **message-probed in isolation**
 (one scratch single-run file each, no `expect_failures`, the real error
@@ -371,7 +409,8 @@ what proves the `>= 1.9` mechanism actually resolves on this Terraform
 rather than being assumed from the design.
 
 **`world_open_egress_is_permitted_by_design`.** Egress deliberately has
-no world-open guard (DESIGN-0026 OQ 2a). Pinned as a pass so that adding
+no world-open guard (IMPL-0023 OQ 2a, below — not DESIGN-0026's OQ 2,
+which is the naming posture). Pinned as a pass so that adding
 a symmetric guard later is a deliberate, visible change rather than a
 silent tightening.
 
@@ -517,7 +556,7 @@ The design's Testing Strategy is the authority. Fleet mechanics:
   the composed ADR-0020 key.
 - Per-rule `expect_failures` verification carried as task 1.8.
 - Community apply sources the shared reference-vpc fixture via
-  `run "setup"`; token-free 4.4, `SERVICES=ec2,sts` — no token is
+  `run "setup"`; token-free 4.4, `SERVICES=ec2,sts,s3` — no token is
   ever wired into the Community tier.
 - New module → `scripts/changed-modules.sh` picks it up
   automatically; verify with `just changed`.

@@ -1,16 +1,21 @@
 # Fail-closed rejections (IMPL-0023 tasks 1.7 / 1.8).
 #
 # VERIFICATION DISCIPLINE. `expect_failures` asserts only that the named
-# object errored — NOT which of the rules on it fired. Four validations
+# object errored — NOT which of the rules on it fired. SEVEN validations
 # stack on var.ingress_rules alone, so every run below could in
 # principle be passing off a neighbouring rule and look identically
 # green.
 #
-# Each was therefore verified by MESSAGE PROBE before this file existed:
-# the case was run in isolation with no expect_failures and the real
-# error read. All seven fired their own rule at their own variables.tf
-# line, and each named only the offending map keys. Task 1.8 records the
-# full transcript.
+# Every one was therefore verified by MESSAGE PROBE: the case run in
+# isolation, with no expect_failures, and the real error read. Isolation
+# is not optional — a failing run SKIPS its siblings, so a combined
+# probe file reports only the first failure and the rest look tested.
+#
+# The probe was re-run after the security review moved every rule, and
+# that pass is what caught unknown_ip_protocol_rejected firing TWO rules
+# (the enum it names plus port coherence). An earlier probe is evidence
+# about the code as it stood, never a standing result. IMPL-0023 task
+# 1.8 and its security-review section record both transcripts.
 #
 # The world-open pair is the one that matters most. A fail-case-only
 # probe cannot distinguish a working cross-variable reference from a
@@ -109,7 +114,8 @@ run "egress_rule_with_two_destinations_rejected" {
 }
 
 # The two egress guards that had NO coverage at either tier — found by
-# mutation: neutering both left the suite 21/21 green.
+# mutation: neutering both left the whole suite green (21 runs at the
+# time; 33 now).
 run "egress_rule_with_blank_description_rejected" {
   command = plan
 
@@ -416,7 +422,8 @@ run "world_open_permitted_by_explicit_toggle" {
   }
 }
 
-# Egress deliberately has NO world-open guard (DESIGN-0026 OQ 2a): world
+# Egress deliberately has NO world-open guard (IMPL-0023 OQ 2a — NOT
+# DESIGN-0026's OQ 2, which is naming and replacement): world
 # egress IS the default posture, so rejecting it in the typed map would
 # reject a shape allow_all_egress already grants. Pinned as a PASS so
 # that adding a symmetric guard later is a deliberate, visible change.
