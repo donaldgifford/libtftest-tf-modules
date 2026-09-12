@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0026
 title: "Generic security group module"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-08-28
 ---
@@ -9,7 +9,7 @@ created: 2026-08-28
 
 # DESIGN 0026: Generic security group module
 
-**Status:** Draft
+**Status:** Implemented
 **Author:** Donald Gifford
 **Date:** 2026-08-28
 
@@ -38,6 +38,22 @@ created: 2026-08-28
   - [5. Does the state shape get reserved now?](#5-does-the-state-shape-get-reserved-now)
 - [References](#references)
 <!--toc:end-->
+
+> **Shipped as `v0.25.0`** (PR #116, merged 2026-09-12). Implemented by
+> [IMPL-0023](../impl/0023-generic-security-group-module.md) as
+> `modules/network/security-group`.
+>
+> **Read this document with two amendments in mind**, both marked inline
+> where they apply. IMPL-0023's pre-merge security review changed two
+> things specified here: the egress posture is **no longer additive**
+> (`allow_all_egress = true` alongside a non-empty `egress_rules` is
+> rejected at plan), and the world-open guard tests
+> `endswith(cidr, "/0")` rather than comparing against the two strings
+> named below — IPv6 has many legal spellings of `::/0`, and the string
+> form let them through. A call site written from the un-amended text
+> would fail. One recorded deviation predates the review: `from_port` is
+> `optional(number)`, because the spec here made it required *and*
+> required `-1` to omit ports.
 
 ## Overview
 
