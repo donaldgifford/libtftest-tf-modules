@@ -138,7 +138,21 @@ for m in events-bucket; do
   fi
 done
 
-# ── 6. Credential no-leak policy (IMPL-0019 Phase 4 / DESIGN-0020) ─────────
+# ── 6. CI matrix self-test (IMPL-0016 Phase 1) ─────────────────────────────
+# scripts/changed-modules.sh decides which modules CI plans and applies, so
+# a wrong answer there silently skips a module's tests. Its self-test is
+# offline (CHANGED_FILES_OVERRIDE seam, no git, no network) and sub-second,
+# but it was wired into no gate — so its hardcoded reference-vpc consumer
+# list went stale when network/security-group became the sixth consumer in
+# IMPL-0023, and that PR merged green over it. Gated here so the next one
+# cannot.
+log "changed-modules self-test (scripts/changed-modules.test.sh)"
+if ! bash "${REPO_ROOT}/scripts/changed-modules.test.sh" >/dev/null 2>&1; then
+  echo "::error::scripts/changed-modules.test.sh failed — the CI test-selection matrix is wrong. Run it directly to see which case broke; if you added a test/fixtures/reference-vpc consumer, update its expectation list."
+  fail=1
+fi
+
+# ── 7. Credential no-leak policy (IMPL-0019 Phase 4 / DESIGN-0020) ─────────
 # conftest denies persisted credential arguments across every module
 # source file — secret_string/secret_binary on
 # aws_secretsmanager_secret_version, password on aws_db_instance,
@@ -164,4 +178,4 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "::error::static gate failed — fix the errors above before plan/apply runs"
   exit 1
 fi
-echo "static gate passed: fmt + validate + tflint + terraform-docs + s3 guards + conftest policy clean across all modules"
+echo "static gate passed: fmt + validate + tflint + terraform-docs + s3 guards + changed-modules self-test + conftest policy clean across all modules"

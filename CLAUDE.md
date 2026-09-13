@@ -1043,8 +1043,9 @@ whose tags aren't bare semver needs an
   - `all` — runs validate + lint + fmt + test in order (local convenience;
     CI splits these — see `just static` below).
 - `just static` — the repo-wide static gate (ADR-0019): `terraform fmt` +
-  `validate` + `tflint` + `terraform-docs` + the `policy/` conftest credential
-  gate across **every** module, failing on any violation or stale `USAGE.md`.
+  `validate` + `tflint` + `terraform-docs` + the **`changed-modules`
+  self-test** + the `policy/` conftest credential gate across **every**
+  module, failing on any violation or stale `USAGE.md`.
   Wraps `scripts/static-check.sh`; this is what the CI `static` job runs first,
   before any plan/apply. Regenerates `USAGE.md` lock-free (deterministic
   `~> 6.2` constraint form).
