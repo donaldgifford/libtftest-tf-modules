@@ -13,11 +13,17 @@ Anthropic, Amazon, or any third-party Bedrock model.
 The credential the developer's Claude Code consumes
 (`AWS_BEARER_TOKEN_BEDROCK`) is **deliberately not minted by Terraform** —
 an IAM service-specific credential's one-time secret would land in state
-in plaintext. Minting, rotation, and revocation live in the
-[`bedrock-keyctl`](../../../tools/bedrock-keyctl/README.md) Go CLI, which
-also owns per-provider model-access enablement. This module produces the
-`iam_user_name` and `aip_arns` that the tool and downstream onboarding
-stacks consume.
+in plaintext. Minting, rotation, and revocation live in the `bedrock-keyctl` Go CLI,
+which also owns per-provider model-access enablement. This module
+produces the `iam_user_name` and `aip_arns` that the tool and downstream
+onboarding stacks consume.
+
+> **`bedrock-keyctl` left this repo on 2026-09-13** — it used to live at
+> `tools/bedrock-keyctl`, and this repo is a Terraform-module monorepo
+> again. Nothing about this module changed: it never minted the
+> credential, and the `bedrock-keyctl <verb>` invocations below are
+> unchanged. Only the tool's location moved; IMPL-0009 Part II and
+> DESIGN-0009 still record its design.
 
 Implements
 [IMPL-0009](../../../docs/impl/0009-claude-code-on-bedrock-module-go-tool-implementation.md)

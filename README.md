@@ -38,7 +38,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`eks/cluster`](modules/eks/cluster) | `v0.21.0` | IMPL-0001 | 4 | apply | — |
 | [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.21.0` | IMPL-0002 | 5 | apply | — |
 | [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.24.0` | IMPL-0004 | 5 | apply | — |
-| [`iam/role`](modules/iam/role) | `v0.24.0` | IMPL-0022 | 4 | apply | — |
+| [`iam/role`](modules/iam/role) | `unreleased` | IMPL-0022 | 4 | apply | — |
 | [`network/security-group`](modules/network/security-group) | `v0.25.0` | IMPL-0023 | 3 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
 | [`rds/cluster`](modules/rds/cluster) | `v0.18.0` | IMPL-0012 | 6 | plan-only | ✅ |
@@ -146,7 +146,7 @@ Create with `docz create <type> "Title"`; regenerate the index tables with
 ```text
 modules/<service>/<module>/   # the Terraform modules (+ tests/, USAGE.md, README.md)
 docs/<type>/                  # docz-managed ADR / RFC / DESIGN / IMPL / INV
-tools/                        # in-tree Go tooling (e.g. bedrock-keyctl)
+policy/                       # conftest/OPA policy-as-code (credential no-leak gate)
 scripts/                      # repo automation (e.g. gen-readme.sh)
 justfile                      # developer-convenience recipes
 mise.toml                     # pinned tool versions
@@ -154,6 +154,15 @@ mise.toml                     # pinned tool versions
 
 ## In-tree tooling
 
-- [`tools/bedrock-keyctl/`](tools/bedrock-keyctl) — Go CLI that mints/rotates/
-  revokes the IAM credential Claude Code consumes on Bedrock, and enables model
-  access per provider (IMPL-0009).
+None. `tools/bedrock-keyctl` — the Go CLI that mints/rotates/revokes the
+IAM credential Claude Code consumes on Bedrock — **left this repo on
+2026-09-13**; this is a Terraform-module monorepo again.
+
+The Terraform half of that work stays: `modules/bedrock/claude-code`
+still provisions the governed access and cost attribution, and still
+deliberately does **not** mint the credential (DESIGN-0009 — a bearer
+token must not live in Terraform state). See that module's README for
+what now provides it.
+
+The only Go left in the repo is `modules/eks/cluster/test`, a
+build-tagged libtftest integration suite that no CI job compiles.

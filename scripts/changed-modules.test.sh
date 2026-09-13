@@ -69,12 +69,22 @@ assert_eq "pro module: pro = itself" \
   '["rds/cluster"]' "$(jq -c '.pro' <<<"${out}")"
 
 # ── Case 3: reference-vpc fan-out -> its consumers ─────────────────────────
+#
+# UPDATE THIS LIST when a module starts sourcing test/fixtures/reference-vpc.
+# It is hardcoded on purpose — deriving it from the tree would make the test
+# agree with the script by construction and assert nothing. It went stale
+# once already: network/security-group became the 6th consumer in IMPL-0023
+# and nothing noticed, because this self-test is not wired into any gate.
+#
+# NB: s3/bucket mentions reference-vpc only in comments explaining that it
+# deliberately SKIPS the fixture (to avoid the ~1-2 min NAT), so it is
+# correctly absent here.
 out="$(run 'test/fixtures/reference-vpc/main.tf')"
-assert_eq "reference-vpc fan-out: changed = 5 RDS consumers" \
-  '["rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
+assert_eq "reference-vpc fan-out: changed = 6 consumers" \
+  '["network/security-group","rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
   "$(jq -c '.changed' <<<"${out}")"
-assert_eq "reference-vpc fan-out: community = 5 RDS consumers" \
-  '["rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
+assert_eq "reference-vpc fan-out: community = 6 consumers" \
+  '["network/security-group","rds/cluster","rds/instance","rds/proxy","rds/read-replica","rds/serverless"]' \
   "$(jq -c '.community' <<<"${out}")"
 assert_eq "reference-vpc fan-out: pro = 4 RDS quartet" \
   '["rds/cluster","rds/instance","rds/proxy","rds/read-replica"]' \
