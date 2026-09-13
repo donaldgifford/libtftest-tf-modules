@@ -364,7 +364,8 @@ Tracked in git. As of this writing:
   run and passing 3/3 against token-free `localstack/localstack:4.4`
   (`SERVICES=ec2,sts`). The `vpc-lookup/` sub-directory leaves room for
   `modules/network/vpc` + siblings (`network/{tgw,peering,endpoints}`).
-  `security-group` (DESIGN-0026 → IMPL-0023, implemented) — the
+  `security-group` (DESIGN-0026 → IMPL-0023, implemented; **shipped as
+  `v0.25.0`**, PR #116 merged 2026-09-12) — the
   standalone **ingress-allowlist** SG producer, generalizing INV-0011
   F1 batch 4's Gateway frontend-SG proposal. It productizes
   `eks/cluster`'s granular-rule idiom: typed `ingress_rules` /

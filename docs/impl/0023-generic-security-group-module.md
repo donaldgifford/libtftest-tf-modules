@@ -1,7 +1,7 @@
 ---
 id: IMPL-0023
 title: "Generic security group module"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-09-04
 ---
@@ -9,7 +9,7 @@ created: 2026-09-04
 
 # IMPL 0023: Generic security group module
 
-**Status:** Draft
+**Status:** Completed
 **Author:** Donald Gifford
 **Date:** 2026-09-04
 
@@ -32,8 +32,16 @@ created: 2026-09-04
     - [Tasks](#tasks-3)
     - [Success Criteria](#success-criteria-3)
 - [Phase 1 deviation from DESIGN-0026: `from_port` is optional](#phase-1-deviation-from-design-0026-from_port-is-optional)
+- [Shipped but not designed (design-conformance audit)](#shipped-but-not-designed-design-conformance-audit)
 - [Phase 1 guard verification (task 1.8)](#phase-1-guard-verification-task-18)
   - [The two runs that are passes, not rejections](#the-two-runs-that-are-passes-not-rejections)
+- [Adversarial security review (pre-merge, `iac-security`)](#adversarial-security-review-pre-merge-iac-security)
+  - [HIGH-1 — the world-open guard was evaded by IPv6 spelling](#high-1--the-world-open-guard-was-evaded-by-ipv6-spelling)
+  - [HIGH-2 — the module's own default description could not apply](#high-2--the-modules-own-default-description-could-not-apply)
+  - [MEDIUM findings fixed](#medium-findings-fixed)
+  - [The probe caught a defect in the new tests themselves](#the-probe-caught-a-defect-in-the-new-tests-themselves)
+  - [The fixes are mutation-verified, not just regression-covered](#the-fixes-are-mutation-verified-not-just-regression-covered)
+  - [Documented, not fixed — the guard's honest scope](#documented-not-fixed--the-guards-honest-scope)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -290,14 +298,21 @@ Pure EC2 API — token-free Community 4.4, no Pro, no named volume
       batch 4 generalized and delivered).
 - [x] 4.3 `just readme` — the module table row (the separate
       `readme-check` CI job); `docz update` + the mangle-set
-      restore; `just docs lint`.
+      restore; `just docs lint`. **`just readme` turned out to be
+      unnecessary:** the `refresh-readme` job fires on the tag and
+      pushes the module-table row itself (commit `2d90e53`). The
+      task text predates that job.
 - [x] 4.4 PR labeled `minor`; `### RELEASE NOTES` names the module
-      and the world-open guard posture.
+      and the world-open guard posture. **Shipped as `v0.25.0`** —
+      PR #116 merged 2026-09-12 as commit `3c44844`.
 
 #### Success Criteria
 
 - Both ADR-0020 rows present; CLAUDE.md + module table current;
   all doc gates green; release tagged.
+
+All met. `v0.25.0` is the tag; the module table row landed via
+`refresh-readme` on that tag rather than by hand.
 
 ---
 
