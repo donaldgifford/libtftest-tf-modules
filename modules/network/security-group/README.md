@@ -328,3 +328,63 @@ This module is also the **seventh consumer** of the `vpc` shape, reading
 | `tests-localstack/` | Community apply | The SG and all rule types round-trip against a real (emulated) EC2 API — see `FINDINGS.md` |
 
 Full variable/output reference: [USAGE.md](USAGE.md).
+
+## Three findings from building this that outlive it
+
+This module's pre-merge security review and design-conformance audit
+turned up three things that are **not** about security groups. They are
+recorded here because this is where they were found and reproduced;
+they also live in the repo's CLAUDE.md, because they apply fleet-wide.
+
+### 1. An emulator proves shape and wiring, never a provider's server-side string contracts
+
+The module's own **default** `description` contained a U+2014 em dash.
+The EC2 `GroupDescription` charset is ASCII only, so **every invocation
+that did not override the default would have failed at apply** against
+real AWS — after the create call.
+
+Neither gate could see it. The constraint is server-side, so no plan
+catches it; and **LocalStack does not enforce AWS string-charset
+constraints**, so the Community apply created the group happily and read
+the em dash back byte-identical. *The apply suite had pinned the broken
+value as expected.*
+
+**The rule:** charset, length and format constraints must be validated
+at plan or they are not validated at all — and a green apply tier is
+*actively misleading* about them. See
+[`tests-localstack/FINDINGS.md`](tests-localstack/FINDINGS.md).
+
+### 2. A validation whose correctness depends on what it lets through needs a run that passes
+
+`expect_failures` asserts that a checkable object errored — never which
+rule fired, and never that the rule *discriminates*. Mutating the ICMP
+port-coherence rule to reject **every** ICMP rule left
+`icmp_rule_without_explicit_code_rejected` **green**; only the positive
+run, `icmp_rule_with_explicit_code_accepted`, went red.
+
+A fail-case suite is identically green whether your rule works or
+rejects everything. This is the same trap as IMPL-0024's `can(regex())`
+bug, where an invalid RE2 pattern was swallowed into a rule that
+rejected every value and every fail-case test still passed.
+
+**The rule:** pair every restrictive validation with at least one run
+that must *succeed*. See IMPL-0023's mutation-verification table.
+
+### 3. `name_prefix` + `import` = replacement, via a 26-character strip
+
+The provider infers `name_prefix` on read by stripping **exactly 26
+characters** off the physical name. Anything else — including every
+hand-created resource — leaves `name_prefix` unset, so the configured
+value lands on a `ForceNew` argument and the import plans as a
+replacement. The [adoption section](#adopting-an-existing-security-group)
+has the transcripts.
+
+It generalizes to the only other module using the provider's
+`name_prefix` *argument*,
+[`secretsmanager/secret`](../../secretsmanager/secret/README.md) — where
+the cost is worse: a **new credential** rather than a new id, since that
+resource has no `create_before_destroy` and its value is a fresh
+`ephemeral.random_password` on every create.
+
+**The rule:** no "adopt an existing X" runbook may promise a zero-diff
+import on a `name_prefix` resource without probing it first.

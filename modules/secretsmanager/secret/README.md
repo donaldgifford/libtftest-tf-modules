@@ -79,6 +79,49 @@ ADR-0020 account-scoped key:
   holds its physical name for `secret_recovery_window_days` (up to 30
   days). `name_prefix` makes recreates collision-free; set the window
   to `0` only for test teardown / break-glass permanent deletion.
+- **An existing secret cannot be adopted without losing its value** —
+  see the section below. This module is for secrets it creates.
 - **Deferred by design** (DESIGN-0020 Follow-up 4): raw `policy_json`
   passthrough, multi-region replicas, BYO-caller-value via ephemeral
   variables, and any rotation Lambda.
+
+## Adopting an existing secret: don't
+
+There is no import runbook here, and that is a finding rather than an
+omission. **Importing a secret this module did not create plans as a
+REPLACEMENT, and the replacement mints a new secret value.**
+
+The provider infers `name_prefix` on read by stripping **exactly 26
+characters** off the physical name. A secret created out of band as
+`app-db-master` has no such suffix, so `name_prefix` comes back unset
+and this module's `name_prefix = "app-db-master-"` lands on a
+**ForceNew** argument:
+
+```text
+~ name        = "app-db-master" -> (known after apply)
++ name_prefix = "app-db-master-" # forces replacement
+Plan: 1 to import, 1 to add, 0 to change, 1 to destroy.
+```
+
+Probed against LocalStack 4.4 during IMPL-0023, where
+`network/security-group` hit the same wall. Three things make it worse
+here than for a security group:
+
+1. **The value changes.** `secret_string_wo` is fed by
+   `ephemeral.random_password`, which is regenerated on every create.
+   The replacement does not carry the old secret across — it mints a
+   new password, and every consumer holding the old one breaks.
+2. **There is no `create_before_destroy`** on `aws_secretsmanager_secret`
+   in this module, so it is destroy-then-create.
+3. **The old name is then held** for `secret_recovery_window_days`.
+
+**No test pins this**, and cannot: `terraform test` has no plan-diff
+introspection, so you can assert resource attributes but not that a plan
+is a replacement. If the provider ever starts inferring `name_prefix`
+for arbitrary names, this section silently becomes wrong and nothing
+goes red — re-probe before trusting it across a major provider bump.
+
+If you must bring an out-of-band secret under Terraform, treat it as a
+**migration, not an import**: create a new secret with this module,
+point consumers at the new ARN, and retire the old one once nothing
+reads it. That is a credential rotation, so sequence it like one.
