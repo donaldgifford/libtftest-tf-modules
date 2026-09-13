@@ -17,7 +17,7 @@
 
 # Go
 # renovate: datasource=github-tags depName=golang/go
-go = "1.26.5"
+go = "1.27.1"
 # renovate: datasource=github-releases depName=segmentio/golines
 golines = "0.13.0"
 # renovate: datasource=go depName=golang.org/x/tools
@@ -61,8 +61,14 @@ jq = "1.8.2"
 
 
 # Release tools
+# Coupled to the Go pin above: golangci-lint refuses to run when the Go
+# version it was BUILT with is older than the go.mod directive it is
+# targeting ("the Go language version (go1.26) used to build
+# golangci-lint is lower than the targeted Go version (1.27.1)"). 2.12.2
+# is a go1.26 build, so the Go 1.27.1 bump made it unrunnable; 2.13.2 is
+# built with go1.27.0. Bump this alongside any future Go bump.
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-golangci-lint = "2.12.2"
+golangci-lint = "2.13.2"
 
 # Security
 # renovate: datasource=go depName=golang.org/x/vuln

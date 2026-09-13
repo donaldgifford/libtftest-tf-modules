@@ -1,6 +1,6 @@
 module github.com/donaldgifford/libtftest-tf-modules/tools/bedrock-keyctl
 
-go 1.26.5
+go 1.27.1
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.4
