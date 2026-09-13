@@ -334,7 +334,9 @@ Tracked in git. As of this writing:
   (optional Slack) alerting, tag-filtered AWS Budget, per-AIP CloudWatch
   token alarm, conditional cost-allocation tag activation. The credential
   (bearer token) is deliberately NOT minted by Terraform — see
-  `tools/bedrock-keyctl` below. The `claude-code/` sub-directory leaves room
+  `tools/bedrock-keyctl`, which LEFT this repo 2026-09-13 (see the Go
+  section below) — the module is unaffected, since it never minted the
+  token. The `claude-code/` sub-directory leaves room
   for siblings like `modules/bedrock/guardrails/`.
 - **`modules/network/`** — `vpc-lookup` (from INV-0004, implemented — the
   read-only, **zero-resource** producer of the VPC remote-state contract every
@@ -939,67 +941,40 @@ consumer plan loudly but vaguely (`Unable to find remote state` — no
 bucket/key in the error). The live-repo folder-naming leg is deliberately
 unenforced here (belongs in the live repo).
 
-### In-tree Go tooling (`tools/`)
+### Go in this repo (`tools/` is gone)
 
-- **`tools/bedrock-keyctl/`** — the repo's first in-tree Go CLI (IMPL-0009
-  Part II, implemented). Own `go.mod`
-  (`github.com/donaldgifford/libtftest-tf-modules/tools/bedrock-keyctl`),
-  Go 1.26.4. Mints/rotates/revokes the IAM service-specific credential
-  Claude Code consumes via `AWS_BEARER_TOKEN_BEDROCK` and enables Bedrock
-  model access per provider. Architecture: interface-first (`internal/awsapi`
-  IAM/Bedrock/Marketplace/STS clients, `internal/sink` secret sink), an
-  opaque `internal/credential.SecretValue` (redacting `String`/`MarshalJSON`
-  + `Reveal(SinkToken)`) that enforces the secret-never-logged invariant
-  structurally, `internal/enablement` provider dispatch, `internal/targeting`
-  cross-account resolution, cobra `cmd/`. Per-tool `.golangci.yml` (Uber set
-  minus the unconfigured root `goheader`). Quality gates:
-  `go build/vet/test`, `golangci-lint run`, `govulncheck ./...`,
-  `go-licenses check ./... --ignore github.com/donaldgifford/libtftest-tf-modules`
-  (the `--ignore` skips the tool's own unlicensed packages; third-party deps
-  are all Apache/MIT/BSD). The Go pin in `mise.toml` was bumped 1.26.2 →
-  1.26.4 in this work to clear 4 call-reachable Go-stdlib CVEs (net/http,
-  crypto/x509, net, net/textproto) surfaced via the AWS SDK HTTP transport.
-  NB: after a Go bump, run `mise install go@<pin>` so the active binary
-  matches the `go.mod` directive — otherwise `GOTOOLCHAIN=auto` resolves
-  stdlib via a toolchain *module* and `go-licenses` fails on `syscall`/
-  `os/signal`. Tests: mocks live in `internal/awsapi/mock_*.go` +
-  `internal/sink/mock_sink.go` (exported, shared across test packages);
-  the thin SDK-wrapper methods are unit-tested via a smithy Finalize
-  middleware stub (`sdk_test.go`) that short-circuits before the HTTP
-  send, so no LocalStack is needed. Coverage is measured with
-  `go test -coverpkg=./... ./...` (~88% aggregate; every logic package
-  ≥80%; only `Execute`/`main` bootstrap are uncovered).
-  Subcommands: `mint` (Phase 13), `rotate` (Phase 14), `revoke`
-  (Phase 15), `enable-models` (Phases 16-17, Paths A+B+C). `rotate` is the
-  two-key zero-downtime handoff — it mints +
-  verifies + writes the new secret to the sink *before* touching the old
-  credential (so a failed verify rolls the new key back and leaves the old one
-  Active), then deactivates → grace-sleeps → deletes the old. Verification uses
-  a bearer-token Bedrock client (`awsapi.NewBedrockClientWithToken`, smithy
-  `StaticTokenProvider`) built from the new credential, gated behind
-  `--verify-profile`. `revoke` targets a credential by ID: deactivate → delete
-  from IAM → (optional `--sink`) purge the secret, IAM-before-sink so a revoked
-  key never lingers valid for an in-flight request; `--force` skips the
-  confirmation prompt for CI. `enable-models` dispatches per-provider via
-  `internal/enablement`: Path A (anthropic) submits the one-time use-case form
-  (`PutUseCaseForModelAccess`, idempotent — the SDK `ConflictException` is
-  translated to the `awsapi.ErrUseCaseAlreadyExists` domain sentinel so
-  enablement stays SDK-error-free), Path B (amazon) is a no-op, Path C
-  (meta/mistral/cohere/ai21/stability/openai marketplace) tries an explicit
-  subscribe then falls back to a no-op InvokeModel trigger
-  (`--marketplace-subscribe-path auto|explicit|invocation`, default auto). AWS
-  has no callable subscribe API for Bedrock catalog entries, so the real
-  `MarketplaceClient.Subscribe` returns `ErrSubscribeUnsupported` and the
-  invocation trigger is the working path; a `ValidationException` from the
-  generic trigger body is translated to `ErrModelInputRejected` and read as
-  proof of access (past the subscribe gate). Cross-account `--target-accounts`
-  (Phase 18, `internal/targeting`) resolves three modes: `current` and
-  `org-management` run in the ambient account with no AssumeRole (org-management
-  flags non-Anthropic providers with a warning row since only Anthropic's form
-  cascades to members), `<account-id-list>` AssumeRoles (`--assume-role-name`,
-  default `bedrock-enablement`) into each 12-digit account and swaps the client
-  credentials per target. Results print as a per-account tab-aligned
-  MODEL|PROVIDER|ACTION|OUTCOME table.
+**`tools/bedrock-keyctl` left the repo on 2026-09-13** (with the Go pin
+rolled back from a 1.27.1 trial to 1.26.8). This is a Terraform-module
+monorepo again. The tool's history is still in IMPL-0009 Part II and
+DESIGN-0009; `modules/bedrock/claude-code` is unaffected and still
+deliberately does NOT mint the bearer token.
+
+What the removal touched, because a half-removal breaks CI: the
+`security.yml` govulncheck matrix and `.github/dependabot.yml` both
+named `tools/bedrock-keyctl` as a Go module directory — **a Dependabot
+`directories:` entry pointing at a missing path errors the whole config,
+not just that entry.** Both now list exactly one module.
+
+**The only Go left is `modules/eks/cluster/test`** — the build-tagged
+libtftest integration suite no CI job compiles (see the eks bullet
+above). The root `.golangci.yml` survives the tool's departure and now
+has no module configured to use it; `golangci-lint`, `go-licenses`,
+`golines` and `goimports` stay pinned in `mise.toml` against future Go,
+but nothing currently invokes them.
+
+**`mise.toml` pin trap, hit for real during the 1.27.1 trial:**
+`mise current go` and `go version` BOTH report the pinned version even
+when it is not installed — `GOTOOLCHAIN=auto` silently downloads a
+toolchain *module* (`golang.org/toolchain@v0.0.1-go1.X.Y...`) and
+`go version` reports that. **`which go` is the only honest check.**
+Symptoms of the mismatch: `go-licenses` dies on `syscall` ("does not
+have module info"), and any `go:`-installed tool still built by the old
+compiler fails to load newer packages. `mise install` may report "all
+tools are installed" and do nothing; `mise install go@<pin>` is the
+form that works, and the `go:` tools then need reinstalling so they are
+rebuilt. **`golangci-lint` is version-coupled to the Go pin** — it
+refuses to run when its own build is older than the go.mod directive it
+targets, so bump the two together (comment at the pin).
 
 ### Policy-as-code (`policy/`)
 
@@ -1115,7 +1090,8 @@ set to `'true'` (`gh variable set CI_RUN_LOCALSTACK_APPLY --body true`) — no c
 change to flip. `ci-gate` tolerates the skipped tiers; the static + plan gates
 stay enforced. PR auto-labeling moved to `.github/workflows/labeler.yml`;
 `release.yml` keeps only `bump-version`; `security.yml`'s `govulncheck` is scoped
-to the two real Go modules (`tools/bedrock-keyctl`, `modules/eks/cluster/test`).
+to the repo's one real Go module (`modules/eks/cluster/test`) since
+`tools/bedrock-keyctl` left on 2026-09-13.
 
 ## Documentation lifecycle
 

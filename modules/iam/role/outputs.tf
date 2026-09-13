@@ -3,7 +3,8 @@
 #
 # No policy echo (the caller supplied every document and ARN) and no
 # credential-adjacent values: nothing here mints credentials — that
-# is tools/bedrock-keyctl territory. Published at the
+# is bedrock-keyctl territory (a CLI that used to live in this repo at
+# tools/bedrock-keyctl; it moved out 2026-09-13). Published at the
 # platform-reserved ADR-0020 shape
 # <account_name>/<region>/iam/<name>/terraform.tfstate.
 #--------------------------------------------------------------

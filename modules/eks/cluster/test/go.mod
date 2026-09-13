@@ -1,6 +1,6 @@
 module github.com/donaldgifford/libtftest-tf-modules/modules/eks/cluster/test
 
-go 1.27.1
+go 1.26.8
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.47.0

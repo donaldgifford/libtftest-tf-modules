@@ -146,7 +146,7 @@ Create with `docz create <type> "Title"`; regenerate the index tables with
 ```text
 modules/<service>/<module>/   # the Terraform modules (+ tests/, USAGE.md, README.md)
 docs/<type>/                  # docz-managed ADR / RFC / DESIGN / IMPL / INV
-tools/                        # in-tree Go tooling (e.g. bedrock-keyctl)
+policy/                       # conftest/OPA policy-as-code (credential no-leak gate)
 scripts/                      # repo automation (e.g. gen-readme.sh)
 justfile                      # developer-convenience recipes
 mise.toml                     # pinned tool versions
@@ -154,6 +154,15 @@ mise.toml                     # pinned tool versions
 
 ## In-tree tooling
 
-- [`tools/bedrock-keyctl/`](tools/bedrock-keyctl) — Go CLI that mints/rotates/
-  revokes the IAM credential Claude Code consumes on Bedrock, and enables model
-  access per provider (IMPL-0009).
+None. `tools/bedrock-keyctl` — the Go CLI that mints/rotates/revokes the
+IAM credential Claude Code consumes on Bedrock — **left this repo on
+2026-09-13**; this is a Terraform-module monorepo again.
+
+The Terraform half of that work stays: `modules/bedrock/claude-code`
+still provisions the governed access and cost attribution, and still
+deliberately does **not** mint the credential (DESIGN-0009 — a bearer
+token must not live in Terraform state). See that module's README for
+what now provides it.
+
+The only Go left in the repo is `modules/eks/cluster/test`, a
+build-tagged libtftest integration suite that no CI job compiles.

@@ -35,9 +35,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - gomod: tools/bedrock-keyctl
-            # Ordinary package tree; the default ./... is enough.
-            packages: ./...
+          # tools/bedrock-keyctl left the repo 2026-09-13; this repo is a
+          # Terraform-module monorepo again, with exactly one Go module.
+          # The matrix shape is kept so adding a second is a one-entry
+          # change rather than a rewrite.
           - gomod: modules/eks/cluster/test
             # This module is ONLY //go:build integration test files, so a
             # bare ./... matches no packages ("no packages matched the
