@@ -645,7 +645,34 @@ Tracked in git. As of this writing:
   AccessDenied), so never write objects in a locked-bucket apply
   suite — teardown would be undeletable until retention expires
   (suite keeps `days = 1`, writes nothing; enforcement recorded in
-  FINDINGS.md, config-surface assertions only per OQ 2a).
+   FINDINGS.md, config-surface assertions only per OQ 2a).
+  **`mirror-bucket`** (DESIGN-0028 → IMPL-0025, sluice workstream 2,
+  gh-121) is the provider-mirror serving bucket: thin core wrapper
+  with four root-composed statements (VPCE allow, count-gated
+  delete-deny, admin-scoped mutation guard default-on, opt-in
+  cross-account publisher allow) injected additively; pins SSE-S3 +
+  versioning on; explicit logging target (no remote-state read, only
+  `account_id` + `region` declared); IA-only lifecycle (no expiration
+  variable by design); opt-in COMPLIANCE lock. Its
+  `security_baseline` suite is the family's **third documented
+  variant** (AES256 + Enabled + `vpce_restricted=true`, always —
+  `vpc_endpoint_ids` wires every invocation). **Build lessons:**
+  DESIGN-0028 OQ 2a (core-held mirror-sid guard) is unimplementable
+  — the mirror's own statements travel through the guarded channel,
+  so the guard lives at the mirror root; a core-side rejection
+  would fail the mirror itself (recorded as a design build note, no
+  core diff, no fan-out). The principal-list shape regexes admit
+  `*?` so each rejection trigger fires exactly one rule (wildcard
+  runs would otherwise fire shape + wildcard together — the
+  IMPL-0023 lesson applied at authoring time). The module needs
+  `required_version >= 1.9` (second after security-group) for the
+  root-mirrored lock-coherence guard — child validations are not
+  `expect_failures`-addressable. Tests: plan 36 runs + Community
+  apply 3/3 on token-free 4.4 (probe: 4.4 stores star-principal
+  policies faithfully but does NOT evaluate them — enforcement is
+  the sandbox tier's job). Fleet's first `tests-sandbox/` shell
+  runbook (negative legs only; live run pending operator — no AWS
+  creds at authoring; VPCE positive leg is gh-122).
   Remaining: `cloudfront-origin-bucket` + `presigned-transfer-bucket`
   deferred.
 - **`modules/iam/`** — `role` (DESIGN-0025 → IMPL-0022, implemented;
