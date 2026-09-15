@@ -56,4 +56,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0022 | Generic IAM role module | Completed | 2026-09-04 | Donald Gifford | [0022-generic-iam-role-module.md](0022-generic-iam-role-module.md) |
 | IMPL-0023 | Generic security group module | Completed | 2026-09-04 | Donald Gifford | [0023-generic-security-group-module.md](0023-generic-security-group-module.md) |
 | IMPL-0024 | IAM trust conditions and pod-identity-access validation backport | Completed | 2026-09-09 | Donald Gifford | [0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md](0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md) |
+| IMPL-0025 | S3 mirror bucket purpose module | Draft | 2026-09-15 | Donald Gifford | [0025-s3-mirror-bucket-purpose-module.md](0025-s3-mirror-bucket-purpose-module.md) |
 <!-- END DOCZ AUTO-GENERATED -->
