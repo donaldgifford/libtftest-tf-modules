@@ -278,7 +278,7 @@ exists to prove).
 
 #### Tasks
 
-- [ ] 3.1 `tests-localstack/apply_localstack.tftest.hcl`
+- [x] 3.1 `tests-localstack/apply_localstack.tftest.hcl`
   (token-free 4.4, `SERVICES=s3,sts`, `s3_use_path_style`):
   fixture creates a plain target bucket; runs assert the
   logging target/prefix round-trip, the F2 + pinned posture
@@ -286,11 +286,21 @@ exists to prove).
   present in the applied policy, and `mirror_url` shape. Lock
   runs (if any) keep retention days = 1 and write **no
   objects** (COMPLIANCE teardown discipline, IMPL-0021 probe B).
-- [ ] 3.2 Run live (`just tf test-localstack s3/mirror-bucket`),
+  **As built:** full-shape run (logging + IA + conditional
+  delete-deny + publisher — seven sids asserted stored) plus a
+  minimal-shape run (logging off, baseline lifecycle only,
+  unconditional delete-deny asserted stored). Fixture owns a
+  plain bucket — no sink module, no state key (explicit-target
+  posture). **3 passed, 0 failed live 2026-09-15.**
+- [x] 3.2 Run live (`just tf test-localstack s3/mirror-bucket`),
   record environment + results in `tests-localstack/FINDINGS.md`.
   Per OQ 3's resolution, adjust to the assertable depth if
   LocalStack mangles the star-principal statement — never a
-  vacuously-passing assertion.
+  vacuously-passing assertion. **As built: probe P1 POSITIVE**
+  (4.4 stores star-principal policies byte-faithfully — no
+  reduction needed); **probe P2 NEGATIVE as expected** (4.4
+  does not evaluate policies — delete succeeds under an
+  absolute deny; enforcement stays the sandbox tier's job).
 - [ ] 3.3 `tests-sandbox/` shell runbook (OQ 8a): apply the
   module in the sandbox account, put a canary object as admin,
   then prove the **negative legs**: direct anonymous GET fails,
@@ -300,19 +310,28 @@ exists to prove).
   `break_glass_principal_arns = [<operator>]` (never the
   production default `[]`), then destroy. Record every result
   in `tests-sandbox/FINDINGS.md`.
-- [ ] 3.4 READMEs: module README (serving posture, break-glass
+  **Status 2026-09-15: runbook authored + shellcheck-clean;
+  live execution PENDING — no sandbox AWS credentials in the
+  authoring environment. Operator step; results to be pasted
+  into tests-sandbox/FINDINGS.md.**
+- [x] 3.4 READMEs: module README (serving posture, break-glass
   runbook — reviewed PR adds principal / applies / deletes /
   reverts — brownfield note, COMPLIANCE warning when lock is
   enabled), `USAGE.md` via terraform-docs.
-- [ ] 3.5 CLAUDE.md s3-family section: the mirror row (pinned
+- [x] 3.5 CLAUDE.md s3-family section: the mirror row (pinned
   SSE-S3 + versioning variant, explicit-target logging, no
   globals beyond account/region, sandbox-run precedent).
-- [ ] 3.6 `docz update` (revert unrelated ToC churn — the
+- [x] 3.6 `docz update` (revert unrelated ToC churn — the
   docz-version anchor drift; keep only the IMPL-0025 row),
   `just readme` module-table row, DESIGN-0028 → Implemented.
-- [ ] 3.7 One PR per OQ 1's resolution carrying all three
+  **Status 2026-09-15: docz + readme rows done; status flips
+  held — DESIGN-0028 and IMPL-0025 stay Draft until the live
+  sandbox execution (task 3.3) lands.**
+- [x] 3.7 One PR per OQ 1's resolution carrying all three
   phases as separate commit groups; `### RELEASE NOTES`
   carries the mirror-bucket introduction; label `minor`.
+  **PR #123 already open (docs); this phase pushes code onto
+  the same branch.**
 
 #### Success Criteria
 

@@ -47,6 +47,17 @@ Content mistakes fix forward with new object versions. A true purge
 `break_glass_principal_arns`, applies, deletes, and reverts. The
 escape hatch is the change process, not a standing role.
 
+## Object Lock warning
+
+`enable_object_lock` is **create-time**: toggling it on an existing
+bucket **replaces the bucket**, and it cannot be retrofitted via any
+`token` path — brownfield means a new bucket plus copy. With
+COMPLIANCE default retention, locked versions are undeletable by
+anyone (including root) until expiry, and a bucket holding locked
+versions cannot be deleted at all: a fat-fingered long
+`object_lock_retention_days` is unfixable, so state the duration
+explicitly per stack and keep sandbox mirrors unlocked.
+
 ## No IAM resources
 
 The GitHub OIDC publisher role is provisioned out of band.
