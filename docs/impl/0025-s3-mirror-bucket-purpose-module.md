@@ -185,9 +185,9 @@ No tests yet — Phase 2 pins what Phase 1 renders.
   `probe_p0_star_principal` asserts `Principal == "*"` at plan;
   no fallback needed.
 - [x] 1.8 `just tf validate s3/mirror-bucket`, `lint`, `fmt`
-  green on the scaffold. (`just changed` cannot see the leaf
-  until committed — untracked files are invisible to the
-  branch diff; verified post-commit.)
+  green on the scaffold. `just changed` post-commit shows the
+  leaf in the plan tier; community follows in Phase 3 (that
+  tier is changed ∩ has-`tests-localstack/`).
 
 #### Success Criteria
 
@@ -197,7 +197,7 @@ No tests yet — Phase 2 pins what Phase 1 renders.
 - Probe P0 resolved green (no fallback landed).
 - No `internal/**` diff (task 1.4 struck) — the change set is
   the new leaf only; `just changed` post-commit shows it in the
-  plan + community tiers.
+  plan tier (community follows with `tests-localstack/`).
 
 ---
 
@@ -210,7 +210,7 @@ supplies `account_id = 000000000000`, `region = us-east-1`).
 
 #### Tasks
 
-- [ ] 2.1 `tests/security_baseline.tftest.hcl` — the documented
+- [x] 2.1 `tests/security_baseline.tftest.hcl` — the documented
   **third variant**: SSE-S3 (`sse_algorithm == "AES256"`,
   `bucket_key_enabled == false`, `kms_key_arn == null`) AND
   versioning `Enabled`, otherwise the full F2 posture. Header
@@ -218,7 +218,7 @@ supplies `account_id = 000000000000`, `region = us-east-1`).
   evidence = versioning variant, mirror = both); excluded from
   the static-check byte-identical diff loop (events-bucket-only
   allowlist — no static-check edit needed).
-- [ ] 2.2 `tests/policy.tftest.hcl` — statement-by-statement
+- [x] 2.2 `tests/policy.tftest.hcl` — statement-by-statement
   from `jsondecode(output.bucket_policy_json)`: allow sid with
   `Principal "*"`, sole action `GetObject`, objects-only
   resource (`<arn>/*` and NOT `<arn>`), `aws:SourceVpce` values
@@ -231,24 +231,30 @@ supplies `account_id = 000000000000`, `region = us-east-1`).
   by default, rendered with the three scoped actions when set;
   additive merge run (operator statement coexists, baseline +
   mirror statements intact).
-- [ ] 2.3 `tests/validation.tftest.hcl` — rejection runs: empty
+- [x] 2.3 `tests/validation.tftest.hcl` — rejection runs: empty
   `vpc_endpoint_ids`, malformed vpce id, empty
   `policy_admin_principal_arns`, wildcard/malformed/duplicate
-  principal ARNs (each list), `kms_key_arn` with SSE-S3 (core
-  precondition, free), reserved-sid collisions against all six
-  sids (three baseline + three mirror), retention-days-set
-  with `enable_object_lock = false` (core coherence guard,
+  principal ARNs (each list), reserved-sid collisions (mirror +
+  baseline halves), retention-days-set
+  with `enable_object_lock = false` (root-mirrored coherence guard,
   free). **Per-rule verification** (message-probe or mutation,
   the IMPL-0020 recipe): several validations stack on the same
   variables, so each run must be proven to fire its own rule.
-- [ ] 2.4 `tests/default.tftest.hcl` — `mirror_url` exact
+  **Build amendments:** the shape regex admits `*?` so each
+  trigger fires exactly one rule (all 9 rule types
+  message-probed — probe log in the Phase 2 commit message);
+  the lock-coherence guard is root-mirrored with a `>= 1.9`
+  floor (child validations are not
+  expect_failures-addressable); the `kms_key_arn` run does not
+  exist (no such variable — mode is pinned s3).
+- [x] 2.4 `tests/default.tftest.hcl` — `mirror_url` exact
   equality incl. trailing slash; IA rule id present with
   configured days / absent when `null` (via
   `lifecycle_rule_ids`); explicit logging target + null-prefix
   default (`<composed-name>/`); `null` target = no logging
   (`logging_target == null`, zero `aws_s3_bucket_logging`
   resources); composed-name + `name_override` runs.
-- [ ] 2.5 `just tf test s3/mirror-bucket` fully green;
+- [x] 2.5 `just tf test s3/mirror-bucket` fully green (36/36);
   `just static` green (fmt/validate/tflint/docs + conftest;
   `USAGE.md` regenerated, no stale docs).
 

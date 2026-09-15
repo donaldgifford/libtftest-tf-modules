@@ -74,8 +74,8 @@ variable "break_glass_principal_arns" {
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.break_glass_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@-]+$", arn))])
-    error_message = "every break_glass_principal_arns entry must be an exact IAM role or user ARN (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — wildcards are rejected."
+    condition     = alltrue([for arn in var.break_glass_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@*?-]+$", arn))])
+    error_message = "every break_glass_principal_arns entry must be an IAM role or user ARN shape (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — the dedicated wildcard rule below rejects * and ?."
   }
 
   validation {
@@ -101,8 +101,8 @@ variable "policy_admin_principal_arns" {
   }
 
   validation {
-    condition     = alltrue([for arn in var.policy_admin_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@-]+$", arn))])
-    error_message = "every policy_admin_principal_arns entry must be an exact IAM role or user ARN (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — wildcards are rejected."
+    condition     = alltrue([for arn in var.policy_admin_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@*?-]+$", arn))])
+    error_message = "every policy_admin_principal_arns entry must be an IAM role or user ARN shape (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — the dedicated wildcard rule below rejects * and ?."
   }
 
   validation {
@@ -131,8 +131,8 @@ variable "cross_account_publisher_principal_arns" {
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.cross_account_publisher_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@-]+$", arn))])
-    error_message = "every cross_account_publisher_principal_arns entry must be an exact IAM role or user ARN (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — wildcards are rejected."
+    condition     = alltrue([for arn in var.cross_account_publisher_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[\\w+=,.@*?-]+$", arn))])
+    error_message = "every cross_account_publisher_principal_arns entry must be an IAM role or user ARN shape (arn:aws:iam::<12-digit-account>:(role|user)/<name>) — the dedicated wildcard rule below rejects * and ?."
   }
 
   validation {
@@ -194,6 +194,17 @@ variable "object_lock_retention_days" {
   validation {
     condition     = var.object_lock_retention_days == null || var.object_lock_retention_days >= 1
     error_message = "object_lock_retention_days must be at least 1 (or null for no default retention)."
+  }
+
+  # Cross-variable coherence guard (needs required_version >= 1.9):
+  # mirrors the core's identical rule at THIS root so the failure is
+  # expect_failures-addressable (child validations are not) and names
+  # the operator-facing variables. Without it, retention days set
+  # while the lock is off would count-gate the config away and
+  # silently discard the caller's stated retention.
+  validation {
+    condition     = var.object_lock_retention_days == null || var.enable_object_lock
+    error_message = "object_lock_retention_days is set but enable_object_lock is false — the retention would be silently discarded. Set enable_object_lock = true or remove the duration."
   }
 }
 
