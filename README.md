@@ -51,7 +51,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`s3/events-bucket`](modules/s3/events-bucket) | `v0.22.0` | IMPL-0018 | 4 | apply | — |
 | [`s3/evidence-bucket`](modules/s3/evidence-bucket) | `v0.22.0` | IMPL-0021 | 4 | apply | — |
 | [`s3/internal/core`](modules/s3/internal/core) | `v0.22.0` | IMPL-0018 | 7 | — | — |
-| [`s3/mirror-bucket`](modules/s3/mirror-bucket) | `unreleased` | IMPL-0025 | 4 | apply | — |
+| [`s3/mirror-bucket`](modules/s3/mirror-bucket) | `v0.26.0` | IMPL-0025 | 4 | apply | — |
 | [`secretsmanager/secret`](modules/secretsmanager/secret) | `v0.20.0` | IMPL-0019 | 4 | apply | — |
 
 <!-- END_MODULE_TABLE -->
