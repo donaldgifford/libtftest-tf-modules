@@ -139,9 +139,9 @@ cannot decrypt SSE-KMS objects, so SSE-S3 is a serving requirement.
 ### Change map
 
 ```text
-modules/s3/internal/core/      MODIFY   reserved-sid list gains the three
-                                         mirror sids (OQ 2a; one-line, no-op
-                                         for existing purpose modules)
+modules/s3/internal/core/      NONE     (was: reserved-sid extension —
+                                         struck at build, see OQ 2's
+                                         build note; the core is untouched)
 modules/s3/mirror-bucket/      CREATE   the purpose module
 modules/s3/{bucket,events-bucket,
   evidence-bucket,
@@ -318,13 +318,17 @@ mutation, and GOVERNANCE's bypass exists for lower-stakes tiers.
 
 ### Reserved-sid treatment
 
-See OQ 2. The mirror injects three non-baseline sids through a
-channel whose only guard today covers the three baseline sids —
-so without treatment an operator `additional_policy_statements`
-entry could shadow a mirror statement by sid collision. The
-Detailed Design is written assuming OQ 2a (mirror sids join the
-core reserved list; mirror root mirrors the guard for
-`expect_failures` addressability).
+See OQ 2 (and its build note — the guard lives at the mirror
+root, not in the core). The mirror injects three non-baseline
+sids through a channel whose core guard covers only the three
+baseline sids — so without treatment an operator
+`additional_policy_statements` entry could shadow a mirror
+statement by sid collision. The mirror root's
+`additional_policy_statements` validation rejects all seven
+reserved sids (three baseline + four mirror-composed, publisher
+sid included), and the root `locals` merge (mirror statements
+first, operator statements after) is collision-free by
+construction.
 
 ### Remote-state posture
 
@@ -341,8 +345,10 @@ mirror's name/ARN it reads the standard
 - New leaf enters the plan matrix + Community tier automatically
   (test-directory discovery); the IMPL verifies with
   `just changed`.
-- The `internal/**` reserved-sid edit (OQ 2a) triggers the family
-  fan-out once — that is the point of riding one PR series.
+- No `internal/**` diff exists (OQ 2 build note), so no family
+  fan-out — the new leaf enters the plan matrix + Community tier
+  automatically (test-directory discovery); the IMPL verifies with
+  `just changed`.
 - Wrapper-module gotcha honored: root `required_providers` must
   declare aws even though root holds no direct aws resource
   (tflint-ignored) — the `access-logs-bucket` Phase 2 lesson.
@@ -504,6 +510,19 @@ two is unspecified.
 - Other: (your call)
 
 ### 2. How are the three mirror statement sids protected from operator shadowing?
+
+> **Build note (IMPL-0025 Phase 1, 2026-09-15):** option `a` as
+> specified is unimplementable — the mirror's own composed
+> statements travel through `internal_policy_statements`, so a
+> core-side rejection of those sids fails the mirror itself. The
+> guard is placed at the **mirror root** (functionally option
+> `b`'s placement, with a mechanism forcing it): the root
+> `additional_policy_statements` validation rejects all seven
+> reserved sids (three baseline + four mirror-composed), and the
+> root `locals` merge is collision-free by construction. No core
+> change; no family fan-out. Resolution stands recorded as 2a
+> for the one-list / family-posture decisions that do hold, with
+> this note as the placement correction.
 
 The additive channel's guard covers only the three baseline sids
 today. An operator `additional_policy_statements` entry reusing

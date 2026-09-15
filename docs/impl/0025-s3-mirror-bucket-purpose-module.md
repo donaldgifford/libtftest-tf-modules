@@ -111,7 +111,7 @@ No tests yet — Phase 2 pins what Phase 1 renders.
 
 #### Tasks
 
-- [ ] 1.1 Scaffold `modules/s3/mirror-bucket` from `bucket`
+- [x] 1.1 Scaffold `modules/s3/mirror-bucket` from `bucket`
   (structural template, NOT `evidence-bucket`): `main.tf`
   (locals + core block), `variables.tf`, `outputs.tf`,
   `versions.tf` (aws `~> 6.2` declared at root per the
@@ -120,7 +120,7 @@ No tests yet — Phase 2 pins what Phase 1 renders.
   Family-standard naming (`name` + `name_override` + shard
   hatch, OQ 3a) and two globals only (`account_id`, `region`,
   OQ 4a).
-- [ ] 1.2 Root `locals` composing the four statements for
+- [x] 1.2 Root `locals` composing the four statements for
   `internal_policy_statements`:
   `AllowMirrorReadFromVPCE` (Allow, `principals = { "*" = ["*"] }`,
   `GetObject`, `resource_suffixes = ["/*"]`, `StringEquals
@@ -134,7 +134,7 @@ No tests yet — Phase 2 pins what Phase 1 renders.
   `cross_account_publisher_principal_arns` is non-empty:
   `PutObject` + `GetObject` + `ListBucket`, no deletes).
   `allowed_vpc_endpoint_ids = var.vpc_endpoint_ids` (OQ 1a).
-- [ ] 1.3 Variables with fleet-doctrine validations (separate
+- [x] 1.3 Variables with fleet-doctrine validations (separate
   block per rule, IMPL-0022): `vpc_endpoint_ids` (required,
   non-empty, `vpce-` id format), `policy_admin_principal_arns`
   (required, non-empty — an empty admin list strands the stack),
@@ -148,40 +148,56 @@ No tests yet — Phase 2 pins what Phase 1 renders.
   default `null`, `enable_policy_mutation_guard` default `true`
   (OQ 6a), `additional_policy_statements` with the extended
   reserved-sid mirror (task 1.4), `tags`.
-- [ ] 1.4 Core edit (OQ 2a): the three mirror sids
+- [x] 1.4 Core edit (OQ 2a): ~~the three mirror sids
   (`AllowMirrorReadFromVPCE`, `DenyObjectDeletion`,
   `DenyPolicyMutation`) join the reserved-sid validation in
   `core/variables.tf`. Validation-only — no resource, type, or
-  default change.
-- [ ] 1.5 Pin the posture in `main.tf` (no variables):
+  default change.~~ **STRUCK at build — no core edit exists.**
+  Mechanism finding: the mirror's own composed statements travel
+  through `internal_policy_statements`, so a core-side rejection
+  of those sids would fail the mirror itself — OQ 2a is
+  unimplementable as specified. The guard lives at the mirror
+  root (task 1.3's 7-sid validation: three baseline + four
+  mirror-composed, the publisher sid included), where the merge
+  happens. Consequence: **zero `internal/**` diff, no family
+  fan-out** — the change set is the new leaf only. Main.tf
+  carries the placement rationale; DESIGN-0028 OQ 2 carries a
+  build note.
+- [x] 1.5 Pin the posture in `main.tf` (no variables):
   `versioning_enabled = true`, `encryption = { mode = "s3" }`,
   `object_lock = { enabled, mode = "COMPLIANCE", days }`
   (OQ 5a), fixed-id IA lifecycle rule from
   `noncurrent_version_ia_days` (`null` = no rule, never
   expiration), `logging` resolved from `access_log_bucket` /
   `access_log_prefix` with no remote-state block.
-- [ ] 1.6 Outputs: `bucket_id`, `bucket_arn` (core re-exports),
+- [x] 1.6 Outputs: `bucket_id`, `bucket_arn` (core re-exports),
   `mirror_url` (`"https://<bucket-name>.s3.<region>.amazonaws.com/"`
   from the core's `bucket_name` + `var.region`), plus the family
   test windows (`security_baseline`, `bucket_policy_json`,
   `lifecycle_rule_ids`, `logging_target`, `logging_prefix`).
-- [ ] 1.7 Probe P0 (design § Detailed Design): plan-render
+- [x] 1.7 Probe P0 (design § Detailed Design): plan-render
   `principals = { "*" = ["*"] }` through the injection channel
   and confirm `aws_iam_policy_document` emits `Principal: "*"`.
   If red, the fallback is a minimal core extension (explicit
   star-principal support in the injected statement schema) in
   this same phase — the statement shape is unchanged either way.
-- [ ] 1.8 `just tf validate s3/mirror-bucket`, `lint`, `fmt`
-  green on the scaffold.
+  **GREEN 2026-09-15** — `tests/policy.tftest.hcl` run
+  `probe_p0_star_principal` asserts `Principal == "*"` at plan;
+  no fallback needed.
+- [x] 1.8 `just tf validate s3/mirror-bucket`, `lint`, `fmt`
+  green on the scaffold. (`just changed` cannot see the leaf
+  until committed — untracked files are invisible to the
+  branch diff; verified post-commit.)
 
 #### Success Criteria
 
 - `validate` + `lint` + `fmt` green; a manual plan renders all
   four statements with the intended JSON (eyeball check only —
   Phase 2 pins it).
-- Probe P0 resolved green (or the fallback landed).
-- `just changed` shows the new leaf in the plan + community
-  tiers and the full s3 family fan-out green from the core edit.
+- Probe P0 resolved green (no fallback landed).
+- No `internal/**` diff (task 1.4 struck) — the change set is
+  the new leaf only; `just changed` post-commit shows it in the
+  plan + community tiers.
 
 ---
 
@@ -308,7 +324,6 @@ exists to prove).
 
 | File | Action | Description |
 |------|--------|-------------|
-| `modules/s3/internal/core/variables.tf` | Modify | reserved-sid list gains the three mirror sids (validation-only) |
 | `modules/s3/mirror-bucket/**` | Create | root, plan suite, Community apply + FINDINGS.md, sandbox runbook + FINDINGS.md |
 | `CLAUDE.md` | Modify | s3 family section: mirror row |
 | `docs/design/0028-*.md` | Modify | status → Implemented at closure |
