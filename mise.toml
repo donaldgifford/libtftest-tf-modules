@@ -47,7 +47,7 @@ yamlfmt = "0.21.0"
 # renovate: datasource=github-tags depName=adrienverge/yamllint
 yamllint = "1.38.0"
 # renovate: datasource=npm depName=prettier
-prettier = "3.9.6"
+prettier = "3.9.8"
 
 # tools
 # renovate: datasource=github-releases depName=mikefarah/yq
