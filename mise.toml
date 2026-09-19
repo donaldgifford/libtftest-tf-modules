@@ -17,7 +17,7 @@
 
 # Go
 # renovate: datasource=github-tags depName=golang/go
-go = "1.26.8"
+go = "1.27.1"
 # renovate: datasource=github-releases depName=segmentio/golines
 golines = "0.13.0"
 # renovate: datasource=go depName=golang.org/x/tools
