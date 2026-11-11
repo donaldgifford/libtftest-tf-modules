@@ -23,11 +23,6 @@ variables {
   remote_state_bucket = "stub-bucket"
   region              = "us-east-1"
   cluster_name        = "libtftest-cluster"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "libtftest-cluster"
-    Environment = "test"
-  }
 }
 
 override_data {

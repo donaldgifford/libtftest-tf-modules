@@ -53,9 +53,6 @@ variables {
   cluster_name    = "tftest-pia-cluster"
   namespace       = "kube-system"
   service_account = "tftest-sa"
-  tags = {
-    Environment = "test"
-  }
 }
 
 # Setup: VPC + cluster + a pre-existing PIA-trusting role + S3 stub state.

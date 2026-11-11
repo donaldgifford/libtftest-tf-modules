@@ -66,13 +66,6 @@ variables {
   kube_proxy_version         = "v1.35.3-eksbuild.2"
   coredns_version            = "v1.13.2-eksbuild.4"
   ebs_csi_version            = "v1.57.1-eksbuild.1"
-  tags = {
-    Account     = "000000000000"
-    ClusterName = "tftest-addons-cluster"
-    ClusterType = "secure"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 # Setup: VPC + subnets + KMS + cluster IAM + real aws_eks_cluster + S3

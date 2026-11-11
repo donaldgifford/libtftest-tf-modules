@@ -187,7 +187,7 @@ mechanically. No new resources or data sources.
   longer declares it is an "unsupported argument" error. The
   `security_baseline` diff-guard pair (`bucket` / `events-bucket`)
   is not touched.
-- [ ] 1.8 Test-input cleanup for these 18 modules. Delete `tags`
+- [x] 1.8 Test-input cleanup for these 18 modules. Delete `tags`
   from every `.tftest.hcl` `variables` block, file-level and
   run-level, in `tests/` and `tests-localstack*/`. This includes
   the `eks/addons` typed-object literals (4 plan files + apply) and

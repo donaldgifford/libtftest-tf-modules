@@ -59,9 +59,6 @@ variable "account_name" {
 variables {
   cluster_name       = "tftest-ae-cluster"
   stale_cluster_name = "tftest-ae-cluster-stale"
-  tags = {
-    Environment = "test"
-  }
 }
 
 # Setup: VPC + cluster + principals + both stub state objects.

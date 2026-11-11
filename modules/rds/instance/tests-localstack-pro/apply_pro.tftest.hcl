@@ -93,11 +93,6 @@ variables {
   # null path; the plan suite (tests/secret_rotation.tftest.hcl) gates the
   # rotation surface. See FINDINGS.md.
   master_secret_rotation_days = null
-
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Setup: the shared vpc-lookup-faithful reference VPC (three-tier

@@ -66,10 +66,6 @@ variables {
   vpc_name          = "tftest-efs-filesystem-vpc"
   cluster_name      = "tftest-efs-filesystem-eks"
   identifier_prefix = "tftest-efs"
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Setup: VPC + 3 private subnets + standalone node-SG stub + S3 bucket

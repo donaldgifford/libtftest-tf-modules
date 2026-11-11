@@ -16,13 +16,6 @@ variables {
   cluster_name               = "libtftest-cluster"
   pod_identity_agent_version = "v1.3.0-eksbuild.1"
   efs_csi_enabled            = true
-  tags = {
-    Account     = "000000000000"
-    ClusterName = "libtftest-cluster"
-    ClusterType = "secure"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "efs_csi_enabled" {
