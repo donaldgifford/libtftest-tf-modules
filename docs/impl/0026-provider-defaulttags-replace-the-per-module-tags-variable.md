@@ -205,10 +205,21 @@ mechanically. No new resources or data sources.
   - `iam/role/tests-localstack/apply_localstack.tftest.hcl:46,161`
     (provider `default_tags`; the stored-tags read-back now proves
     `default_tags` reached IAM)
-- [ ] 1.10 Regenerate `USAGE.md` for all 18 modules through
-  `just static`.
+- [x] 1.10 Regenerate `USAGE.md` for all 18 modules through
+  `just static`. **As built: 17 regenerated** (only `tags` rows
+  changed, lock-free `~> 6.2` form held). The 18th,
+  `s3/evidence-bucket`, has **no `.terraform-docs.yml`**, so its
+  `USAGE.md` is an empty marker block. This is a pre-existing gap
+  (since IMPL-0021 / #110) that the static gate cannot see, because
+  an empty block regenerates as empty. It is out of scope here and
+  recorded as a follow-up.
 
 #### Success Criteria
+
+**Met 2026-11-11.** Zero leftovers. All 18 suites green with run
+counts **identical** to a `1fbb4e6` baseline worktree (19, 23, 15,
+5, 9, 35, 19, 27, 34, 20, 11, 29, 31, 6, 11, 15, 15, 36). Zero
+undeclared-`tags` warnings. `just static` passed.
 
 - `grep -rn 'var\.tags\|variable "tags"'` over the 18 module
   directories returns **zero** lines, comments included.
