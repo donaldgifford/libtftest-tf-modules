@@ -1025,6 +1025,16 @@ variant of this policy family belongs to the **live repo** (tfplan JSON is
 a different input shape). First real catch: `ecr/pull-through-cache`'s
 placeholder seeding (see the ECR bullet above).
 
+`tags.rego` (IMPL-0026 Phase 3 / DESIGN-0029) is the removal gate for
+the per-module `tags` variable: it denies any `variable "tags"` (hcl2
+shape `input.variable.tags`). The standard tag set arrives through the
+provider's `default_tags`, set by Terragrunt in the live repo. Only the
+declaration needs a rule, because without it a `var.tags` reference
+fails `terraform validate`. Purpose-named owned inputs
+(`association_tags`, `cost_tag`, vpc-lookup's `*_tags` filters) are
+allowed by design. A generic pass-through reintroduced under another
+name is a review question the policy does not catch.
+
 ## Tooling
 
 All tool versions are pinned in `mise.toml`. Bootstrap with `mise install`

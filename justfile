@@ -137,7 +137,7 @@ _tf-docs-check module:
     cd modules/{{module}} && terraform-docs . >/dev/null && git diff --exit-code -- USAGE.md
 
 # Repo-wide static gate (ADR-0019): terraform fmt + validate + tflint +
-# terraform-docs + conftest credential policy across every module. This is
+# terraform-docs + conftest policies (credentials + tags) across every module. This is
 # what the CI `static` job runs first, before any plan/apply. Regenerates
 # USAGE.md in place and fails if any module's docs were stale.
 [group('tf')]
@@ -145,15 +145,17 @@ static:
     @just _log "static gate → fmt + validate + tflint + terraform-docs + conftest (all modules)"
     ./scripts/static-check.sh
 
-# Credential no-leak policy gate (IMPL-0019 Phase 4 / DESIGN-0020): conftest
-# policy unit tests, then the fleet-wide sweep of modules/**/*.tf with the
-# hcl2 parser against policy/credentials.rego. Also runs inside `just static`
-# (scripts/static-check.sh §6); this recipe is the fast standalone loop.
+# Policy-as-code gate: conftest policy unit tests, then the fleet-wide sweep
+# of modules/**/*.tf with the hcl2 parser against every policy under policy/:
+# credentials.rego (IMPL-0019 Phase 4 / DESIGN-0020, persisted-credential
+# no-leak) and tags.rego (IMPL-0026 / DESIGN-0029, no `variable "tags"`).
+# Also runs inside `just static` (scripts/static-check.sh §7); this recipe is
+# the fast standalone loop.
 # NB: conftest must stay LAST in its pipeline — piping its output (e.g.
 # through `tail`) eats the failure exit code.
 [group('tf')]
 conftest:
-    @just _log "conftest → policy unit tests + persisted-credential sweep (modules/**/*.tf)"
+    @just _log "conftest → policy unit tests + credentials/tags policy sweep (modules/**/*.tf)"
     conftest verify --policy policy/
     find modules -name '*.tf' -not -path '*/.terraform/*' -print0 | xargs -0 conftest test --parser hcl2 --policy policy/ --quiet
 

@@ -460,7 +460,7 @@ the variable from returning.
 
   The note names the exact recipe. The four RDS `plan_smoke` suites
   were re-run offline, all green.
-- [ ] 3.6 Removal gate (OQ 2, resolved as an OPA-only variant): add
+- [x] 3.6 Removal gate (OQ 2, resolved as an OPA-only variant): add
   `policy/tags.rego`, a `deny` on any `input.variable.tags` (conftest
   hcl2 shape, probed 2026-11-11: `variable "tags"` parses to
   `input.variable.tags` as an array of bodies). The existing static
@@ -476,6 +476,17 @@ the variable from returning.
 
   Update the `credentials.rego`-centric wording in the §7 comment
   and the final "static gate passed" line to name both policies.
+
+  *As built:* `policy/tags.rego` holds one `deny` rule.
+  `policy/tags_test.rego` has seven tests: the four listed, plus
+  the old eks/addons typed-object shape (denied), `cost_tag`
+  (allowed), and a variable-less file (allowed). `conftest verify`
+  passes 17/17 (10 credentials + 7 tags). The probe file is denied
+  and the tree sweep is clean. Both the §7 comment and its error
+  message now name both policies, as does the final line. The
+  `justfile` `static` and `conftest` comments also do; the latter
+  wrongly cited §6, now corrected to §7. `just static` is green.
+  The policy states its scope: it matches the name `tags` only.
 - [ ] 3.7 Mutation-verify the rule in a scratch copy outside the
   repo. Re-add a `variable "tags"` to one module, confirm `just
   conftest` fails naming `tags.rego`, and restore. The `.tftest.hcl`

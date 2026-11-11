@@ -152,13 +152,17 @@ if ! bash "${REPO_ROOT}/scripts/changed-modules.test.sh" >/dev/null 2>&1; then
   fail=1
 fi
 
-# ── 7. Credential no-leak policy (IMPL-0019 Phase 4 / DESIGN-0020) ─────────
-# conftest denies persisted credential arguments across every module
-# source file — secret_string/secret_binary on
-# aws_secretsmanager_secret_version, password on aws_db_instance,
-# master_password on aws_rds_cluster. The write-only (_wo) forms +
-# manage_master_user_password are the only legal credential paths.
-# Policy + its unit tests live under policy/. NB: keep conftest LAST in
+# ── 7. Policy-as-code: conftest over module source ────────────────────────
+# Every policy under policy/ runs against every module source file:
+#   - credentials.rego (IMPL-0019 Phase 4 / DESIGN-0020) denies persisted
+#     credential arguments: secret_string/secret_binary on
+#     aws_secretsmanager_secret_version, password on aws_db_instance,
+#     master_password on aws_rds_cluster. The write-only (_wo) forms +
+#     manage_master_user_password are the only legal credential paths.
+#   - tags.rego (IMPL-0026 Phase 3 / DESIGN-0029) denies any
+#     `variable "tags"`: the standard tag set arrives through the
+#     provider's default_tags, never a per-module input.
+# Policies + their unit tests live under policy/. NB: keep conftest LAST in
 # its pipeline — an earlier run piped through `tail` silently ate a
 # real FAIL's exit code.
 log "conftest verify (policy unit tests, policy/)"
@@ -167,10 +171,10 @@ if ! conftest verify --policy "${REPO_ROOT}/policy" >/dev/null; then
   fail=1
 fi
 
-log "conftest test (persisted-credential sweep, modules/**/*.tf)"
+log "conftest test (credentials + tags policy sweep, modules/**/*.tf)"
 if ! find "${REPO_ROOT}/modules" -name '*.tf' -not -path '*/.terraform/*' -print0 \
   | xargs -0 conftest test --parser hcl2 --policy "${REPO_ROOT}/policy" --quiet; then
-  echo "::error::a persisted credential argument was found — use the write-only (_wo) form (policy/credentials.rego)"
+  echo "::error::a policy violation was found above — a persisted credential argument (use the write-only _wo form, policy/credentials.rego) or a variable \"tags\" (use provider default_tags, policy/tags.rego)"
   fail=1
 fi
 
@@ -178,4 +182,4 @@ if [[ "${fail}" -ne 0 ]]; then
   echo "::error::static gate failed — fix the errors above before plan/apply runs"
   exit 1
 fi
-echo "static gate passed: fmt + validate + tflint + terraform-docs + s3 guards + changed-modules self-test + conftest policy clean across all modules"
+echo "static gate passed: fmt + validate + tflint + terraform-docs + s3 guards + changed-modules self-test + conftest policy (credentials + tags) clean across all modules"
