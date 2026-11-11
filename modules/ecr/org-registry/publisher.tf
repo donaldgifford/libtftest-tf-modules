@@ -48,5 +48,4 @@ resource "aws_iam_policy" "oci_publisher" {
   name        = local.publisher_policy_name
   description = "Permissions to push internal Helm charts and Terraform modules to ECR via create-on-push (consumed by CI / IRSA roles)"
   policy      = data.aws_iam_policy_document.oci_publisher.json
-  tags        = var.tags
 }

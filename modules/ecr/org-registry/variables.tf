@@ -112,9 +112,3 @@ variable "ssm_cross_account_org_id" {
     error_message = "ssm_cross_account_org_id must be null or an AWS Organizations ID matching ^o-[a-z0-9]{10,32}$ (e.g. o-abc1234567)."
   }
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (KMS key, IAM role, IAM policy, creation templates, SSM parameters)."
-  type        = map(string)
-  default     = {}
-}

@@ -8,7 +8,6 @@ resource "aws_kms_key" "ecr_oci" {
   description             = "ECR encryption key for OCI artifact repos (${var.helm_charts_prefix}/*, ${var.tf_modules_prefix}/*)"
   enable_key_rotation     = true
   deletion_window_in_days = 30
-  tags                    = var.tags
 
   lifecycle {
     prevent_destroy = true

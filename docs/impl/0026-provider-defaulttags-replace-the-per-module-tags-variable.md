@@ -260,7 +260,7 @@ The five modules where removal is not a line deletion: the
   literals were **proven against `v0.26.0`**: the same asserts, run
   in a `1fbb4e6` worktree with the old `tags` input, pass. Dropping
   the data-source merge reds them (mutation).
-- [ ] 2.3 `ecr/org-registry`:
+- [x] 2.3 `ecr/org-registry`:
   - Add the data source.
   - `templates.tf:76,133` become
     `merge(data.aws_default_tags.this.tags, { artifact_type, managed_by })`.
