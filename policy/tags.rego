@@ -31,5 +31,5 @@ package main
 
 deny contains msg if {
 	input.variable.tags
-	msg := "module declares variable \"tags\" — the standard tag set arrives through the provider's default_tags (DESIGN-0029); set only module-owned keys on the resource itself"
+	msg := "module declares variable \"tags\" — the standard tag set arrives through the provider's default_tags (DESIGN-0029); set only module-owned keys on the resource itself (policy/tags.rego)"
 }

@@ -487,7 +487,7 @@ the variable from returning.
   `justfile` `static` and `conftest` comments also do; the latter
   wrongly cited §6, now corrected to §7. `just static` is green.
   The policy states its scope: it matches the name `tags` only.
-- [ ] 3.7 Mutation-verify the rule in a scratch copy outside the
+- [x] 3.7 Mutation-verify the rule in a scratch copy outside the
   repo. Re-add a `variable "tags"` to one module, confirm `just
   conftest` fails naming `tags.rego`, and restore. The `.tftest.hcl`
   side has no permanent gate (OQ 2): it is checked once, here, with
@@ -495,6 +495,23 @@ the variable from returning.
   must show no `tags` inside a `variables` block. It must also show
   no `does not declare a variable named "tags"` warning in any
   Phase 1–3 test run.
+
+  *As built (scratch copy of `policy/` + `modules/` under `/tmp`):*
+
+  - Injecting a `variable "tags"` into `iam/role/variables.tf` fails
+    the sweep (exit 123). The FAIL line names the file and the
+    policy; the deny message now ends `(policy/tags.rego)`.
+  - Neutering the rule (it never matches) reds exactly the two deny
+    tests.
+  - Over-broadening it (any variable) reds exactly the three allow
+    tests for real tag-shaped inputs, and would flag 41 files in the
+    tree.
+
+  So the unit tests discriminate in both directions. The brace-aware
+  `variables`-block scan finds zero `tags` entries across every
+  `.tftest.hcl`. So does the grep above. All 24 plan suites run green,
+  with zero `does not declare a variable named "tags"` warnings and
+  zero undeclared-variable warnings.
 
 #### Success Criteria
 
@@ -508,6 +525,13 @@ the variable from returning.
   the tree and fails on the injected `variable "tags"`.
 - The one-off `.tftest.hcl` check is clean.
 - `just static` green.
+
+**Status: met (2026-11-11).** 18 `default_tags.tftest.hcl` files are
+green, and both mutation directions are verified (3.1, 3.2). The
+eight Community apply suites are green on 4.4, with the read-backs
+mutation-checked (3.4, 3.5). The fourteen Pro suites carry the
+pending note. Both conftest legs pass and discriminate (3.6, 3.7).
+The one-off check is clean, and `just static` is green.
 
 ---
 
