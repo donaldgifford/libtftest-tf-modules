@@ -177,7 +177,7 @@ mechanically. No new resources or data sources.
   - `rds/proxy` (6: `iam.tf`, `proxy.tf` × 2,
     `security_group.tf` × 3)
   - `rds/read-replica` (1: `replicas.tf`)
-- [ ] 1.7 S3 family **in one step**: remove `variable "tags"` and
+- [x] 1.7 S3 family **in one step**: remove `variable "tags"` and
   `bucket.tf`'s site from `s3/internal/core`, **and** remove the
   `tags = var.tags` argument from the `module "core"` call and the
   root `variable "tags"` in all five purpose modules

@@ -59,10 +59,3 @@ variable "force_destroy" {
   default     = false
   nullable    = false
 }
-
-variable "tags" {
-  description = "Tags applied to every taggable resource."
-  type        = map(string)
-  default     = {}
-  nullable    = false
-}

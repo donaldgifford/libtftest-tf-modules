@@ -161,13 +161,6 @@ variable "extra_lifecycle_rules" {
   nullable = false
 }
 
-variable "tags" {
-  description = "Tags applied to every taggable resource in the module."
-  type        = map(string)
-  default     = {}
-  nullable    = false
-}
-
 #--------------------------------------------------------------
 # Server-access-logging (DESIGN-0019 F4, resolved by the caller)
 #--------------------------------------------------------------
