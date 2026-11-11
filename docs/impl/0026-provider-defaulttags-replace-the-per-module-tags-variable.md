@@ -708,7 +708,7 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
     lessons
 
   Also add the `eks/cluster` alias naming change.
-- [ ] 5.5 The live-repo rollout is tracked by the release notes only
+- [x] 5.5 The live-repo rollout is tracked by the release notes only
   (OQ 5b), so the `### RELEASE NOTES` block must carry the full
   per-stack checklist, mirroring DESIGN-0029's sequence diagram:
   - add `default_tags` equal to today's `tags` input
@@ -720,6 +720,12 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
 
   Put this checklist **first** in the notes, ahead of the removal
   list.
+  *As built:* drafted for the PR body. The block opens with a
+  breaking-change line, then the six-step checklist. Step 4 carries
+  the node-group no-change check and the eks/cluster alias
+  condition, and step 2's "plan at the old version" check is
+  explicit. The removal list, the OQ 6a exception, the bedrock
+  budget, and the ECR scope follow.
 - [ ] 5.6 Statuses: DESIGN-0029 → Implemented, IMPL-0026 →
   Completed. Run `docz update` and revert its unrelated ToC churn,
   restoring any underscore-stripped anchors (known `docz update`
