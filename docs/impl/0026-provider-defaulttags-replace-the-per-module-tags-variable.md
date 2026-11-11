@@ -248,13 +248,18 @@ The five modules where removal is not a line deletion: the
   - Delete the plain sites (`iam.tf` × 2, `main.tf`, and
     `launch_template.tf`'s own `tags`).
   - Remove the variable.
-- [ ] 2.2 `managed-node-group` byte-identity regression run. With
+- [x] 2.2 `managed-node-group` byte-identity regression run. With
   the test provider's `default_tags = X` (the same map the old
   `default.tftest.hcl` passed as `tags`), assert both
   `tag_specifications[*].tags` equal
   **the literal map the pre-change module rendered** (`X + Name`).
   This is the plan-tier half of the node-roll guard. Phase 4 proves
-  the apply-tier half.
+  the apply-tier half. **As built:** two asserts in `default_plan` (no
+  new run, reusing its `override_data`). The provider `default_tags`
+  carries the exact map the suite passed as `tags` before. The
+  literals were **proven against `v0.26.0`**: the same asserts, run
+  in a `1fbb4e6` worktree with the old `tags` input, pass. Dropping
+  the data-source merge reds them (mutation).
 - [ ] 2.3 `ecr/org-registry`:
   - Add the data source.
   - `templates.tf:76,133` become
