@@ -29,7 +29,6 @@ data "aws_iam_policy_document" "node_assume_role" {
 resource "aws_iam_role" "node" {
   name               = "${var.nodegroup_name}-node"
   assume_role_policy = data.aws_iam_policy_document.node_assume_role.json
-  tags               = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "worker_node" {
@@ -64,5 +63,4 @@ resource "aws_iam_role_policy_attachment" "extra" {
 resource "aws_iam_instance_profile" "node" {
   name = "${var.nodegroup_name}-node"
   role = aws_iam_role.node.name
-  tags = var.tags
 }

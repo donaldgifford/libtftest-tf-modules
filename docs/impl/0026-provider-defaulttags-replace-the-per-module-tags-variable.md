@@ -240,7 +240,7 @@ The five modules where removal is not a line deletion: the
 
 #### Tasks
 
-- [ ] 2.1 `eks/managed-node-group`:
+- [x] 2.1 `eks/managed-node-group`:
   - Add `data "aws_default_tags" "this" {}`.
   - `launch_template.tf:57,62` become
     `merge(data.aws_default_tags.this.tags, { Name = ... })`, with

@@ -21,7 +21,6 @@ resource "aws_eks_node_group" "this" {
   capacity_type   = var.capacity_type
   instance_types  = length(var.instance_types) > 0 ? var.instance_types : var.architecture.default_instance_types
   labels          = local.runtime_labels
-  tags            = var.tags
 
   scaling_config {
     desired_size = var.desired_size

@@ -323,9 +323,3 @@ variable "extra_kubelet_args" {
   type        = string
   default     = ""
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every resource in the module."
-  type        = map(string)
-  default     = {}
-}
