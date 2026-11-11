@@ -88,13 +88,6 @@ variables {
   name               = "tftest-apply"
   vpc_name           = "stub-vpc"
   sso_cluster_policy = "AmazonEKSViewPolicy"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "tftest-apply"
-    ClusterType = "eks"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 # Setup: create the LocalStack-side fixtures the cluster apply needs.

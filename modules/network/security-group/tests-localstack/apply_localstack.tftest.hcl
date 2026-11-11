@@ -109,8 +109,6 @@ run "apply_security_group_with_all_source_types" {
         cidr_ipv4   = "203.0.113.0/24"
       }
     }
-
-    tags = { ManagedBy = "terraform", Component = "gateway" }
   }
 
   # The SG landed in the CONTRACT VPC — i.e. the remote-state read

@@ -315,7 +315,7 @@ The five modules where removal is not a line deletion: the
   was nothing to update there. The README's "33 runs / 22
   rejections" line is corrected in Phase 5 (5.1), after Phase 3
   adds `default_tags.tftest.hcl` and moves the count again.
-- [ ] 2.8 Test-input cleanup for these 5, as in 1.8:
+- [x] 2.8 Test-input cleanup for these 5, as in 1.8:
   - `eks/cluster`: 4 plan files + apply
   - `eks/managed-node-group`: plan + apply
   - `ecr` × 2: apply

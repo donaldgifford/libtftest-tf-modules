@@ -42,10 +42,6 @@ provider "aws" {
 variables {
   name_prefix          = "tftest-ocr"
   organizations_org_id = "o-tftest1234"
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Plan-only smoke against the LocalStack endpoint. Validates that:

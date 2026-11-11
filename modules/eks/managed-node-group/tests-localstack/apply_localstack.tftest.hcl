@@ -59,10 +59,6 @@ variables {
   cluster_name   = "tftest-mng-cluster"
   vpc_name       = "tftest-mng-vpc"
   nodegroup_name = "tftest-mng"
-  tags = {
-    Environment = "test"
-    ClusterName = "tftest-mng-cluster"
-  }
 }
 
 # Setup: VPC + subnets + KMS + cluster IAM + real aws_eks_cluster +

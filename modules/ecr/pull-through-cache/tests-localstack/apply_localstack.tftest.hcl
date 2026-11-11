@@ -53,10 +53,6 @@ variables {
   region              = "us-east-1"
   name_prefix         = "tftest-eptc"
   upstream_registries = ["ecr-public", "docker-hub"]
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Plan-only smoke against the LocalStack endpoint. Validates that:

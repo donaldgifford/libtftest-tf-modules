@@ -22,13 +22,6 @@ variables {
   remote_state_bucket = "stub-bucket"
   vpc_name            = "stub-vpc"
   sso_cluster_policy  = "AmazonEKSViewPolicy"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "libtftest"
-    ClusterType = "eks"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "default_plan" {
