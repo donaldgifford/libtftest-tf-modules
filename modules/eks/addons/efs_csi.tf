@@ -12,7 +12,6 @@ resource "aws_iam_role" "efs_csi" {
 
   name               = local.efs_csi_role_name
   assume_role_policy = data.aws_iam_policy_document.pod_identity_trust.json
-  tags               = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "efs_csi" {
@@ -31,8 +30,6 @@ resource "aws_eks_addon" "efs_csi_driver" {
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
-
-  tags = var.tags
 
   pod_identity_association {
     service_account = "efs-csi-controller-sa"

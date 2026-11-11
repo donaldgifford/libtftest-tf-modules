@@ -158,7 +158,7 @@ mechanically. No new resources or data sources.
 - [x] 1.2 `efs/filesystem`: remove the variable. The 6 plain sites
   (`filesystem.tf`, `kms.tf`, `network.tf` × 4) are deleted.
   `access_points.tf:21` becomes `tags = { Name = each.key }`.
-- [ ] 1.3 `eks/addons`: remove the **typed object** variable
+- [x] 1.3 `eks/addons`: remove the **typed object** variable
   (`variables.tf:140-149`) and the 9 plain sites (`main.tf` × 2,
   `ebs_csi.tf` × 2, `efs_csi.tf` × 2, `vpc_cni.tf` × 2,
   `pod_identity_agent.tf`).

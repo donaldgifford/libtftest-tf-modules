@@ -23,6 +23,4 @@ resource "aws_eks_addon" "pod_identity_agent" {
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
-
-  tags = var.tags
 }
