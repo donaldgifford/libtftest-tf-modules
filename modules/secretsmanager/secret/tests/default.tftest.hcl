@@ -19,6 +19,15 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+
+  # The fleet's standard tag set arrives through provider default_tags
+  # (DESIGN-0029); the module declares no tags input of its own.
+  default_tags {
+    tags = {
+      Environment = "test"
+      ManagedBy   = "terraform"
+    }
+  }
 }
 
 variables {
@@ -81,10 +90,6 @@ run "byo_kms_and_tags" {
 
   variables {
     kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/byo-1234"
-    tags = {
-      Environment = "test"
-      ManagedBy   = "terraform"
-    }
   }
 
   assert {
@@ -93,8 +98,8 @@ run "byo_kms_and_tags" {
   }
 
   assert {
-    condition     = aws_secretsmanager_secret.this.tags["Environment"] == "test"
-    error_message = "tags must pass through to the secret"
+    condition     = aws_secretsmanager_secret.this.tags_all["Environment"] == "test"
+    error_message = "provider default_tags must reach the secret (tags_all)"
   }
 }
 
