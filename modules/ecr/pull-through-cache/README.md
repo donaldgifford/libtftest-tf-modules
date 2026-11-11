@@ -61,11 +61,6 @@ module "ecr_pull_through_cache" {
   upstream_registries = ["ecr-public", "docker-hub", "kubernetes", "quay"]
 
   untagged_image_retention_days = 14
-
-  tags = {
-    Environment = "production"
-    ManagedBy   = "Terraform"
-  }
 }
 ```
 
@@ -153,3 +148,24 @@ Rewriting is **out-of-scope of this module** — perform it in your Helm chart
 values, Kustomize patches, or via a global Helm/Kustomize `image:` prefix.
 
 [Usage docs](./USAGE.md)
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The creation template is the exception, because `default_tags` cannot
+reach it. Its `resource_tags` are applied by ECR to the cache
+repositories it creates on first pull, which the provider never
+manages. So the module reads the provider's set back through
+`data.aws_default_tags` and uses it as `resource_tags` unchanged. The
+module adds no keys.
+
+## Upgrading to v0.27.0
+
+The creation template's `resource_tags` now track the provider's
+`default_tags`. If those equal today's `tags` input, the template
+plans no change. Either way, a change affects only cache repositories
+ECR creates **after** the apply. Existing ones keep their tags.

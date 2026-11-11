@@ -662,12 +662,21 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
 
 #### Tasks
 
-- [ ] 5.1 Add a **Tagging** section to each of the 23 module READMEs,
+- [x] 5.1 Add a **Tagging** section to each of the 23 module READMEs,
   replacing any `tags` input prose in the 14 that mention it. The
   section says that the module applies no generic tag input, that
   the stack's generated provider block must set `default_tags`, and
   which keys the module sets itself.
-- [ ] 5.2 Add a module-specific **Upgrading to v0.27.0** note to:
+  *As built:* the section sits ahead of each README's remote-state or
+  tests section. Every `tags = {...}` in a usage example is gone
+  (they would now fail as an undeclared argument). So are the two
+  prose references to `var.tags` (bedrock cost-tag, efs mount
+  targets). The pass also corrected stale plan-run counts in eleven
+  READMEs to the measured 3.7 numbers. Most were stale before this
+  IMPL (rds/cluster said 19, has 28). The security-group README's
+  33 runs / 22 rejections are now 34 / 21. One pre-existing MD040
+  in the node-group README is fixed.
+- [x] 5.2 Add a module-specific **Upgrading to v0.27.0** note to:
   - `eks/cluster`: the alias is replaced iff the old
     `tags.ClusterName != name`; the key is untouched.
   - `eks/managed-node-group`: `default_tags` must be byte-identical
@@ -681,6 +690,10 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
     not only in the upgrade note, since it is standing behavior.
   - `ecr` × 2: `resource_tags` now track `default_tags`, which
     affects future repositories only.
+  *As built:* six notes. The node-group note carries the pre-bump
+  checklist, whose step 3 now holds only because of the Phase 4
+  fix. The bedrock budget behavior is stated in its Tagging section
+  as well.
 - [ ] 5.3 Amend ADR-0001 in place (DESIGN-0029 OQ 9a). Add a dated
   note on the "Hoist derivation" paragraph: the tag set is still
   derived in Terragrunt, now delivered through the generated provider

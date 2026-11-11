@@ -62,11 +62,6 @@ module "org_registry" {
 
   name_prefix          = "platform"
   organizations_org_id = "o-abc1234567"
-
-  tags = {
-    Environment = "production"
-    ManagedBy   = "Terraform"
-  }
 }
 ```
 
@@ -231,9 +226,32 @@ Skipping step 1 leaves OCI artifact repos depending on a key
 that's scheduled for deletion — all repos under the managed prefixes
 become unreadable on day 30.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The two repository creation templates are the exception, because
+`default_tags` cannot reach them. Their `resource_tags` are applied
+by ECR to repositories it creates later, which the provider never
+manages. So the module reads the provider's set back through
+`data.aws_default_tags` and merges its own keys on top:
+`artifact_type` (`helm-chart` / `terraform-module`) and
+`managed_by = "platform"`. The module's keys win on a collision.
+
+## Upgrading to v0.27.0
+
+The creation templates' `resource_tags` now track the provider's
+`default_tags` plus the module's keys. If `default_tags` equal today's
+`tags` input, the templates plan no change. Either way, a change
+affects only repositories ECR creates **after** the apply. Existing
+repositories keep their tags.
+
 ## Tests
 
-- **Plan-only:** 8 `.tftest.hcl` files / 15 runs. Run via
+- **Plan-only:** 9 `.tftest.hcl` files / 17 runs. Run via
   `just tf test ecr/org-registry` (~1.5s, no LocalStack).
 - **Apply-against-LocalStack:** opt-in suite with a `plan_smoke`
   active run. The full apply is preserved as commented HCL pending

@@ -58,10 +58,6 @@ module "platform_claude_code" {
   }
 
   alert_emails = ["platform-ai-oncall@your-org.example"]
-
-  tags = {
-    Environment = "production"
-  }
 }
 ```
 
@@ -125,9 +121,9 @@ to each.
 
 ## Cost-allocation tag activation
 
-`var.cost_tag` is the load-bearing attribution dimension (applied to the
-IAM user, every AIP, the SNS topic, and the budget filter — not merged
-from `var.tags`). `cost_allocation_tag_activation` controls whether
+`var.cost_tag` is the load-bearing attribution dimension (set on the
+IAM user, its invoke policy, every AIP, the SNS topic, and the token
+alarm, and used as the budget's cost filter; see [Tagging](#tagging)). `cost_allocation_tag_activation` controls whether
 `cost_tag.key` is promoted to a cost-allocation dimension:
 
 - **`local`** (default) — the module creates an
@@ -191,6 +187,33 @@ state — destroying without revoking first orphans a live bearer token.
 `revoke` deactivates and deletes the credential in IAM, then purges the
 sink (IAM-before-sink), so no in-flight invocation can succeed against a
 stale key.
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets one key of its own: the `cost_tag` pair, the
+attribution dimension. It is set on the IAM user, its invoke policy,
+every application inference profile, the SNS topic, and the token
+alarm. A resource tag wins over a `default_tags` key with the same
+name, so `cost_tag` stays authoritative.
+
+**The budget carries only the provider default tags, not the cost
+tag** (IMPL-0026 OQ 6a). Its attribution is the cost-tag *filter*
+(`user:<key>$<value>`), which scopes what it counts. A tag on the
+budget object attributes nothing. This is standing behavior, not a
+migration artifact.
+
+## Upgrading to v0.27.0
+
+Set the stack's provider `default_tags` to exactly today's `tags`
+input, then bump. Expect in-place `~ tags` updates with `tags_all`
+unchanged. The cost-tag resources keep the `cost_tag` pair. The
+budget, which used to receive the `tags` input, now carries only the
+provider default set. That is deliberate: see [Tagging](#tagging).
 
 ## Tests
 

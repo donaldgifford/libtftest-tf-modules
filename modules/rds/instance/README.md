@@ -55,11 +55,6 @@ module "platform_db" {
   allowed_consumer_sg_ids = [
     "sg-0123456789abcdef0", # backend app SG
   ]
-
-  tags = {
-    Service     = "platform-api"
-    Environment = "production"
-  }
 }
 ```
 
@@ -79,8 +74,6 @@ module "analytics_db" {
   allocated_storage = 20
 
   allowed_consumer_sg_ids = ["sg-aaa1234567"]
-
-  tags = { Service = "analytics" }
 }
 ```
 
@@ -237,6 +230,15 @@ supply `-var 'final_snapshot_identifier=...'` or the precondition fails the plan
 Pick a stable identifier (e.g., `platform-db-final-20260712`) so the snapshot is
 findable later.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract (ADR-0020)
 
 This module **reads** the VPC facts at:
@@ -285,6 +287,6 @@ just tf test-localstack-pro rds/instance
 | `parameter_groups.tf` | Single `aws_db_parameter_group` |
 | `instance.tf` | `aws_db_instance` + storage surface + 5 preconditions |
 | `outputs.tf` | Instance contract + 7 proxy-composition outputs |
-| `tests/` | Plan-only `terraform test` suite (26 runs) |
+| `tests/` | Plan-only `terraform test` suite (35 runs) |
 | `tests-localstack/` | Community `plan_smoke` + FINDINGS.md |
 | `tests-localstack-pro/` | Pro apply suite (off by default) |

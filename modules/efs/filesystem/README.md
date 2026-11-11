@@ -52,11 +52,6 @@ module "platform_efs" {
   vpc_name            = "platform-prod"
   cluster_name        = "platform-prod"
   identifier_prefix   = "platform-efs"
-
-  tags = {
-    Service     = "platform-api"
-    Environment = "production"
-  }
 }
 ```
 
@@ -245,9 +240,9 @@ access to snapshots / backup vaults encrypted with it.
 The `aws_efs_mount_target` resource does not accept a `tags`
 attribute in the AWS Terraform provider (`hashicorp/aws ~> 6.2`)
 — mount targets inherit their ENI's tags from the AWS side and
-the provider exposes no override. The module's `var.tags` is
-applied to the filesystem + access points + security group + KMS
-key, but not the mount targets. If you need mount-target-specific
+the provider exposes no override. The provider's `default_tags`
+reach the filesystem + access points + security group + KMS key,
+but not the mount targets. If you need mount-target-specific
 tags, tag the underlying ENIs directly via AWS CLI.
 
 ### `creation_token` collision on destroy + immediate re-apply
@@ -284,6 +279,18 @@ keep `backup_policy_enabled = false` and configure AWS Backup
 elsewhere, or to provision a non-default vault out-of-band and
 attach this filesystem's backup-plan selection via a separate
 plan-resource module (future IMPL).
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets one key of its own: each access point's `Name`, which
+is its `access_points` map key. It wins over a `default_tags` `Name`.
+Mount targets take no tags at all (see
+[Mount target tags](#mount-target-tags)).
 
 ## Remote-state key contract (ADR-0020)
 
@@ -326,5 +333,5 @@ just tf test-localstack efs/filesystem
 | `access_points.tf` | `aws_efs_access_point` for_each over `var.access_points` |
 | `backup.tf` | Gated `aws_efs_backup_policy` |
 | `outputs.tf` | 9 consumer-contract outputs |
-| `tests/` | Plan-only `terraform test` suite (23 runs) |
+| `tests/` | Plan-only `terraform test` suite (25 runs) |
 | `tests-localstack/` | Gap-discovery apply suite (plan_smoke fall-back) + FINDINGS.md |

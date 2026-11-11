@@ -132,6 +132,15 @@ admin entry (see the cluster module's README), so a wrong or absent entries
 stack can never lock the fleet out of a fresh cluster. Once this stack applies,
 the declared map is the durable access surface.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract (ADR-0020)
 
 This module reads the cluster stack's state at the account-scoped key:

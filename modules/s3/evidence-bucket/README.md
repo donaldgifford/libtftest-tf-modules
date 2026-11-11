@@ -99,6 +99,17 @@ excluded from the byte-identical diff guard; lock facts ride the
 evidence-only `object_lock` output so the shared baseline shape is
 untouched (DESIGN-0022 OQ 7a).
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own. Its resources live in the
+shared `s3/internal/core` child module, which inherits the same
+provider and therefore the same `default_tags`.
+
 ## Remote-state key contract
 
 A normal named stack at the standard ADR-0020 shape —
