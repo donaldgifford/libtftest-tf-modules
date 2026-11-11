@@ -273,7 +273,7 @@ The five modules where removal is not a line deletion: the
     `resource_tags = data.aws_default_tags.this.tags`.
   - Delete the plain sites (`credentials.tf`, `iam.tf`).
   - Remove the variable.
-- [ ] 2.5 `eks/cluster`:
+- [x] 2.5 `eks/cluster`:
   - Remove the **typed object** (`variables.tf:129-138`).
   - `kms.tf:30` description and `kms.tf:40` alias use `var.name`.
   - Delete the remaining plain sites (`access_entries.tf`,

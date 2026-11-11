@@ -18,7 +18,6 @@ data "aws_iam_policy_document" "cluster_assume_role" {
 resource "aws_iam_role" "cluster" {
   name               = "${var.name}-cluster"
   assume_role_policy = data.aws_iam_policy_document.cluster_assume_role.json
-  tags               = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "cluster" {
@@ -32,7 +31,6 @@ resource "aws_iam_role_policy_attachment" "cluster" {
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = var.cluster_log_retention_in_days
-  tags              = var.tags
 }
 
 resource "aws_eks_cluster" "this" {
@@ -40,7 +38,6 @@ resource "aws_eks_cluster" "this" {
   version                   = var.eks_version
   role_arn                  = aws_iam_role.cluster.arn
   enabled_cluster_log_types = var.enabled_cluster_log_types
-  tags                      = var.tags
 
   access_config {
     authentication_mode = "API_AND_CONFIG_MAP"

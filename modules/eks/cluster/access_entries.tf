@@ -21,7 +21,6 @@ resource "aws_eks_access_entry" "sso" {
   kubernetes_groups = var.sso_eks_access_entry.kubernetes_groups
   user_name         = var.sso_eks_access_entry.user_name
   type              = var.sso_eks_access_entry.type
-  tags              = var.tags
 }
 
 resource "aws_eks_access_policy_association" "sso" {

@@ -117,6 +117,19 @@ run "default_plan" {
     error_message = "default config must create exactly one module-managed KMS alias"
   }
 
+  # DESIGN-0029 OQ 3a: the alias and key description name the cluster from
+  # var.name (formerly var.tags.ClusterName), like every other resource in
+  # the module and every other module's KMS alias.
+  assert {
+    condition     = aws_kms_alias.cluster[0].name == "alias/eks/libtftest"
+    error_message = "the module-managed KMS alias must be alias/eks/<var.name>"
+  }
+
+  assert {
+    condition     = aws_kms_key.cluster[0].description == "EKS envelope encryption CMK for cluster libtftest"
+    error_message = "the module-managed KMS key description must name the cluster from var.name"
+  }
+
   # Node SG vpc_id resolves from the (stubbed) VPC remote state.
   assert {
     condition     = aws_security_group.nodes.vpc_id == "vpc-libtftest"
