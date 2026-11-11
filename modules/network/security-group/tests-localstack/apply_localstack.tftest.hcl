@@ -204,6 +204,14 @@ run "verify_readback" {
     condition     = output.name_tag == "gateway-frontend-public"
     error_message = "the friendly Name tag must read back"
   }
+
+  # The module declares no tags input (DESIGN-0029): the standard set
+  # rides the provider's default_tags. Reading it back from the EC2 API
+  # proves it reached the real resource, not just the provider's plan.
+  assert {
+    condition     = output.default_tags == { ManagedBy = "terraform", Suite = "network-security-group" }
+    error_message = "the provider default_tags must read back from the EC2 API alongside the module's Name"
+  }
 }
 
 # The restricted-egress posture applied for real: no all-egress rule,

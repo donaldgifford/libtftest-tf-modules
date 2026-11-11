@@ -13,6 +13,14 @@ output "name_tag" {
   value       = data.aws_security_group.this.tags["Name"]
 }
 
+output "default_tags" {
+  description = "The provider default_tags keys (DESIGN-0029) as the API reports them on the security group. Null when a key is absent, so the caller's assert fails rather than erroring."
+  value = {
+    ManagedBy = lookup(data.aws_security_group.this.tags, "ManagedBy", null)
+    Suite     = lookup(data.aws_security_group.this.tags, "Suite", null)
+  }
+}
+
 output "expected_vpc_id" {
   description = "Echo of the expected VPC id, so a caller can compare without threading it back itself."
   value       = var.vpc_id

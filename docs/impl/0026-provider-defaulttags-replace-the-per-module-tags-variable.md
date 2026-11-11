@@ -408,12 +408,23 @@ the variable from returning.
   and bedrock's `setup.tftest.hcl`. `network/vpc-lookup` is excluded:
   it never had a `tags` input and creates no resources. No apply
   suite asserted an exact tag set, so none needed an assert edit.
-- [ ] 3.4 Apply-tier read-backs. `iam/role` is already re-sourced in
+- [x] 3.4 Apply-tier read-backs. `iam/role` is already re-sourced in
   1.9. Add to:
   - `network/security-group`: extend `fixtures/verify` to output a
     default-tag key alongside `Name`.
   - `secretsmanager/secret`: read tags through its metadata-only
     fixture. **Never the value-bearing data source.**
+
+  *As built:* each fixture gained a `default_tags` output, an object
+  of `ManagedBy` + `Suite` built with `lookup(..., null)` so a
+  missing key fails the assert instead of erroring. Its run asserts
+  the exact pair. The secret reads tags through
+  `data.aws_secretsmanager_secret`, the metadata data source (arn,
+  name, KMS, policy, tags), which carries no value. Live on 4.4,
+  both pass, and both are mutation-checked: dropping the suite's
+  provider `default_tags` reds exactly the new assert
+  (`verify_readback`, `verify_current`). That also proves the EC2
+  and SM data sources return default-tag keys in `tags`.
 - [ ] 3.5 Run the Community apply suites live on token-free
   `localstack/localstack:4.4` (OQ 4a): `iam/role`,
   `network/security-group`, `secretsmanager/secret`, and every other

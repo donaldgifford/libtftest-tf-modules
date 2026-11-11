@@ -28,6 +28,13 @@ data "aws_secretsmanager_secret_versions" "this" {
   secret_id = var.secret_id
 }
 
+# Tag read-back (DESIGN-0029 / IMPL-0026 3.4). aws_secretsmanager_secret
+# (no _version suffix) is the metadata data source: arn, name, KMS key,
+# policy, tags. It carries no secret value, so OQ 6a still holds.
+data "aws_secretsmanager_secret" "this" {
+  arn = var.secret_id
+}
+
 locals {
   current = [
     for v in data.aws_secretsmanager_secret_versions.this.versions :
@@ -43,4 +50,12 @@ output "current_version_id" {
 output "version_count" {
   description = "Total number of versions the API reports (informational — recorded in FINDINGS.md, not hard-asserted; stage-retention behavior is emulator-specific)."
   value       = length(data.aws_secretsmanager_secret_versions.this.versions)
+}
+
+output "default_tags" {
+  description = "The provider default_tags keys (DESIGN-0029) as Secrets Manager reports them on the secret. Null when a key is absent, so the caller's assert fails rather than erroring."
+  value = {
+    ManagedBy = lookup(data.aws_secretsmanager_secret.this.tags, "ManagedBy", null)
+    Suite     = lookup(data.aws_secretsmanager_secret.this.tags, "Suite", null)
+  }
 }

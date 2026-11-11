@@ -88,6 +88,13 @@ run "verify_current" {
     condition     = output.current_version_id != ""
     error_message = "the write-only initial version must be staged AWSCURRENT"
   }
+
+  # The module declares no tags input (DESIGN-0029): the standard set
+  # rides the provider's default_tags, read back here through metadata.
+  assert {
+    condition     = output.default_tags == { ManagedBy = "terraform", Suite = "secretsmanager-secret" }
+    error_message = "the provider default_tags must read back from Secrets Manager"
+  }
 }
 
 run "rotate" {
