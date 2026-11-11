@@ -40,4 +40,10 @@ run "creation_template_carries_default_tags" {
     condition     = aws_ecr_repository_creation_template.pull_through.resource_tags == tomap({ DefaultTagProbe = "design-0029" })
     error_message = "the creation template's resource_tags must be exactly the provider default_tags"
   }
+
+  # A provider-managed resource gets the same set implicitly (tags_all).
+  assert {
+    condition     = aws_iam_policy.node_pull_through[0].tags_all["DefaultTagProbe"] == "design-0029"
+    error_message = "provider default_tags must reach the node pull-through IAM policy (tags_all)"
+  }
 }

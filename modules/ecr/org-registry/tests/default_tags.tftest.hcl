@@ -52,4 +52,10 @@ run "creation_templates_carry_default_tags" {
     })
     error_message = "tf-modules resource_tags must be the provider default_tags plus the module's artifact_type/managed_by keys"
   }
+
+  # A provider-managed resource gets the same set implicitly (tags_all).
+  assert {
+    condition     = aws_kms_key.ecr_oci[0].tags_all["DefaultTagProbe"] == "design-0029" && aws_iam_role.ecr_template.tags_all["DefaultTagProbe"] == "design-0029"
+    error_message = "provider default_tags must reach the KMS key and the template IAM role (tags_all)"
+  }
 }
