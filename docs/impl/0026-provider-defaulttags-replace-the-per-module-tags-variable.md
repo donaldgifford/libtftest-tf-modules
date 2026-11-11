@@ -320,10 +320,22 @@ The five modules where removal is not a line deletion: the
   - `eks/managed-node-group`: plan + apply
   - `ecr` × 2: apply
   - `security-group`: apply line 113
-- [ ] 2.9 Regenerate `USAGE.md` for the 5 modules through
+- [x] 2.9 Regenerate `USAGE.md` for the 5 modules through
   `just static`.
 
 #### Success Criteria
+
+**Met 2026-11-11.**
+
+- Fleet-wide leftovers: zero.
+- Plan suites: `eks/cluster` 13 (equal to baseline), node-group 24,
+  `ecr/org-registry` 16 (+1 `default_tags` run),
+  `ecr/pull-through-cache` 10 (+1), `security-group` 32 (−1 guard
+  run). Zero warnings.
+- New assertions mutation-checked: 2.2 node-group, 2.3 / 2.4 ECR
+  templates, 2.5 KMS alias.
+- Go suite: build, vet, and `golangci-lint` clean.
+- `just static` passed.
 
 - `grep -rn 'var\.tags\|variable "tags"' modules/` returns **zero**
   lines fleet-wide.
