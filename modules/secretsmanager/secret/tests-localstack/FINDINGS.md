@@ -50,3 +50,19 @@ auth token, no named volume.
   then fails with "cannot install package into target directory …
   because it is a symlink". Fix: `rm -rf .terraform .terraform.lock.hcl`
   in the module and re-run.
+
+## DESIGN-0029 / IMPL-0026 — provider `default_tags` (2026-11-11)
+
+The module no longer declares a `tags` input. The standard tag set
+arrives through the provider's `default_tags`, which this suite's
+provider block now sets (`ManagedBy`, `Suite`), so the apply
+exercises the real tagging path.
+
+- **Image:** token-free `localstack/localstack:4.4` (Community 4.4.0),
+  no auth token.
+- **Services:** one container for all eight Community suites in this
+  IMPL, with `SERVICES=iam,sts,ec2,s3,sqs,sns,events,secretsmanager`.
+  That is a superset of this suite's recorded list.
+- **Result:** 4/4 green.
+
+`verify_current` now also asserts the `default_tags` pair reads back through `data.aws_secretsmanager_secret`, the metadata data source, which carries no secret value. OQ 6a holds (IMPL-0026 3.4). Mutation-checked live: dropping the provider's `default_tags` reds exactly that assert.

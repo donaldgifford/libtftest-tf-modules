@@ -118,3 +118,16 @@ in `apply_localstack.tftest.hcl`; when Organizations also lands, switch
 that run to `cost_allocation_tag_activation = "local"` against a seeded
 org so the guardrail precondition exercises a real management-account
 check.
+
+## DESIGN-0029 / IMPL-0026 — provider `default_tags` (2026-11-11)
+
+> [!NOTE]
+> **Pending re-run (IMPL-0026 3.5, authored 2026-11-11).** The module no
+> longer declares a `tags` input. This suite's provider block now sets
+> `default_tags` (`ManagedBy`, `Suite`) instead. The apply has **not been
+> executed live** with that change: this suite's baseline is LocalStack
+> Pro, and IMPL-0026 deliberately adds no Pro dependency (OQ 3/4). Without
+> a fresh before-state on the same tier, a failure could not be told apart
+> from an emulator gap. Run `just tf test-localstack bedrock/claude-code` on Pro and
+> record the result here. The offline plan gate, including
+> `tests/default_tags.tftest.hcl`, is green either way.

@@ -165,3 +165,16 @@ suite passing 3/3 against LocalStack Pro 2026.7.0 (named volume). If a future
 LocalStack release registers managed rotation on the RDS secret, drop the
 null override and add an apply-time assertion on
 `rotation_rules[0].automatically_after_days`.
+
+## DESIGN-0029 / IMPL-0026 — provider `default_tags` (2026-11-11)
+
+> [!NOTE]
+> **Pending re-run (IMPL-0026 3.5, authored 2026-11-11).** The module no
+> longer declares a `tags` input. This suite's provider block now sets
+> `default_tags` (`ManagedBy`, `Suite`) instead. The apply has **not been
+> executed live** with that change: this suite's baseline is LocalStack
+> Pro, and IMPL-0026 deliberately adds no Pro dependency (OQ 3/4). Without
+> a fresh before-state on the same tier, a failure could not be told apart
+> from an emulator gap. Run `just tf test-localstack rds/serverless` on Pro and
+> record the result here. The offline plan gate, including
+> `tests/default_tags.tftest.hcl`, is green either way.

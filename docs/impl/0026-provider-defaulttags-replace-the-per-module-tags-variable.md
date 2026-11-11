@@ -425,13 +425,41 @@ the variable from returning.
   provider `default_tags` reds exactly the new assert
   (`verify_readback`, `verify_current`). That also proves the EC2
   and SM data sources return default-tag keys in `tags`.
-- [ ] 3.5 Run the Community apply suites live on token-free
+- [x] 3.5 Run the Community apply suites live on token-free
   `localstack/localstack:4.4` (OQ 4a): `iam/role`,
   `network/security-group`, `secretsmanager/secret`, and every other
   Community suite whose provider block changed in 3.3. Record the
   date, image, and result in each `FINDINGS.md`. For the Pro suites
   (eks × 4, rds Pro), add a "default_tags change authored, live
   re-run pending" note, matching IMPL-0020's deferral pattern.
+
+  *As built (2026-11-11):* eight suites have a recorded 4.4 baseline,
+  and all eight are green on one token-free 4.4.0 container
+  (`SERVICES=iam,sts,ec2,s3,sqs,sns,events,secretsmanager`, a
+  superset of each suite's list):
+
+  | Suite | Runs |
+  | --- | --- |
+  | `iam/role` | 5 |
+  | `network/security-group` | 4 |
+  | `secretsmanager/secret` | 4 |
+  | `s3/access-logs-bucket` | 1 |
+  | `s3/bucket` | 3 |
+  | `s3/events-bucket` | 3 |
+  | `s3/evidence-bucket` | 1 |
+  | `s3/mirror-bucket` | 3 |
+
+  Fourteen suites have only a Pro baseline, and each carries the
+  pending note:
+
+  - `bedrock/claude-code`
+  - `ecr/{org-registry,pull-through-cache}`
+  - `efs/filesystem`
+  - `eks` × 5
+  - `rds` × 5
+
+  The note names the exact recipe. The four RDS `plan_smoke` suites
+  were re-run offline, all green.
 - [ ] 3.6 Removal gate (OQ 2, resolved as an OPA-only variant): add
   `policy/tags.rego`, a `deny` on any `input.variable.tags` (conftest
   hcl2 shape, probed 2026-11-11: `variable "tags"` parses to
