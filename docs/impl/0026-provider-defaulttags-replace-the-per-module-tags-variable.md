@@ -281,12 +281,23 @@ The five modules where removal is not a line deletion: the
   - Rewrite the `locals.tf:5` comment.
   - Add a plan assertion pinning
     `aws_kms_alias.cluster[0].name == "alias/eks/${var.name}"`.
-- [ ] 2.6 `eks/cluster/test` (Go): delete
+- [x] 2.6 `eks/cluster/test` (Go): delete
   `tc.SetVar("tags", …)` (`helpers_test.go:94-100`). An undeclared
   `-var` is a hard error (DESIGN-0029 P7). Then run
   `go build -tags integration ./... && go vet -tags integration ./...`
   in `modules/eks/cluster/test`. No CI gate compiles this suite.
   The exact output-count assertion is unaffected (no output changes).
+  **As built:** `go build` + `go vet -tags integration` clean,
+  `golangci-lint` 0 issues, and the go-review found nothing in the
+  diff. The review **surfaced a pre-existing bug (out of scope,
+  follow-up):** `seedVPCState` still writes the **region-scoped**
+  key `<region>/vpc/<name>/terraform.tfstate`, and the suite sets
+  none of the IMPL-0015 globals (`account_name`, `account_id`,
+  `remote_state_bucket_region`, `deploy_role_name`). The module has
+  read the account-scoped key with `assume_role` since IMPL-0015, so
+  a live run of this suite fails at plan (`Unable to find remote
+  state`), and has failed since IMPL-0015. Nothing noticed, because
+  no gate runs it.
 - [ ] 2.7 `network/security-group`:
   - Remove the variable **with its `Name` validation**
     (`variables.tf:39-50`).
