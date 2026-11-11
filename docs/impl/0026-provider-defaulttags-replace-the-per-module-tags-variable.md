@@ -192,7 +192,7 @@ mechanically. No new resources or data sources.
   run-level, in `tests/` and `tests-localstack*/`. This includes
   the `eks/addons` typed-object literals (4 plan files + apply) and
   the RDS Pro apply suites (`rds/cluster`, `rds/instance`).
-- [ ] 1.9 Re-source the pass-through assertions that would go
+- [x] 1.9 Re-source the pass-through assertions that would go
   vacuous or red. Add `default_tags` to **that file's** provider
   block, then assert on `tags_all` instead of `tags`:
   - `iam/role/tests/trust.tftest.hcl:180-200`
