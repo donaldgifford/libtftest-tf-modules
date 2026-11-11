@@ -399,8 +399,15 @@ the variable from returning.
   the collision run instead. The bedrock run also pins the OQ 6a
   consequence: the budget shows the colliding default `Team`,
   because it carries no module tags.
-- [ ] 3.3 Add `default_tags` to every `tests-localstack*/`
+- [x] 3.3 Add `default_tags` to every `tests-localstack*/`
   provider block, so each apply exercises the real path.
+  *As built:* 26 files (25 new, plus `iam/role` from 1.9), each set
+  to `{ ManagedBy = "terraform", Suite = "<service>-<module>" }`.
+  The new files cover every Community and Pro apply suite, the
+  four RDS Community `plan_smoke` suites (re-run offline, all green),
+  and bedrock's `setup.tftest.hcl`. `network/vpc-lookup` is excluded:
+  it never had a `tags` input and creates no resources. No apply
+  suite asserted an exact tag set, so none needed an assert edit.
 - [ ] 3.4 Apply-tier read-backs. `iam/role` is already re-sourced in
   1.9. Add to:
   - `network/security-group`: extend `fixtures/verify` to output a

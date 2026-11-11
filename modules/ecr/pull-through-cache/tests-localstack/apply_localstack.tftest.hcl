@@ -47,6 +47,12 @@ provider "aws" {
     secretsmanager = "http://localhost:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "ecr-pull-through-cache" }
+  }
 }
 
 variables {

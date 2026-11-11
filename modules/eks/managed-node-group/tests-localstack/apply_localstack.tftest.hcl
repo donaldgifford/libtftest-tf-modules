@@ -35,6 +35,12 @@ provider "aws" {
     s3             = "http://s3.localhost.localstack.cloud:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "eks-managed-node-group" }
+  }
 }
 
 # Declarations for the Terragrunt globals this file references via var.* in the
