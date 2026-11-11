@@ -29,30 +29,30 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 
 | Module | Version | Impl | Plan tests | LocalStack | Pro |
 |--------|---------|------|:----------:|:----------:|:---:|
-| [`bedrock/claude-code`](modules/bedrock/claude-code) | `v0.10.0` | IMPL-0009 | 7 | apply | — |
-| [`ecr/org-registry`](modules/ecr/org-registry) | `v0.7.0` | IMPL-0006 | 8 | plan-only | — |
-| [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `v0.20.0` | IMPL-0005 | 7 | plan-only | — |
-| [`efs/filesystem`](modules/efs/filesystem) | `v0.17.0` | IMPL-0008 | 9 | apply | — |
-| [`eks/access-entries`](modules/eks/access-entries) | `v0.21.0` | IMPL-0020 | 3 | apply | — |
-| [`eks/addons`](modules/eks/addons) | `v0.17.0` | IMPL-0003 | 4 | apply | — |
-| [`eks/cluster`](modules/eks/cluster) | `v0.21.0` | IMPL-0001 | 4 | apply | — |
-| [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.21.0` | IMPL-0002 | 5 | apply | — |
-| [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.24.0` | IMPL-0004 | 5 | apply | — |
-| [`iam/role`](modules/iam/role) | `v0.25.3` | IMPL-0022 | 4 | apply | — |
-| [`network/security-group`](modules/network/security-group) | `v0.25.0` | IMPL-0023 | 3 | apply | — |
+| [`bedrock/claude-code`](modules/bedrock/claude-code) | `unreleased` | IMPL-0009 | 8 | apply | — |
+| [`ecr/org-registry`](modules/ecr/org-registry) | `unreleased` | IMPL-0006 | 9 | plan-only | — |
+| [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `unreleased` | IMPL-0005 | 8 | plan-only | — |
+| [`efs/filesystem`](modules/efs/filesystem) | `unreleased` | IMPL-0008 | 10 | apply | — |
+| [`eks/access-entries`](modules/eks/access-entries) | `unreleased` | IMPL-0020 | 4 | apply | — |
+| [`eks/addons`](modules/eks/addons) | `unreleased` | IMPL-0003 | 5 | apply | — |
+| [`eks/cluster`](modules/eks/cluster) | `unreleased` | IMPL-0001 | 5 | apply | — |
+| [`eks/managed-node-group`](modules/eks/managed-node-group) | `unreleased` | IMPL-0002 | 6 | apply | — |
+| [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `unreleased` | IMPL-0004 | 6 | apply | — |
+| [`iam/role`](modules/iam/role) | `unreleased` | IMPL-0022 | 5 | apply | — |
+| [`network/security-group`](modules/network/security-group) | `unreleased` | IMPL-0023 | 4 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
-| [`rds/cluster`](modules/rds/cluster) | `v0.18.0` | IMPL-0012 | 6 | plan-only | ✅ |
-| [`rds/instance`](modules/rds/instance) | `v0.18.0` | IMPL-0011 | 7 | plan-only | ✅ |
-| [`rds/proxy`](modules/rds/proxy) | `v0.18.1` | IMPL-0010 | 5 | plan-only | ✅ |
-| [`rds/read-replica`](modules/rds/read-replica) | `v0.17.0` | IMPL-0013 | 3 | plan-only | ✅ |
-| [`rds/serverless`](modules/rds/serverless) | `v0.18.0` | IMPL-0007 | 7 | apply | — |
-| [`s3/access-logs-bucket`](modules/s3/access-logs-bucket) | `v0.19.0` | IMPL-0018 | 3 | apply | — |
-| [`s3/bucket`](modules/s3/bucket) | `v0.22.0` | IMPL-0018 | 4 | apply | — |
-| [`s3/events-bucket`](modules/s3/events-bucket) | `v0.22.0` | IMPL-0018 | 4 | apply | — |
-| [`s3/evidence-bucket`](modules/s3/evidence-bucket) | `v0.22.0` | IMPL-0021 | 4 | apply | — |
-| [`s3/internal/core`](modules/s3/internal/core) | `v0.22.0` | IMPL-0018 | 7 | — | — |
-| [`s3/mirror-bucket`](modules/s3/mirror-bucket) | `v0.26.0` | IMPL-0025 | 4 | apply | — |
-| [`secretsmanager/secret`](modules/secretsmanager/secret) | `v0.20.0` | IMPL-0019 | 4 | apply | — |
+| [`rds/cluster`](modules/rds/cluster) | `unreleased` | IMPL-0012 | 7 | plan-only | ✅ |
+| [`rds/instance`](modules/rds/instance) | `unreleased` | IMPL-0011 | 8 | plan-only | ✅ |
+| [`rds/proxy`](modules/rds/proxy) | `unreleased` | IMPL-0010 | 6 | plan-only | ✅ |
+| [`rds/read-replica`](modules/rds/read-replica) | `unreleased` | IMPL-0013 | 4 | plan-only | ✅ |
+| [`rds/serverless`](modules/rds/serverless) | `unreleased` | IMPL-0007 | 8 | apply | — |
+| [`s3/access-logs-bucket`](modules/s3/access-logs-bucket) | `unreleased` | IMPL-0018 | 3 | apply | — |
+| [`s3/bucket`](modules/s3/bucket) | `unreleased` | IMPL-0018 | 4 | apply | — |
+| [`s3/events-bucket`](modules/s3/events-bucket) | `unreleased` | IMPL-0018 | 4 | apply | — |
+| [`s3/evidence-bucket`](modules/s3/evidence-bucket) | `unreleased` | IMPL-0021 | 4 | apply | — |
+| [`s3/internal/core`](modules/s3/internal/core) | `unreleased` | IMPL-0018 | 8 | — | — |
+| [`s3/mirror-bucket`](modules/s3/mirror-bucket) | `unreleased` | IMPL-0025 | 4 | apply | — |
+| [`secretsmanager/secret`](modules/secretsmanager/secret) | `unreleased` | IMPL-0019 | 5 | apply | — |
 
 <!-- END_MODULE_TABLE -->
 
