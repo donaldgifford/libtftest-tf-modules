@@ -167,7 +167,7 @@ mechanically. No new resources or data sources.
   plain site. Reword `association_tags`'s description
   (`variables.tf:171`): it now merges on top of provider
   `default_tags`, not "separate from var.tags".
-- [ ] 1.5 `iam/role` (`main.tf`) and `secretsmanager/secret`
+- [x] 1.5 `iam/role` (`main.tf`) and `secretsmanager/secret`
   (`main.tf`): remove the variable and the plain site.
 - [ ] 1.6 RDS × 5: remove the variable and every plain site in
   - `rds/cluster` (9: `cluster.tf`, `instance.tf`, `kms.tf`,

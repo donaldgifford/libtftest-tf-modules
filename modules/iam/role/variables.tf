@@ -257,15 +257,3 @@ variable "inline_policies" {
 
   nullable = false
 }
-
-#--------------------------------------------------------------
-# Tags
-#--------------------------------------------------------------
-
-variable "tags" {
-  description = "Tags applied to the IAM role."
-  type        = map(string)
-  default     = {}
-
-  nullable = false
-}
