@@ -26,7 +26,6 @@ resource "aws_rds_cluster_instance" "this" {
   performance_insights_enabled    = var.performance_insights_enabled
   performance_insights_kms_key_id = var.performance_insights_enabled ? local.kms_key_arn : null
   publicly_accessible             = var.publicly_accessible
-  tags                            = var.tags
 
   lifecycle {
     precondition {

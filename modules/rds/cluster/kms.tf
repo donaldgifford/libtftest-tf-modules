@@ -14,7 +14,6 @@ resource "aws_kms_key" "this" {
   description             = "KMS key for Aurora provisioned cluster ${var.identifier_prefix} (storage at rest + master user secret per IMPL-0007 Q12)"
   enable_key_rotation     = true
   deletion_window_in_days = 30
-  tags                    = var.tags
 
   lifecycle {
     prevent_destroy = true

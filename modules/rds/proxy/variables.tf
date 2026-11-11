@@ -201,9 +201,3 @@ variable "debug_logging" {
   type        = bool
   default     = false
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (proxy, target group, endpoint, IAM role, security group)."
-  type        = map(string)
-  default     = {}
-}

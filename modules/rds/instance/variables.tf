@@ -300,9 +300,3 @@ variable "enhanced_monitoring_role_arn" {
   type        = string
   default     = null
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (instance, subnet group, security group, parameter group, KMS key)."
-  type        = map(string)
-  default     = {}
-}

@@ -51,7 +51,6 @@ resource "aws_db_instance" "this" {
   storage_encrypted                   = true
   storage_throughput                  = var.storage_throughput
   storage_type                        = var.storage_type
-  tags                                = var.tags
   username                            = var.master_username
 
   lifecycle {

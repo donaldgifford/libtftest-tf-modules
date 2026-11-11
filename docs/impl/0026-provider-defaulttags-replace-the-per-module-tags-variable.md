@@ -169,7 +169,7 @@ mechanically. No new resources or data sources.
   `default_tags`, not "separate from var.tags".
 - [x] 1.5 `iam/role` (`main.tf`) and `secretsmanager/secret`
   (`main.tf`): remove the variable and the plain site.
-- [ ] 1.6 RDS × 5: remove the variable and every plain site in
+- [x] 1.6 RDS × 5: remove the variable and every plain site in
   - `rds/cluster` (9: `cluster.tf`, `instance.tf`, `kms.tf`,
     `network.tf` × 4, `parameter_groups.tf` × 2)
   - `rds/instance` (7)
