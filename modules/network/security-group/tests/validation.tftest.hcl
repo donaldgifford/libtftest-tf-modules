@@ -451,16 +451,6 @@ run "world_open_egress_is_permitted_by_design" {
 # Identity
 #--------------------------------------------------------------
 
-run "caller_supplied_name_tag_rejected" {
-  command = plan
-
-  variables {
-    tags = { Name = "hand-set-name" }
-  }
-
-  expect_failures = [var.tags]
-}
-
 run "malformed_name_rejected" {
   command = plan
 

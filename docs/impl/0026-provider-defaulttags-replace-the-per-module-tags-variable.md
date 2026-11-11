@@ -298,7 +298,7 @@ The five modules where removal is not a line deletion: the
   a live run of this suite fails at plan (`Unable to find remote
   state`), and has failed since IMPL-0015. Nothing noticed, because
   no gate runs it.
-- [ ] 2.7 `network/security-group`:
+- [x] 2.7 `network/security-group`:
   - Remove the variable **with its `Name` validation**
     (`variables.tf:39-50`).
   - The four `merge(var.tags, { Name = … })` sites in `main.tf`
@@ -309,6 +309,12 @@ The five modules where removal is not a line deletion: the
   - Rewrite `security_group.tftest.hcl:189-207` ("caller tags reach
     the SG / every rule / the all-egress rule") to provider
     `default_tags` + `tags_all`, keeping all three targets.
+
+  **As built:** plan 33 → 32 (only the guard run removed). The
+  validation suite's header carries no total rule count, so there
+  was nothing to update there. The README's "33 runs / 22
+  rejections" line is corrected in Phase 5 (5.1), after Phase 3
+  adds `default_tags.tftest.hcl` and moves the count again.
 - [ ] 2.8 Test-input cleanup for these 5, as in 1.8:
   - `eks/cluster`: 4 plan files + apply
   - `eks/managed-node-group`: plan + apply

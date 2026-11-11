@@ -7,6 +7,12 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029); the module sets only Name itself.
+  default_tags {
+    tags = { ManagedBy = "terraform", Component = "gateway" }
+  }
 }
 
 variables {
@@ -182,29 +188,28 @@ run "additive_egress_posture_rejected" {
   expect_failures = [var.egress_rules]
 }
 
-run "caller_tags_ride_every_resource" {
+run "default_tags_ride_every_resource" {
   command = plan
 
   variables {
-    tags = { ManagedBy = "terraform", Component = "gateway" }
     ingress_rules = {
       corp = { description = "corp", from_port = 443, cidr_ipv4 = "203.0.113.0/24" }
     }
   }
 
   assert {
-    condition     = aws_security_group.this.tags["ManagedBy"] == "terraform" && aws_security_group.this.tags["Component"] == "gateway"
-    error_message = "caller tags must reach the security group"
+    condition     = aws_security_group.this.tags_all["ManagedBy"] == "terraform" && aws_security_group.this.tags_all["Component"] == "gateway"
+    error_message = "provider default_tags must reach the security group (tags_all)"
   }
 
   assert {
-    condition     = aws_vpc_security_group_ingress_rule.this["corp"].tags["Component"] == "gateway"
-    error_message = "caller tags must reach every rule, not just the SG"
+    condition     = aws_vpc_security_group_ingress_rule.this["corp"].tags_all["Component"] == "gateway"
+    error_message = "provider default_tags must reach every rule, not just the SG (tags_all)"
   }
 
   assert {
-    condition     = aws_vpc_security_group_egress_rule.all[0].tags["Component"] == "gateway"
-    error_message = "caller tags must reach the all-egress rule too"
+    condition     = aws_vpc_security_group_egress_rule.all[0].tags_all["Component"] == "gateway"
+    error_message = "provider default_tags must reach the all-egress rule too (tags_all)"
   }
 }
 
