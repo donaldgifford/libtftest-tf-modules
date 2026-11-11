@@ -208,4 +208,19 @@ run "default_plan" {
     })
     error_message = "volume tag_specifications must be byte-identical to the pre-DESIGN-0029 rendering (default_tags + module-set Name) — a diff here rolls every node"
   }
+
+  # Zero-diff guard for the template's own tags (IMPL-0026 Phase 4). In
+  # v0.26.0 this was `tags = var.tags`, so with the same map passed as
+  # tags it rendered exactly this. If it differs, `tags` changes on
+  # upgrade, the provider's CustomizeDiff marks latest_version
+  # known-after-apply, and the node group plans
+  # `launch_template.version -> (known after apply)`. Literal on purpose.
+  assert {
+    condition = aws_launch_template.node.tags == tomap({
+      Account     = "libtftest"
+      ClusterName = "libtftest-cluster"
+      Environment = "test"
+    })
+    error_message = "the launch template's own tags must equal the provider default set (what v0.26.0 rendered from var.tags), or the upgrade plans latest_version as known-after-apply"
+  }
 }

@@ -24,6 +24,16 @@ resource "aws_launch_template" "node" {
   # AL2023 nodeadm + gVisor install + containerd drop-in multipart MIME
   # body, rendered by templatefile() in user_data.tf at the use site.
   user_data = base64encode(local.user_data_body)
+  # The template's own tags mirror the provider default set explicitly,
+  # even though default_tags would fill tags_all anyway. Through v0.26.0
+  # this was `tags = var.tags`. Dropping it would change `tags` (X -> {})
+  # on upgrade, and the provider's CustomizeDiff marks latest_version
+  # known-after-apply on ANY tags change, so the node group would plan
+  # `launch_template.version = N -> (known after apply)`. Mirroring keeps
+  # `tags` unchanged when the new default_tags equal the old var.tags
+  # (DESIGN-0029 rollout step 3), so the upgrade plans zero-diff here
+  # (IMPL-0026 Phase 4).
+  tags = data.aws_default_tags.this.tags
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.node.arn
