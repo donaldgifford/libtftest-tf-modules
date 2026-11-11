@@ -18,7 +18,7 @@ resource "aws_efs_access_point" "this" {
   for_each = var.access_points
 
   file_system_id = aws_efs_file_system.this.id
-  tags           = merge(var.tags, { Name = each.key })
+  tags           = { Name = each.key }
 
   posix_user {
     uid            = each.value.posix_user.uid
