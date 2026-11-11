@@ -1,7 +1,7 @@
 ---
 id: IMPL-0026
 title: "Provider default_tags replace the per-module tags variable"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-11-11
 ---
@@ -726,7 +726,7 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
   condition, and step 2's "plan at the old version" check is
   explicit. The removal list, the OQ 6a exception, the bedrock
   budget, and the ECR scope follow.
-- [ ] 5.6 Statuses: DESIGN-0029 → Implemented, IMPL-0026 →
+- [x] 5.6 Statuses: DESIGN-0029 → Implemented, IMPL-0026 →
   Completed. Run `docz update` and revert its unrelated ToC churn,
   restoring any underscore-stripped anchors (known `docz update`
   gotcha). Pass `just docs lint`.

@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0029
 title: "Provider default_tags replace the per-module tags variable"
-status: Approved
+status: Implemented
 author: Donald Gifford
 created: 2026-11-11
 ---
