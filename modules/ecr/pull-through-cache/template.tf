@@ -48,7 +48,7 @@ resource "aws_ecr_repository_creation_template" "pull_through" {
     ]
   })
 
-  resource_tags = var.tags
+  resource_tags = data.aws_default_tags.this.tags
 
   encryption_configuration {
     encryption_type = "AES256"

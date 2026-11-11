@@ -62,9 +62,3 @@ variable "untagged_image_retention_days" {
     error_message = "untagged_image_retention_days must be at least 1 (ECR rejects 0)."
   }
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (Secrets Manager secrets, IAM policy, creation template)."
-  type        = map(string)
-  default     = {}
-}

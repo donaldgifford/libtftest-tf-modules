@@ -267,7 +267,7 @@ The five modules where removal is not a line deletion: the
   - Delete the 5 plain sites (`iam.tf`, `kms.tf`, `publisher.tf`,
     `ssm.tf` × 2).
   - Remove the variable.
-- [ ] 2.4 `ecr/pull-through-cache`:
+- [x] 2.4 `ecr/pull-through-cache`:
   - Add the data source.
   - `template.tf:51` becomes
     `resource_tags = data.aws_default_tags.this.tags`.

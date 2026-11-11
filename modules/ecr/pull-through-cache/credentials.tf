@@ -30,8 +30,6 @@ resource "aws_secretsmanager_secret" "upstream" {
 
   name        = "ecr-pullthroughcache/${var.name_prefix}-${each.key}"
   description = "ECR pull-through cache credentials for ${each.value.upstream_url}"
-
-  tags = var.tags
 }
 
 resource "aws_secretsmanager_secret_version" "upstream" {

@@ -35,6 +35,4 @@ resource "aws_iam_policy" "node_pull_through" {
   name        = "${var.name_prefix}-ecr-pull-through"
   description = "Permissions for EKS nodes to use ECR pull-through cache (consumed by managed-node-group var.extra_node_policies per ADR-0015)."
   policy      = data.aws_iam_policy_document.node_pull_through[0].json
-
-  tags = var.tags
 }
