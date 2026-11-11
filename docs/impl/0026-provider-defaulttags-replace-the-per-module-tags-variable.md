@@ -360,7 +360,7 @@ the variable from returning.
 
 #### Tasks
 
-- [ ] 3.1 Add one `tests/default_tags.tftest.hcl` per module (OQ 1a)
+- [x] 3.1 Add one `tests/default_tags.tftest.hcl` per module (OQ 1a)
   to the 17 non-s3 modules plus `s3/internal/core`. Each file has
   its own provider block with
   `default_tags { tags = { DefaultTagProbe = "design-0029" } }`
@@ -368,6 +368,15 @@ the variable from returning.
   resource. The s3 purpose modules are covered by the core suite:
   child-module resources are not assertable from a purpose-module
   suite, and the `security_baseline` output carries no tags.
+  *As built:* 18 files, all green with zero undeclared-variable
+  warnings. Each was mutation-checked: stripping the provider's
+  `default_tags` reds every one. The two ECR files also pin
+  `resource_tags` exactly, and they add a `tags_all` assert on a
+  provider-managed resource. `pod-identity-access` also asserts
+  that `association_tags` still merges over the defaults
+  (`Component`). The deprecation warnings in the s3 core suite are
+  pre-existing (`outputs.tf` `one()` over lifecycle rules; 22 at
+  baseline).
 - [ ] 3.2 Collision runs, in the same files, for every module that
   owns a key. Set that key in `default_tags` too, and assert that the
   **module's** value wins in `tags_all`:
