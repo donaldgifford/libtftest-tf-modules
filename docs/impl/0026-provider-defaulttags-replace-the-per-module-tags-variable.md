@@ -377,7 +377,7 @@ the variable from returning.
   (`Component`). The deprecation warnings in the s3 core suite are
   pre-existing (`outputs.tf` `one()` over lifecycle rules; 22 at
   baseline).
-- [ ] 3.2 Collision runs, in the same files, for every module that
+- [x] 3.2 Collision runs, in the same files, for every module that
   owns a key. Set that key in `default_tags` too, and assert that the
   **module's** value wins in `tags_all`:
   - `security-group` (`Name`)
@@ -385,6 +385,20 @@ the variable from returning.
   - `managed-node-group` `tag_specifications` (`Name`)
   - `bedrock/claude-code` (`cost_tag.key`)
   - `ecr/org-registry` (`artifact_type`)
+
+  *As built:* each file gained a file-level `aws.collision` provider
+  alias whose `default_tags` also set the owned key, and a run that
+  selects it with `providers = { aws = aws.collision }`. All five are
+  green. Mutation scope differs by mechanism. For the module-side
+  merges (node-group `tag_specifications`, org-registry
+  `resource_tags`), swapping the `merge()` order reds only the
+  collision run. For the other three, precedence belongs to the
+  provider (resource `tags` beat `default_tags` in `tags_all`), so
+  there is no merge to swap. Dropping the module's own key at the
+  site (SG `Name`, access point `Name`, `cost_tag_map`) reds only
+  the collision run instead. The bedrock run also pins the OQ 6a
+  consequence: the budget shows the colliding default `Team`,
+  because it carries no module tags.
 - [ ] 3.3 Add `default_tags` to every `tests-localstack*/`
   provider block, so each apply exercises the real path.
 - [ ] 3.4 Apply-tier read-backs. `iam/role` is already re-sourced in
