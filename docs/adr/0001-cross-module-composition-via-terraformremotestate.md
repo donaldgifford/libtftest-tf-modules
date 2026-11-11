@@ -138,6 +138,22 @@ inputs in a way that genuinely belongs to the module's resource topology
 collapsed up the stack). If a local *only* renames or re-shapes inputs,
 hoist it to Terragrunt instead.
 
+> **Amended 2026-11-11 (DESIGN-0029 / IMPL-0026): the tag example's
+> delivery changed; the decision did not.** The tag set is still
+> derived in the live repo's Terragrunt config. It now reaches AWS
+> through the generated provider block's `default_tags` instead of a
+> per-module `var.tags` input, and `policy/tags.rego` rejects
+> `variable "tags"`. Two reasons. Terragrunt passes one uniform input
+> set to every module, which a module-specific `tags` type (the old
+> eks/addons typed object) broke. And `default_tags` reaches every
+> taggable resource without per-site plumbing. Read the
+> `var.tags = { Account, ClusterName, ... }` example above as
+> historical. The few sites `default_tags` cannot reach (launch-template
+> `tag_specifications`, ECR creation-template `resource_tags`) read
+> the same set back through `data.aws_default_tags`. That is a
+> provider-config read, not an AWS-API read, so the carve-out above
+> is not stretched. See DESIGN-0029.
+
 ## Consequences
 
 ### Positive

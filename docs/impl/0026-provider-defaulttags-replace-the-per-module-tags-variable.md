@@ -694,7 +694,7 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
   checklist, whose step 3 now holds only because of the Phase 4
   fix. The bedrock budget behavior is stated in its Tagging section
   as well.
-- [ ] 5.3 Amend ADR-0001 in place (DESIGN-0029 OQ 9a). Add a dated
+- [x] 5.3 Amend ADR-0001 in place (DESIGN-0029 OQ 9a). Add a dated
   note on the "Hoist derivation" paragraph: the tag set is still
   derived in Terragrunt, now delivered through the generated provider
   block's `default_tags`; see DESIGN-0029. The decision is unchanged.
