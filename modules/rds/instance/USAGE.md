@@ -74,7 +74,6 @@ No modules.
 | skip\_final\_snapshot | When true, skips the final snapshot at instance destroy. Default false — operators MUST supply var.final\_snapshot\_identifier at destroy time unless they flip this to true. | `bool` | `false` | no |
 | storage\_throughput | Storage throughput in MiB/s (gp3 only). Null (default) uses the gp3 baseline. AWS rejects this attribute for gp2/io2 — set it only alongside storage\_type = 'gp3'. | `number` | `null` | no |
 | storage\_type | EBS storage type for the instance. Default 'gp3' (current-generation general-purpose SSD). 'gp2' is the previous generation; 'io2' is provisioned-IOPS (requires var.iops, enforced via a precondition). | `string` | `"gp3"` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (instance, subnet group, security group, parameter group, KMS key). | `map(string)` | `{}` | no |
 | vpc\_name | VPC name used to compose the remote-state key. Must match the VPC stack's identifier. | `string` | n/a | yes |
 
 ## Outputs

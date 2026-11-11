@@ -44,7 +44,6 @@
 | remote\_state\_bucket | S3 bucket holding the fleet's terraform state. The default access-logging path reads the reserved sink key from it (ADR-0020). | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state bucket itself (may differ from var.region — the state bucket is fleet-central). | `string` | n/a | yes |
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random lowercase-alphanumeric prefix to the composed bucket name for key-distribution/sharding. Toggling this after creation renames and therefore REPLACES the bucket. | `bool` | `false` | no |
-| tags | Tags applied to every taggable resource in the module. | `map(string)` | `{}` | no |
 | versioning\_enabled | Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2). | `bool` | `false` | no |
 
 ## Outputs

@@ -51,7 +51,6 @@ No modules.
 | object\_lock | Purpose-module-only Object Lock wiring (DESIGN-0022 — never exposed on bucket/events-bucket). enabled is CREATE-TIME: toggling it on an existing bucket REPLACES the bucket. Requires versioning\_enabled = true. days xor years sets the default retention; both null = lock enabled with per-object-only retention. | ```object({ enabled = optional(bool, false) mode = optional(string, "COMPLIANCE") days = optional(number) years = optional(number) })``` | `{}` | no |
 | region | AWS region, composed into the bucket name for global uniqueness + provenance. Terragrunt-injected in production; from the shared var-file in tests. | `string` | n/a | yes |
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random lowercase-alphanumeric prefix to the composed bucket name (<shard>-<name>-<account\_id>-<region>) for key-distribution/sharding. Toggling this after creation renames and therefore REPLACES the bucket. | `bool` | `false` | no |
-| tags | Tags applied to every taggable resource in the module. | `map(string)` | `{}` | no |
 | versioning\_enabled | Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2; cost + per-stack opt-in durability, noted against the CIS default-on nudge). | `bool` | `false` | no |
 
 ## Outputs

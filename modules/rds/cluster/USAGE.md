@@ -74,7 +74,6 @@ No modules.
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backend reads from this region. | `string` | n/a | yes |
 | skip\_final\_snapshot | When true, skips the final snapshot at cluster destroy. Default false — operators MUST supply var.final\_snapshot\_identifier at destroy time unless they flip this to true. | `bool` | `false` | no |
 | storage\_type | Optional Aurora storage type. Null (default) = Aurora Standard; 'aurora' is the explicit Standard value; 'aurora-iopt1' is I/O-Optimized (no per-request I/O charges, ~30% higher instance/storage rate — for cost-conscious high-I/O clusters). (DESIGN-0013 Q3.) | `string` | `null` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (cluster, instance, subnet group, security group, parameter groups, KMS key). | `map(string)` | `{}` | no |
 | vpc\_name | VPC name used to compose the remote-state key. Must match the VPC stack's identifier. | `string` | n/a | yes |
 
 ## Outputs

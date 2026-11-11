@@ -57,7 +57,6 @@ No modules.
 | require\_iam\_auth | When true, client-to-proxy connections require IAM authentication (auth.iam\_auth = REQUIRED); when false (default), DISABLED. Requires the target to have iam\_database\_authentication\_enabled = true — enforced via a precondition (V4). | `bool` | `false` | no |
 | require\_tls | When true (default), the proxy requires TLS for client connections. Recommended on — clients connecting to the proxy endpoint must use TLS. | `bool` | `true` | no |
 | session\_pinning\_filters | Connection-pinning filters to relax. The only AWS-supported value is 'EXCLUDE\_VARIABLE\_SETS' (avoids pinning on SET statements). Empty list (default) keeps all pinning behaviour. | `list(string)` | `[]` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (proxy, target group, endpoint, IAM role, security group). | `map(string)` | `{}` | no |
 | target\_identifier | Identifier of the target DB instance or cluster. Used both to compose the remote-state key (<region>/rds/<dir>/<target\_identifier>/terraform.tfstate) and as the db\_instance\_identifier / db\_cluster\_identifier on the proxy target. | `string` | n/a | yes |
 | target\_type | Discriminator selecting which data-tier module the proxy fronts: 'rds-instance' (single aws\_db\_instance), 'aurora-cluster' (Aurora provisioned), or 'serverless' (Aurora Serverless v2). Selects the remote-state key shape and whether the proxy target is keyed by db\_instance\_identifier or db\_cluster\_identifier. | `string` | n/a | yes |
 

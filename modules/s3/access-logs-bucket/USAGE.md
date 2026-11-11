@@ -31,7 +31,6 @@ No resources.
 | name\_override | Escape hatch: use this exact bucket name verbatim, skipping composition (externally-dictated names). | `string` | `null` | no |
 | region | AWS region, composed into the bucket name. Terragrunt-injected in production. | `string` | n/a | yes |
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random prefix to the composed bucket name (destructive to toggle after creation — the bucket is replaced). | `bool` | `false` | no |
-| tags | Tags applied to every taggable resource. | `map(string)` | `{}` | no |
 
 ## Outputs
 

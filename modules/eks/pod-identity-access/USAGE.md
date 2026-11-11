@@ -43,7 +43,7 @@ No modules.
 | ---- | ----------- | ---- | ------- | :------: |
 | account\_id | 12-digit AWS account ID that owns the remote-state bucket. Composed into the assume\_role role\_arn (arn:aws:iam::<account\_id>:role/<deploy\_role\_name>) for the cross-account state read. | `string` | n/a | yes |
 | account\_name | Terragrunt account name — the <account\_name> prefix of the account-scoped remote-state key this module reads (<account\_name>/<region>/eks/<cluster\_name>/terraform.tfstate). | `string` | n/a | yes |
-| association\_tags | Tags applied to the aws\_eks\_pod\_identity\_association resource. Separate from var.tags so callers can label the association independently of the role (useful when migrating ownership). | `map(string)` | `{}` | no |
+| association\_tags | Tags applied to the aws\_eks\_pod\_identity\_association resource. Merged on top of the provider default\_tags (DESIGN-0029), so callers can label the association independently of the role (useful when migrating ownership). | `map(string)` | `{}` | no |
 | cluster\_name | EKS cluster name. Used as the remote-state key fragment and as the association's cluster\_name. | `string` | n/a | yes |
 | create\_role | When true (default), the module creates a Pod-Identity-trusting IAM role and binds the association to it. When false, the caller must pass existing\_role\_arn — the module creates the association only, and the four Mode A policy inputs (managed\_policy\_arns, customer\_managed\_policy\_arns, inline\_policies, permissions\_boundary) are ACCEPTED AND IGNORED rather than rejected. That tolerance is deliberate: Terragrunt injects a uniform input set into every module regardless of use, so failing on an unused input would break the fleet's normal calling pattern (DESIGN-0027 Part C, withdrawn). Policies for a pre-existing role belong to whatever stack owns that role. | `bool` | `true` | no |
 | customer\_managed\_policy\_arns | Customer-managed policy ARNs to attach to the Mode A role. Separate from managed\_policy\_arns so the plan distinguishes AWS-owned from caller-owned policy ARNs at a glance, and so the same ARN cannot be listed in both channels. MODE B: ignored when create\_role = false. | `list(string)` | `[]` | no |
@@ -58,7 +58,6 @@ No modules.
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backend reads from this region. | `string` | n/a | yes |
 | role\_name\_override | Override the default deterministic role name (<cluster\_name>-<namespace>-<service\_account>). Use sparingly — the default name surfaces the binding for free in the console / IAM audits. | `string` | `null` | no |
 | service\_account | Kubernetes ServiceAccount name to bind to AWS credentials. | `string` | n/a | yes |
-| tags | Tags applied to the Mode A IAM role. | `map(string)` | `{}` | no |
 
 ## Outputs
 
