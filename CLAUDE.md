@@ -876,6 +876,26 @@ Tracked in git. As of this writing:
   until a concrete need), consumer-side proof (rides the RDS follow-up,
   IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
+- **Tagging (DESIGN-0029 / IMPL-0026, in progress on
+  `refactor/drop-module-tags-variables`).** No module declares a
+  `tags` variable any more; the standard set arrives through provider
+  `default_tags`, and `policy/tags.rego` keeps it out. Two lessons
+  from the Phase 4 upgrade probe carry beyond this change.
+  **`aws_launch_template` marks `latest_version` known-after-apply on
+  ANY changed key except name/description/version settings**
+  (CustomizeDiff, aws provider v6.72.0), including its own `tags`,
+  even though `Update` versions only on `updateKeys`, which excludes
+  `tags`. So a tags-only edit on a template that a node group pins by
+  `latest_version` plans the node group as `launch_template.version ->
+  (known after apply)`. That is why `managed-node-group` mirrors
+  `data.aws_default_tags` into the template's own `tags`.
+  **LocalStack Community 4.4 cannot test launch-template tagging at
+  all:** it stores template-data `TagSpecifications` as `[{}, {}]`,
+  leaks create-time template tags into version 1's data, and never
+  reads back update-time tags. Every tagged template drifts against
+  its own config. Use plan-tier pins and differential plans instead,
+  and never read a 4.4 version bump as evidence.
+
 ### Shared test fixtures (`test/fixtures/`)
 
 - **`test/fixtures/reference-vpc/`** — the fleet's single, shared,

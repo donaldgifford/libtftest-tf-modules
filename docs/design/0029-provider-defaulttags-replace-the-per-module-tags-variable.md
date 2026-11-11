@@ -241,6 +241,7 @@ Counts are non-test `var.tags` references, measured 2026-11-11 at
 | `managed-node-group` LT `volume` spec (`launch_template.tf:62`) | `merge(var.tags, { Name = "${var.nodegroup_name}-root" })` | `merge(data.aws_default_tags.this.tags, { Name = "${var.nodegroup_name}-root" })` |
 | `ecr/org-registry` templates (`templates.tf:76,133`) | `merge(var.tags, { artifact_type, managed_by })` | `merge(data.aws_default_tags.this.tags, { artifact_type, managed_by })` |
 | `ecr/pull-through-cache` template (`template.tf:51`) | `var.tags` | `data.aws_default_tags.this.tags` |
+| `managed-node-group` LT's own `tags` (`launch_template.tf:27`) | `var.tags` | `data.aws_default_tags.this.tags` (Phase 4 amendment, below) |
 
 One `data "aws_default_tags" "this"` per module that needs it (three
 modules).
@@ -323,6 +324,24 @@ must be **byte-identical** before and after, because the node group
 pins `launch_template.version = latest_version`. Any content change
 mints a new launch template version and rolls every node. See
 [Node-group roll avoidance](#node-group-roll-avoidance).
+
+**Phase 4 amendment (2026-11-11): the launch template's own `tags`
+must not change either.** This design originally let the template's
+own `tags` fall to `null` like any plain site. The aws provider's
+`aws_launch_template` CustomizeDiff marks `latest_version` (and
+`default_version`) known-after-apply on **any** changed key outside
+`name`, `name_prefix`, `description`, `default_version`,
+`update_default_version`, and that includes `tags`. So the upgrade
+plan would show `aws_eks_node_group.this` with
+`~ launch_template.version = N -> (known after apply)`. Apply would
+almost certainly no-op, since `Update` versions only on `updateKeys`,
+which excludes `tags`. But the plan would break the zero-diff bar,
+and it would trip this doc's own roll-avoidance step 3 for every
+stack. The template therefore sets `tags =
+data.aws_default_tags.this.tags`. It reproduces the old `var.tags`
+exactly when rollout step 3 holds, so the template plans zero-diff.
+The tags-only diff is confined to resources whose `tags` changing
+has no computed side effects.
 
 ## API / Interface Changes
 
@@ -476,6 +495,19 @@ The `### RELEASE NOTES` block must carry:
 > upgrade-diff probe: if it shows anything beyond tags-only in-place
 > updates (a replacement, a new launch template version, or a
 > `tags_all` change), reopen OQ 6 before release.
+>
+> **6a confirmed, with one amendment (2026-11-11, IMPL-0026 Phase
+> 4).** Probe A (`security-group`, `v0.26.0` to the working tree on
+> token-free 4.4) showed exactly the expected shape: tags-only
+> in-place, `tags_all` unchanged, no replacement, clean replan.
+> Probe B could not run, because Community 4.4 mishandles
+> launch-template tags in three ways (node-group `FINDINGS.md`). The
+> substitute evidence surfaced a computed side effect: a `tags` change
+> on the launch template makes `latest_version` unknown at plan. The
+> operator chose to remove it at the source. The launch template
+> mirrors the default set in its own `tags`, plan-pinned against the
+> `v0.26.0` rendering. See the amendment under
+> [The one-time plan diff](#the-one-time-plan-diff).
 
 ### 1. How much of the tags surface is removed?
 

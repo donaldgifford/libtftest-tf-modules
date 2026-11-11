@@ -543,10 +543,10 @@ cycle, that the migration produces **tags-only in-place updates**,
 
 #### Tasks
 
-- [ ] 4.1 Check out `v0.26.0` into a scratch git worktree outside the
+- [x] 4.1 Check out `v0.26.0` into a scratch git worktree outside the
   repo (`git worktree add /tmp/dt-v0.26.0 v0.26.0`). Probe roots
   reference it by **path**, which keeps the probe offline.
-- [ ] 4.2 Probe A, plain module. In a scratch root on token-free
+- [x] 4.2 Probe A, plain module. In a scratch root on token-free
   4.4, apply `network/security-group` from the `v0.26.0` worktree
   with `tags = X`.
   1. Add provider `default_tags = X`, keeping `tags = X`, and plan.
@@ -556,7 +556,13 @@ cycle, that the migration produces **tags-only in-place updates**,
      **Expect only `~ tags` in-place updates, `tags_all` unchanged,
      `0 to add, 0 to destroy`.**
   3. Apply, then plan again. Expect **no changes**.
-- [ ] 4.3 Probe B, a launch-template replica on token-free 4.4
+
+  *As built (2026-11-11):* passes every step. Step 1 is clean. Step
+  2 plans `0 to add, 3 to change, 0 to destroy`, and in the plan JSON
+  `tags` is the only changed attribute, nothing is unknown, and
+  `tags_all` is identical. Step 3 applies, replans clean, and keeps
+  the SG id. Excerpts are in the SG `FINDINGS.md`.
+- [x] 4.3 Probe B, a launch-template replica on token-free 4.4
   (OQ 3a). `managed-node-group`'s live suite needs EKS, which is
   Pro-only, and that suite has **never run live**, so a Pro run
   would have no known-good baseline to compare against: a failure
@@ -585,16 +591,51 @@ cycle, that the migration produces **tags-only in-place updates**,
   The real module's half of this guarantee is the plan-tier
   byte-identity run (task 2.2), which pins the rendered
   `tag_specifications` against the pre-change literal.
-- [ ] 4.4 Probe B negative control. From the same applied state,
+  **Blocked (2026-11-11): the vehicle failed.** Community 4.4 has
+  three launch-template tagging gaps. It stores template-data
+  `TagSpecifications` as `[{}, {}]`, leaks create-time template tags
+  into version 1's data, and never reads back update-time tags. So
+  any tagged template drifts against its own config, and no "no new
+  version" observation is possible. Two pieces of substitute
+  evidence exist. A differential plan from one shared state shows
+  variant 1 + `default_tags = X` and variant 2 + `X` planning
+  identical template data; the X′ control differs in
+  `tag_specifications` only. And the provider source (v6.72.0)
+  creates no version for a `tags`-only change. **New finding:** the
+  provider's CustomizeDiff still marks `latest_version`
+  known-after-apply on any `tags` change. So the real upgrade plan
+  will show the node group's `launch_template.version` as
+  `(known after apply)`: expected to no-op at apply, but unobserved.
+  Details are in the node-group `FINDINGS.md`.
+  **Resolved (operator decision, 2026-11-11): mirror the defaults.**
+  `launch_template.tf` now sets `tags =
+  data.aws_default_tags.this.tags`, so the template's own `tags`
+  reproduce `v0.26.0`'s `var.tags` when rollout step 3 holds. There
+  is no `tags` change, so `latest_version` stays known and the node
+  group plans no diff. A new assert in `tests/default.tftest.hcl`
+  pins `aws_launch_template.node.tags` to the literal. The same
+  literal passes against the `v0.26.0` worktree, and removing the
+  line reds it. Without this, the IMPL's own roll-avoidance step
+  ("confirm no update to `aws_eks_node_group.this`, else never
+  apply") would have failed for every stack.
+- [x] 4.4 Probe B negative control. From the same applied state,
   plan variant 2 with `default_tags` differing from X in one value.
   **Expect a new launch-template version.** Without this control,
   4.3 cannot distinguish "no roll" from "the probe can't see
   version changes". Destroy the scratch root afterwards.
-- [ ] 4.5 Record exact plan excerpts, image, provider and Terraform
+  *As built:* with no faithful live vehicle, the control is
+  differential. From the shared applied state, variant 2 with one
+  default value changed (X′) plans different `tag_specifications`,
+  while variants 1 and 2 under X plan identical template data. So
+  the comparison can see a version-relevant change. The live
+  user-data control on the untagged B′ template did mint version 2
+  → 3, confirming the replica observes versioning when tags are not
+  involved. All scratch roots were destroyed.
+- [x] 4.5 Record exact plan excerpts, image, provider and Terraform
   versions in `network/security-group/tests-localstack/FINDINGS.md`
   (probe A) and `eks/managed-node-group/tests-localstack/FINDINGS.md`
   (probe B and the control).
-- [ ] 4.6 Write the outcome into DESIGN-0029's OQ resolution note:
+- [x] 4.6 Write the outcome into DESIGN-0029's OQ resolution note:
   6a **confirmed**, or **reopened** with the observed diff. Remove
   the worktree.
 
@@ -606,6 +647,14 @@ cycle, that the migration produces **tags-only in-place updates**,
 - Results recorded in both FINDINGS files and in DESIGN-0029.
 - **If any expectation fails, stop.** Do not start Phase 5. Reopen
   DESIGN-0029 OQ 6 with the evidence before anything ships.
+
+**Status: met, with a recorded deviation (2026-11-11).** Probe A met
+every expectation. Probe B's live form was impossible on 4.4, and per
+the stop rule it went to the operator. The operator chose to remove
+the one hazard the substitute evidence found (a computed
+`latest_version` at plan) at the source. The fix is plan-pinned and
+mutation-checked. Results are in both `FINDINGS.md` files and in
+DESIGN-0029, where OQ 6a is confirmed with that amendment.
 
 ---
 

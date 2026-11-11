@@ -128,3 +128,72 @@ the setup run seeds its stub state at the matching account-scoped key.
 > The one site here that `default_tags` cannot reach on its own, the
 > launch template's `tag_specifications`, is proven live on Community
 > 4.4 instead, by IMPL-0026 Phase 4 probe B (an EC2-only replica).
+
+## IMPL-0026 Phase 4 probe B — launch-template upgrade diff (2026-11-11)
+
+**Status: the vehicle failed; resolved at the source (see Resolution below).** IMPL-0026 4.3
+planned an EC2-only replica of this module's launch template on
+token-free 4.4, because EKS is Pro-only. The replica copied the tag
+sites verbatim from `v0.26.0` (variant 1) and from the working tree
+(variant 2). It ran on `localstack/localstack:4.4` (Community 4.4.0)
+with Terraform 1.15.8 and hashicorp/aws 6.72.0.
+
+### Community 4.4 cannot observe launch-template tagging
+
+Three emulator gaps, each confirmed in the raw
+`DescribeLaunchTemplateVersions` / `DescribeLaunchTemplates` output:
+
+1. **`LaunchTemplateData.TagSpecifications` is stored as `[{}, {}]`.**
+   Both `ResourceType` and `Tags` are dropped. Variant 1 replans with a
+   new version immediately after its own apply, with no config change.
+2. **Create-time template tags leak into version 1's data.** A template
+   created with resource `tags` reads back a phantom
+   `tag_specifications { resource_type = "launch-template" }`. Real EC2
+   keeps those separate.
+3. **Tags added by update are never read back.** A template created
+   untagged, then tagged, reads back `tags = {}`.
+
+Any tagged launch template on 4.4 therefore drifts against its own
+config, and every "no new version" check reads as a version bump. That
+also applies to this suite's eventual live runs on a Pro image if Pro
+shares the gaps (unverified).
+
+### What is established without the live run
+
+- **Rendered `tag_specifications` are byte-identical.** IMPL-0026 2.2's
+  plan-tier run pins both blocks against the literal `v0.26.0`
+  rendering, mutation-checked. A differential plan on 4.4 agrees. From
+  one shared applied state, variant 1 with `default_tags = X` (the
+  status quo) and variant 2 with `default_tags = X` (the migration)
+  plan **identical** launch-template data in every field except
+  resource `tags`. The control, variant 2 with one default value
+  changed, differs in `tag_specifications` only.
+- **Apply creates no version for a tags-only change.**
+  `resourceLaunchTemplateUpdate` (aws provider v6.72.0) calls
+  `CreateLaunchTemplateVersion` only when `d.HasChanges(updateKeys...)`.
+  `updateKeys` includes `tag_specifications` but not `tags` or
+  `tags_all`, which go through the generated tagging interceptor.
+- **But the plan shows `latest_version` as known after apply.** The
+  resource's CustomizeDiff runs `customdiff.ComputedIf("latest_version",
+  ...)` (and the same for `default_version` when
+  `update_default_version = true`) for **any** changed key except
+  `name`, `name_prefix`, `description`, `default_version`,
+  `update_default_version`. The migration changes the template's own
+  `tags` (X → none), so the upgrade plan for this module will show
+  `aws_eks_node_group.this` with `~ launch_template.version = "N" ->
+  (known after apply)`. From the source, it should resolve to the same
+  N at apply, and the node group's update should no-op. **That is
+  inferred, not observed.**
+
+### Resolution (operator decision, 2026-11-11)
+
+The module now removes the hazard at the source.
+`aws_launch_template.node` sets `tags = data.aws_default_tags.this.tags`,
+so the template's own `tags` reproduce `v0.26.0`'s `var.tags` exactly
+when the stack's `default_tags` equal its old `tags` input (DESIGN-0029
+rollout step 3). With no `tags` change, CustomizeDiff leaves
+`latest_version` known and the node group plans no diff.
+`tests/default.tftest.hcl` pins the template's `tags` to the literal
+`v0.26.0` rendering. The same literal passes on the `v0.26.0` worktree,
+and removing the line reds the assert.
+
