@@ -19,8 +19,8 @@ locals {
   # Single source-of-truth for the attribution tag pair. Re-used by the
   # IAM user/policy tags (Phase 3), AIP tags (Phase 4), the CloudWatch
   # alarm tags (Phase 7), and (indirectly) the budget filter (Phase 6).
-  # Kept separate from var.tags — this is a load-bearing dimension, not
-  # a generic tag.
+  # Applied on top of the provider default_tags (DESIGN-0029) — this is a
+  # load-bearing attribution dimension, not a generic tag.
   cost_tag_map = { (var.cost_tag.key) = var.cost_tag.value }
 
   # Backing IAM user name — explicit override or derived from the cost

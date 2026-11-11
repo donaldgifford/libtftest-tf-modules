@@ -22,7 +22,7 @@ variable "region" {
 }
 
 variable "cost_tag" {
-  description = "The load-bearing cost-allocation tag pair applied to the IAM user/policy, every AIP, the SNS topic, and the budget filter. key/value flow from here (NOT merged from var.tags) because this is an attribution dimension, not a generic tag. The key is also what gets activated as a cost-allocation tag when cost_allocation_tag_activation = 'local'."
+  description = "The load-bearing cost-allocation tag pair applied to the IAM user/policy, every AIP, the SNS topic, and the budget filter. key/value flow from here and are applied on top of the provider default_tags (DESIGN-0029), because this is an attribution dimension, not a generic tag. The key is also what gets activated as a cost-allocation tag when cost_allocation_tag_activation = 'local'."
   type = object({
     key   = string
     value = string
@@ -198,14 +198,6 @@ variable "key_expiry_days" {
     condition     = var.key_expiry_days > 0
     error_message = "key_expiry_days must be greater than 0 (days)."
   }
-
-  nullable = false
-}
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource (IAM user, IAM policy, AIPs, SNS topic, CloudWatch alarms). The cost-allocation tag pair from var.cost_tag is merged in separately and is NOT sourced from this map — it is a load-bearing attribution dimension, not a generic tag."
-  type        = map(string)
-  default     = {}
 
   nullable = false
 }

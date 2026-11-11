@@ -14,7 +14,7 @@
 resource "aws_iam_user" "this" {
   name = local.user_name
 
-  tags = merge(var.tags, local.cost_tag_map)
+  tags = local.cost_tag_map
 }
 
 data "aws_iam_policy_document" "bedrock_invoke" {
@@ -61,7 +61,7 @@ resource "aws_iam_policy" "bedrock_invoke" {
   name   = "${aws_iam_user.this.name}-bedrock-invoke"
   policy = data.aws_iam_policy_document.bedrock_invoke.json
 
-  tags = merge(var.tags, local.cost_tag_map)
+  tags = local.cost_tag_map
 
   # Defense in depth alongside the var.models variable validation —
   # catches a provider slipping through if the variable validation is

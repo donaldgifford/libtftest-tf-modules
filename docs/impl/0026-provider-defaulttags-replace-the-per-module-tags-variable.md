@@ -147,7 +147,7 @@ mechanically. No new resources or data sources.
 
 #### Tasks
 
-- [ ] 1.1 `bedrock/claude-code`: remove `variable "tags"`. The 5 ×
+- [x] 1.1 `bedrock/claude-code`: remove `variable "tags"`. The 5 ×
   `merge(var.tags, local.cost_tag_map)` sites (`alerting.tf:13`,
   `cloudwatch.tf:37`, `iam.tf:17,64`, `inference_profiles.tf:20`)
   become `tags = local.cost_tag_map`. Rewrite the comments in
@@ -197,9 +197,11 @@ mechanically. No new resources or data sources.
   block, then assert on `tags_all` instead of `tags`:
   - `iam/role/tests/trust.tftest.hcl:180-200`
   - `secretsmanager/secret/tests/default.tftest.hcl:84-97`
-  - `bedrock/claude-code/tests/multi_provider.tftest.hcl:50,55`
-    (`Team` → a default-tag key; also assert the cost tag key is
-    present, which proves module keys and defaults merge)
+  - ~~`bedrock/claude-code/tests/multi_provider.tftest.hcl:50,55`~~
+    **No change needed (found in 1.1):** `Team` there is the
+    `cost_tag` key, not a `var.tags` key, so those runs stay valid
+    and the suite passed 19/19 right after the removal. The
+    default-tag proof for bedrock lands in 3.1/3.2.
   - `iam/role/tests-localstack/apply_localstack.tftest.hcl:46,161`
     (provider `default_tags`; the stored-tags read-back now proves
     `default_tags` reached IAM)

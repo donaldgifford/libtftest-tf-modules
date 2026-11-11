@@ -10,7 +10,7 @@
 
 resource "aws_sns_topic" "alerts" {
   name = "${aws_iam_user.this.name}-alerts"
-  tags = merge(var.tags, local.cost_tag_map)
+  tags = local.cost_tag_map
 }
 
 resource "aws_sns_topic_subscription" "email" {
