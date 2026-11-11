@@ -698,7 +698,7 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
   note on the "Hoist derivation" paragraph: the tag set is still
   derived in Terragrunt, now delivered through the generated provider
   block's `default_tags`; see DESIGN-0029. The decision is unchanged.
-- [ ] 5.4 CLAUDE.md: a fleet **tagging** bullet covering
+- [x] 5.4 CLAUDE.md: a fleet **tagging** bullet covering
   - the `default_tags` contract
   - the three `data.aws_default_tags` sites and why they need it
   - the node-roll hazard

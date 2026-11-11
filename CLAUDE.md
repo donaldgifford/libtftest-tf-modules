@@ -876,25 +876,58 @@ Tracked in git. As of this writing:
   until a concrete need), consumer-side proof (rides the RDS follow-up,
   IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
-- **Tagging (DESIGN-0029 / IMPL-0026, in progress on
-  `refactor/drop-module-tags-variables`).** No module declares a
-  `tags` variable any more; the standard set arrives through provider
-  `default_tags`, and `policy/tags.rego` keeps it out. Two lessons
-  from the Phase 4 upgrade probe carry beyond this change.
-  **`aws_launch_template` marks `latest_version` known-after-apply on
-  ANY changed key except name/description/version settings**
-  (CustomizeDiff, aws provider v6.72.0), including its own `tags`,
-  even though `Update` versions only on `updateKeys`, which excludes
-  `tags`. So a tags-only edit on a template that a node group pins by
-  `latest_version` plans the node group as `launch_template.version ->
-  (known after apply)`. That is why `managed-node-group` mirrors
-  `data.aws_default_tags` into the template's own `tags`.
+- **Tagging: provider `default_tags`, no `tags` variable (DESIGN-0029 /
+  IMPL-0026, releases as `v0.27.0`).** No module declares a `tags`
+  variable. The fleet's standard set is derived in Terragrunt and
+  arrives through the generated provider block's `default_tags`, so
+  every taggable resource gets it in `tags_all` (ADR-0001's
+  hoist-derivation rule, amended in place). Modules set only keys they
+  own on the resource itself: security-group `Name`, efs access-point
+  `Name`, bedrock `cost_tag`, org-registry `artifact_type` /
+  `managed_by`, pod-identity `association_tags`. A resource tag beats
+  a default with the same key, which `default_tags.tftest.hcl`
+  collision runs pin. **Three sites `default_tags` cannot reach** read
+  the set back through `data "aws_default_tags"` (offline, a
+  provider-config read): node-group launch-template
+  `tag_specifications` and the ECR creation templates' `resource_tags`
+  (both ECR modules). The ECR templates tag repositories ECR creates
+  later, outside the provider. **Node-roll hazard:** the node group
+  pins `version = latest_version`, so the rendered `tag_specifications`
+  must stay byte-identical across an upgrade (literal-pinned against
+  `v0.26.0`), and any later `default_tags` change rolls every node.
+  **`aws_launch_template`'s CustomizeDiff marks `latest_version`
+  known-after-apply on ANY changed key except name/description/version
+  settings** (aws provider v6.72.0), including its own `tags`, even
+  though `Update` versions only on `updateKeys`, which excludes
+  `tags`. That is why the template mirrors `data.aws_default_tags` into
+  its own `tags` too: dropping them would plan the node group's
+  `launch_template.version` as unknown on upgrade (found by IMPL-0026
+  Phase 4). **`eks/cluster`'s KMS alias/description now derive from
+  `var.name`** (`alias/eks/<name>`), not `tags.ClusterName`; a stack
+  where the two differed sees the alias replaced, never the key.
+  **The gate is `policy/tags.rego`** (see Policy-as-code). It only
+  needs the declaration rule, because a `var.tags` reference without
+  one fails `terraform validate`. Reusable `terraform test` /
+  libtftest lessons, probed:
+  - an exported `TF_VAR_tags` against a module with no such variable
+    is silently ignored, which is why removal is Terragrunt-safe;
+  - a stale `tags` in a `.tftest.hcl` file-level `variables` block is
+    silent, and at run level only a warning, so stale test inputs need
+    a grep, not a red suite;
+  - libtftest's `SetVar` passes `-var`, so an undeclared one is a
+    **hard error**, and Go suites must change in the same commit;
+  - under `mock_provider`, `data.aws_default_tags` returns `{}` and
+    `default_tags` never reaches mocked resources, so default-tag
+    assertions need the real-provider-fake-creds pattern.
+
   **LocalStack Community 4.4 cannot test launch-template tagging at
-  all:** it stores template-data `TagSpecifications` as `[{}, {}]`,
+  all.** It stores template-data `TagSpecifications` as `[{}, {}]`,
   leaks create-time template tags into version 1's data, and never
-  reads back update-time tags. Every tagged template drifts against
-  its own config. Use plan-tier pins and differential plans instead,
-  and never read a 4.4 version bump as evidence.
+  reads back update-time tags, so every tagged template drifts
+  against its own config. Use plan-tier pins and differential plans,
+  and never read a 4.4 version bump as evidence. The Pro-baseline
+  apply suites (eks ×5, rds ×5, bedrock, ecr ×2, efs) carry a
+  pending `default_tags` re-run note in their `FINDINGS.md`.
 
 ### Shared test fixtures (`test/fixtures/`)
 
