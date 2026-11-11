@@ -401,7 +401,7 @@ the variable from returning.
   because it carries no module tags.
 - [x] 3.3 Add `default_tags` to every `tests-localstack*/`
   provider block, so each apply exercises the real path.
-  *As built:* 26 files (25 new, plus `iam/role` from 1.9), each set
+  *As built:* 27 files (26 new, plus `iam/role` from 1.9), each set
   to `{ ManagedBy = "terraform", Suite = "<service>-<module>" }`.
   The new files cover every Community and Pro apply suite, the
   four RDS Community `plan_smoke` suites (re-run offline, all green),
