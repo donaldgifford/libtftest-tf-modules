@@ -161,14 +161,8 @@ variable "permissions_boundary" {
 # Tags
 #--------------------------------------------------------------
 
-variable "tags" {
-  description = "Tags applied to the Mode A IAM role."
-  type        = map(string)
-  default     = {}
-}
-
 variable "association_tags" {
-  description = "Tags applied to the aws_eks_pod_identity_association resource. Separate from var.tags so callers can label the association independently of the role (useful when migrating ownership)."
+  description = "Tags applied to the aws_eks_pod_identity_association resource. Merged on top of the provider default_tags (DESIGN-0029), so callers can label the association independently of the role (useful when migrating ownership)."
   type        = map(string)
   default     = {}
 }

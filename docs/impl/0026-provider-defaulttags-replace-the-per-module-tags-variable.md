@@ -162,7 +162,7 @@ mechanically. No new resources or data sources.
   (`variables.tf:140-149`) and the 9 plain sites (`main.tf` × 2,
   `ebs_csi.tf` × 2, `efs_csi.tf` × 2, `vpc_cni.tf` × 2,
   `pod_identity_agent.tf`).
-- [ ] 1.4 `eks/access-entries` (`main.tf`) and
+- [x] 1.4 `eks/access-entries` (`main.tf`) and
   `eks/pod-identity-access` (`iam.tf`): remove the variable and the
   plain site. Reword `association_tags`'s description
   (`variables.tf:171`): it now merges on top of provider
