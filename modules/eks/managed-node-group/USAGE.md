@@ -37,6 +37,7 @@ No modules.
 | [aws_iam_role_policy_attachment.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.worker_node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_launch_template.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template) | resource |
+| [aws_default_tags.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/default_tags) | data source |
 | [aws_iam_policy_document.node_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [terraform_remote_state.eks](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 | [terraform_remote_state.vpc](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
@@ -69,7 +70,6 @@ No modules.
 | region | AWS region. Used in the remote-state key prefix and for AWS API calls. | `string` | n/a | yes |
 | remote\_state\_bucket | S3 bucket holding the cluster module's and VPC stack's remote state. Used by data.terraform\_remote\_state.eks and .vpc per ADR-0001. | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backends read from this region. | `string` | n/a | yes |
-| tags | AWS resource tags applied to every resource in the module. | `map(string)` | `{}` | no |
 | vpc\_name | VPC stack name. Used in the VPC remote-state key fragment. | `string` | n/a | yes |
 | workload\_class | Platform workload class for this node group. Drives the workload-class label (always), the workload-class=<class>:NO\_SCHEDULE taint (every class EXCEPT core — core is the untainted default landing zone), and the gVisor default (secure only). The class taxonomy is the platform's (DESIGN-0001 section 2); new classes are deliberate one-line enum additions here, never free-form. | `string` | `"core"` | no |
 

@@ -34,6 +34,7 @@ No modules.
 | [aws_secretsmanager_secret.upstream](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret_version.upstream](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_default_tags.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/default_tags) | data source |
 | [aws_iam_policy_document.node_pull_through](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
 ## Inputs
@@ -44,7 +45,6 @@ No modules.
 | name\_prefix | Short name prefix for the Secrets Manager secret names and the IAM policy. The Secrets Manager prefix follows ECR's required "ecr-pullthroughcache/" — this prefix is appended as ecr-pullthroughcache/<name\_prefix>-<upstream>. | `string` | n/a | yes |
 | region | AWS region. Used in the IAM policy's Resource ARN scope and the cache\_url\_prefixes output. The module is per-region — instantiate once per region the cluster runs in. | `string` | n/a | yes |
 | repo\_creation\_template\_prefix | Prefix passed to aws\_ecr\_repository\_creation\_template. Default "ROOT" matches every pull-through-created repo (per AWS provider v6 schema — the special match-all value is the literal "ROOT", not "*"; DESIGN-0005's "*" example was speculative). Override only when scoping the template to a specific upstream prefix (e.g. "docker-hub"). | `string` | `"ROOT"` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (Secrets Manager secrets, IAM policy, creation template). | `map(string)` | `{}` | no |
 | untagged\_image\_retention\_days | Days to retain untagged images pulled through the cache before the ECR lifecycle policy prunes them. Embedded in the creation template's lifecycle\_policy JSON. | `number` | `7` | no |
 | upstream\_registries | List of upstream registries to cache. Supported values: ecr-public, quay, docker-hub, ghcr, kubernetes, mcr. docker-hub and ghcr are authentication-required; the others are open. | `list(string)` | n/a | yes |
 

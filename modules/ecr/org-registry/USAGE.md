@@ -38,6 +38,7 @@ No modules.
 | [aws_ssm_parameter.publisher_policy_arn](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.publisher_policy_json](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_default_tags.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/default_tags) | data source |
 | [aws_iam_policy_document.ecr_template](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.ecr_template_assume](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.oci_publisher](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -57,7 +58,6 @@ No modules.
 | ssm\_cross\_account\_org\_id | When non-null, the SSM parameters switch to Advanced tier and a resource-based policy grants ssm:GetParameter / ssm:GetParameters to aws:PrincipalOrgID = this value — letting cross-account publisher CI roles read the policy JSON. Null (default) = same-account-only mode (Standard tier, no resource-based policy). | `string` | `null` | no |
 | ssm\_parameter\_path\_arn | SSM Parameter Store path for the publisher policy ARN. Same-account consumers read this to discover the policy ARN. Only used when publish\_to\_ssm = true. | `string` | `"/platform/ecr-oci-publisher-policy-arn"` | no |
 | ssm\_parameter\_path\_json | SSM Parameter Store path for the publisher policy JSON. Cross-account consumers read the JSON via data.aws\_ssm\_parameter and recreate the policy locally in their own account. Only used when publish\_to\_ssm = true. | `string` | `"/platform/ecr-oci-publisher-policy-json"` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (KMS key, IAM role, IAM policy, creation templates, SSM parameters). | `map(string)` | `{}` | no |
 | tf\_modules\_prefix | ECR repository name prefix for internal Terraform modules published as OCI artifacts. Same template/auto-creation behavior as helm\_charts\_prefix, distinct prefix. | `string` | `"tf-modules"` | no |
 | untagged\_retention\_days | Days to retain untagged images before the ECR lifecycle policy prunes them. Embedded in both creation templates' lifecycle\_policy JSON. | `number` | `7` | no |
 
