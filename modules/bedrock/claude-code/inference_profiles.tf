@@ -17,7 +17,7 @@ resource "aws_bedrock_inference_profile" "this" {
   for_each = var.models
 
   name = each.key
-  tags = merge(var.tags, local.cost_tag_map)
+  tags = local.cost_tag_map
 
   model_source {
     copy_from = each.value.model_id

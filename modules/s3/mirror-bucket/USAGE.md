@@ -41,7 +41,6 @@ No resources.
 | policy\_admin\_principal\_arns | Admin exception to DenyPolicyMutation (required, non-empty — an empty admin list would strand the stack: nobody could ever amend the policy). Disable the guard itself via enable\_policy\_mutation\_guard. | `list(string)` | n/a | yes |
 | region | AWS region — composed into the bucket name and the mirror\_url output. | `string` | n/a | yes |
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random lowercase-alphanumeric prefix to the composed bucket name for key-distribution/sharding. Toggling this after creation renames and therefore REPLACES the bucket. | `bool` | `false` | no |
-| tags | Tags applied to every taggable resource in the module. | `map(string)` | `{}` | no |
 | vpc\_endpoint\_ids | VPC endpoint ids the mirror is served through (required, non-empty). Drives BOTH AllowMirrorReadFromVPCE (StringEquals aws:SourceVpce) and the core's DenyOutsideVpce — one list, so the two can never contradict (OQ 1a). | `list(string)` | n/a | yes |
 
 ## Outputs

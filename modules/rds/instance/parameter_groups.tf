@@ -17,7 +17,6 @@ resource "aws_db_parameter_group" "this" {
   name_prefix = "${var.identifier_prefix}-"
   family      = local.resolved_parameter_family
   description = "Instance parameter group for ${var.identifier_prefix}"
-  tags        = var.tags
 
   lifecycle {
     create_before_destroy = true

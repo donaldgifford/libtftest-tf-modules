@@ -27,16 +27,15 @@ data "aws_iam_policy_document" "kms_cluster" {
 resource "aws_kms_key" "cluster" {
   count = var.kms_key_arn == null ? 1 : 0
 
-  description             = "EKS envelope encryption CMK for cluster ${var.tags.ClusterName}"
+  description             = "EKS envelope encryption CMK for cluster ${var.name}"
   deletion_window_in_days = var.kms_deletion_window_in_days
   enable_key_rotation     = true
   policy                  = data.aws_iam_policy_document.kms_cluster[0].json
-  tags                    = var.tags
 }
 
 resource "aws_kms_alias" "cluster" {
   count = var.kms_key_arn == null ? 1 : 0
 
-  name          = "alias/eks/${var.tags.ClusterName}"
+  name          = "alias/eks/${var.name}"
   target_key_id = aws_kms_key.cluster[0].key_id
 }

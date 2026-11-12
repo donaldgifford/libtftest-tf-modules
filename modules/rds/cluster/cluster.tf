@@ -35,7 +35,6 @@ resource "aws_rds_cluster" "this" {
   skip_final_snapshot                 = var.skip_final_snapshot
   storage_encrypted                   = true
   storage_type                        = var.storage_type
-  tags                                = var.tags
   vpc_security_group_ids              = [aws_security_group.this.id]
 
   lifecycle {

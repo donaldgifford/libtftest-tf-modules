@@ -30,6 +30,12 @@ provider "aws" {
     s3  = "http://s3.localhost.localstack.cloud:4566"
     sts = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "network-security-group" }
+  }
 }
 
 # Declarations for the Terragrunt globals referenced via var.* in the
@@ -109,8 +115,6 @@ run "apply_security_group_with_all_source_types" {
         cidr_ipv4   = "203.0.113.0/24"
       }
     }
-
-    tags = { ManagedBy = "terraform", Component = "gateway" }
   }
 
   # The SG landed in the CONTRACT VPC — i.e. the remote-state read
@@ -199,6 +203,14 @@ run "verify_readback" {
   assert {
     condition     = output.name_tag == "gateway-frontend-public"
     error_message = "the friendly Name tag must read back"
+  }
+
+  # The module declares no tags input (DESIGN-0029): the standard set
+  # rides the provider's default_tags. Reading it back from the EC2 API
+  # proves it reached the real resource, not just the provider's plan.
+  assert {
+    condition     = output.default_tags == { ManagedBy = "terraform", Suite = "network-security-group" }
+    error_message = "the provider default_tags must read back from the EC2 API alongside the module's Name"
   }
 }
 

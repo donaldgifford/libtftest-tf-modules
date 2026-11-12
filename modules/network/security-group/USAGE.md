@@ -43,7 +43,6 @@ No modules.
 | region | AWS region the security group is created in. | `string` | n/a | yes |
 | remote\_state\_bucket | S3 bucket holding the VPC stack's terraform state, read at <account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate for vpc\_id. | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. | `string` | n/a | yes |
-| tags | Tags applied to the security group and to every rule resource. The Name tag is set by the module from var.name and must not be supplied here. | `map(string)` | `{}` | no |
 | vpc\_name | VPC name used to compose the VPC remote-state key (<account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate). Must match the VPC stack's identifier. | `string` | n/a | yes |
 
 ## Outputs

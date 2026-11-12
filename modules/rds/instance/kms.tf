@@ -14,7 +14,6 @@ resource "aws_kms_key" "this" {
   description             = "KMS key for RDS instance ${var.identifier_prefix} encryption at rest (storage + master user secret per IMPL-0007 Q12)"
   enable_key_rotation     = true
   deletion_window_in_days = 30
-  tags                    = var.tags
 
   lifecycle {
     prevent_destroy = true

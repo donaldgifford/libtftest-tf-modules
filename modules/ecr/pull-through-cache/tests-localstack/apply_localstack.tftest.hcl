@@ -47,16 +47,18 @@ provider "aws" {
     secretsmanager = "http://localhost:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "ecr-pull-through-cache" }
+  }
 }
 
 variables {
   region              = "us-east-1"
   name_prefix         = "tftest-eptc"
   upstream_registries = ["ecr-public", "docker-hub"]
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Plan-only smoke against the LocalStack endpoint. Validates that:

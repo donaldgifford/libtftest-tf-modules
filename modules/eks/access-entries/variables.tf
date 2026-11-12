@@ -175,9 +175,3 @@ variable "access_entries" {
     error_message = "Two or more access_entries name the same principal_arn. One principal must have exactly one entry — a principal's effective access is the union of all its associations, so duplicates both fail at apply and hide the true grant from review."
   }
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every access entry in the module."
-  type        = map(string)
-  default     = {}
-}

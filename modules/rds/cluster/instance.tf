@@ -29,7 +29,6 @@ resource "aws_rds_cluster_instance" "writer" {
   performance_insights_kms_key_id = var.performance_insights_enabled ? local.kms_key_arn : null
   promotion_tier                  = var.promotion_tier
   publicly_accessible             = var.publicly_accessible
-  tags                            = var.tags
 
   lifecycle {
     precondition {

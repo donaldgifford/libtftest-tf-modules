@@ -16,7 +16,6 @@ resource "aws_kms_key" "this" {
   description             = "KMS key for EFS filesystem ${var.identifier_prefix} encryption at rest"
   enable_key_rotation     = true
   deletion_window_in_days = 30
-  tags                    = var.tags
 
   lifecycle {
     prevent_destroy = true

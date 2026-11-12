@@ -125,9 +125,3 @@ variable "apply_immediately" {
   type        = bool
   default     = false
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every reader instance in the module."
-  type        = map(string)
-  default     = {}
-}

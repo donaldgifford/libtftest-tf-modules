@@ -106,8 +106,6 @@ module "gateway_frontend_public" {
       cidr_ipv4   = "203.0.113.0/24"
     }
   }
-
-  tags = { ManagedBy = "terraform", Component = "gateway" }
 }
 ```
 
@@ -301,6 +299,27 @@ serving live traffic.
 operator chasing a console rule gets back to the name the plan speaks
 in.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets one key of its own: `Name`, on the group (`<name>`)
+and on every rule (`<name>-<key>`, and `<name>-all-egress` for the
+default egress rule). It wins over a `default_tags` `Name`.
+
+## Upgrading to v0.27.0
+
+The `tags` input and its guard against a caller-supplied `Name` are
+gone. `Name` is now set only by the module, and it wins over any
+`default_tags` `Name`. Set the stack's provider `default_tags` to
+exactly today's `tags` input and plan at the old version (expect no
+changes). After bumping, expect in-place `~ tags` updates on the group
+and each rule, with `tags_all` unchanged and no replacement (proven
+live in `tests-localstack/FINDINGS.md`, IMPL-0026 probe A).
+
 ## Remote-state key contract
 
 Published at the ADR-0020 **`sg`** shape:
@@ -324,7 +343,7 @@ This module is also the **seventh consumer** of the `vpc` shape, reading
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` | plan (the gate), 33 runs | All four source types in one plan with each asserting its own field is set and the other three null; stable addresses by logical key; the `to_port` collapse, the ICMP type/code pair and the all-protocols shape; a bare call pinning every default; both egress postures; the ADR-0020 key and the `assume_role` arn; 22 rejections, each verified **by isolated message probe** to fire the rule it names |
+| `tests/` | plan (the gate), 34 runs | All four source types in one plan with each asserting its own field is set and the other three null; stable addresses by logical key; the `to_port` collapse, the ICMP type/code pair and the all-protocols shape; a bare call pinning every default; both egress postures; the ADR-0020 key and the `assume_role` arn; 21 rejections, each verified **by isolated message probe** to fire the rule it names; provider `default_tags` reaching every resource, and the module's `Name` winning a collision |
 | `tests-localstack/` | Community apply | The SG and all rule types round-trip against a real (emulated) EC2 API — see `FINDINGS.md` |
 
 Full variable/output reference: [USAGE.md](USAGE.md).

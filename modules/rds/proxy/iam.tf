@@ -63,7 +63,6 @@ data "aws_iam_policy_document" "proxy_secret_access" {
 resource "aws_iam_role" "proxy" {
   name               = "${var.name}-rds-proxy"
   assume_role_policy = data.aws_iam_policy_document.proxy_trust.json
-  tags               = var.tags
 }
 
 resource "aws_iam_role_policy" "proxy_secret_access" {

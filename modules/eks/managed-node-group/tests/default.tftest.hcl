@@ -12,6 +12,17 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+
+  # The exact map this suite passed as `tags` before DESIGN-0029, now
+  # delivered as provider default_tags — so the byte-identity asserts in
+  # default_plan compare the new rendering against the old one.
+  default_tags {
+    tags = {
+      Account     = "libtftest"
+      ClusterName = "libtftest-cluster"
+      Environment = "test"
+    }
+  }
 }
 
 variables {
@@ -20,11 +31,6 @@ variables {
   cluster_name        = "libtftest-cluster"
   vpc_name            = "libtftest-vpc"
   nodegroup_name      = "libtftest-ng"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "libtftest-cluster"
-    Environment = "test"
-  }
 }
 
 run "default_plan" {
@@ -175,5 +181,46 @@ run "default_plan" {
   assert {
     condition     = data.terraform_remote_state.vpc.config.key == "sandbox/us-east-1/vpc/libtftest-vpc/terraform.tfstate"
     error_message = "vpc remote-state read must compose <account_name>/<region>/vpc/<vpc_name>/terraform.tfstate (ADR-0020 remote-state key contract)"
+  }
+
+  # Node-roll guard, plan tier (DESIGN-0029 / IMPL-0026 2.2): the rendered
+  # tag_specifications must equal, key for key, what v0.26.0 rendered from
+  # merge(var.tags, { Name }) with the same map passed as tags. Any drift
+  # here mints a new launch-template version (version = latest_version)
+  # and rolls every node. Literals on purpose — never re-derive from the
+  # data source, or the assert proves nothing.
+  assert {
+    condition = aws_launch_template.node.tag_specifications[0].resource_type == "instance" && aws_launch_template.node.tag_specifications[0].tags == tomap({
+      Account     = "libtftest"
+      ClusterName = "libtftest-cluster"
+      Environment = "test"
+      Name        = "libtftest-ng"
+    })
+    error_message = "instance tag_specifications must be byte-identical to the pre-DESIGN-0029 rendering (default_tags + module-set Name) — a diff here rolls every node"
+  }
+
+  assert {
+    condition = aws_launch_template.node.tag_specifications[1].resource_type == "volume" && aws_launch_template.node.tag_specifications[1].tags == tomap({
+      Account     = "libtftest"
+      ClusterName = "libtftest-cluster"
+      Environment = "test"
+      Name        = "libtftest-ng-root"
+    })
+    error_message = "volume tag_specifications must be byte-identical to the pre-DESIGN-0029 rendering (default_tags + module-set Name) — a diff here rolls every node"
+  }
+
+  # Zero-diff guard for the template's own tags (IMPL-0026 Phase 4). In
+  # v0.26.0 this was `tags = var.tags`, so with the same map passed as
+  # tags it rendered exactly this. If it differs, `tags` changes on
+  # upgrade, the provider's CustomizeDiff marks latest_version
+  # known-after-apply, and the node group plans
+  # `launch_template.version -> (known after apply)`. Literal on purpose.
+  assert {
+    condition = aws_launch_template.node.tags == tomap({
+      Account     = "libtftest"
+      ClusterName = "libtftest-cluster"
+      Environment = "test"
+    })
+    error_message = "the launch template's own tags must equal the provider default set (what v0.26.0 rendered from var.tags), or the upgrade plans latest_version as known-after-apply"
   }
 }

@@ -36,19 +36,6 @@ variable "description" {
   }
 }
 
-variable "tags" {
-  description = "Tags applied to the security group and to every rule resource. The Name tag is set by the module from var.name and must not be supplied here."
-  type        = map(string)
-  default     = {}
-
-  validation {
-    condition     = !contains(keys(var.tags), "Name")
-    error_message = "tags must not set Name — the module sets it from var.name so the friendly name and the name_prefix cannot drift apart."
-  }
-
-  nullable = false
-}
-
 #--------------------------------------------------------------
 # The rules surface
 #

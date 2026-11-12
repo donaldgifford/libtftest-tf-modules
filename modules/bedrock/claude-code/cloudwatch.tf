@@ -34,5 +34,5 @@ resource "aws_cloudwatch_metric_alarm" "token_count" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
 
-  tags = merge(var.tags, local.cost_tag_map)
+  tags = local.cost_tag_map
 }

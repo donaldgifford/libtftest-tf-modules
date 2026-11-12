@@ -21,7 +21,6 @@ resource "aws_db_proxy" "this" {
   require_tls            = var.require_tls
   idle_client_timeout    = var.idle_client_timeout
   debug_logging          = var.debug_logging
-  tags                   = var.tags
 
   auth {
     auth_scheme = "SECRETS"
@@ -106,5 +105,4 @@ resource "aws_db_proxy_endpoint" "read_only" {
   vpc_subnet_ids         = local.db_subnet_ids
   vpc_security_group_ids = [aws_security_group.proxy.id]
   target_role            = "READ_ONLY"
-  tags                   = var.tags
 }

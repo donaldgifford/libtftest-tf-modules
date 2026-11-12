@@ -35,6 +35,12 @@ provider "aws" {
     s3             = "http://s3.localhost.localstack.cloud:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "eks-addons" }
+  }
 }
 
 # Declarations for the Terragrunt globals this file references via var.* in the
@@ -66,13 +72,6 @@ variables {
   kube_proxy_version         = "v1.35.3-eksbuild.2"
   coredns_version            = "v1.13.2-eksbuild.4"
   ebs_csi_version            = "v1.57.1-eksbuild.1"
-  tags = {
-    Account     = "000000000000"
-    ClusterName = "tftest-addons-cluster"
-    ClusterType = "secure"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 # Setup: VPC + subnets + KMS + cluster IAM + real aws_eks_cluster + S3

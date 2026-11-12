@@ -7,9 +7,10 @@
 # single FORECASTED notification fires at var.budget_forecast_threshold_percent
 # (default 100). All notifications fan out to the SNS topic (DESIGN-0009 §1).
 #
-# The budget is intentionally not tagged — var.tags covers the IAM,
-# AIP, SNS, and alarm resources; the budget's attribution is the
-# filter, not a tag on the budget object itself.
+# The budget carries no module-set tags: it inherits only the provider
+# default_tags (DESIGN-0029). Its attribution is the cost-tag filter,
+# not a tag on the budget object, so local.cost_tag_map is deliberately
+# not applied here (IMPL-0026 OQ 6a).
 #--------------------------------------------------------------
 
 resource "aws_budgets_budget" "this" {

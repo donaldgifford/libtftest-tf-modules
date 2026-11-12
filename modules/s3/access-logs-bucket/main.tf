@@ -35,7 +35,6 @@ module "core" {
   encryption = { mode = "s3" }
 
   force_destroy = var.force_destroy
-  tags          = var.tags
 
   # OQ 1a: bounded growth by default; null disables.
   extra_lifecycle_rules = var.log_retention_days == null ? [] : [{

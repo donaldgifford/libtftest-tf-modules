@@ -17,7 +17,6 @@ resource "aws_security_group" "proxy" {
   name        = "${var.name}-rds-proxy"
   description = "RDS Proxy ${var.name} security group"
   vpc_id      = local.vpc_id
-  tags        = var.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "consumer" {
@@ -29,7 +28,6 @@ resource "aws_vpc_security_group_ingress_rule" "consumer" {
   to_port                      = local.port
   ip_protocol                  = "tcp"
   description                  = "Ingress from consumer SG ${each.value} on the engine listener port"
-  tags                         = var.tags
 }
 
 resource "aws_vpc_security_group_egress_rule" "to_db" {
@@ -44,5 +42,4 @@ resource "aws_vpc_security_group_egress_rule" "to_db" {
   # not enforce the charset, so only a real deploy catches it. Keep this and
   # every SG/SG-rule description plain ASCII from that set.
   description = "Egress to the target DB security group on the engine port (proxy to DB, DESIGN-0010 Q3)"
-  tags        = var.tags
 }

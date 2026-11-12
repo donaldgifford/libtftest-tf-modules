@@ -91,13 +91,6 @@ func newClusterTC(tb testing.TB) *libtftest.TestCase {
 	tc.SetVar("region", stubRegion)
 	tc.SetVar("remote_state_bucket", bucket)
 	tc.SetVar("vpc_name", vpcName)
-	tc.SetVar("tags", map[string]any{
-		"Account":     "libtftest",
-		"ClusterName": tc.Prefix(),
-		"ClusterType": "eks",
-		"Environment": "test",
-		"Region":      stubRegion,
-	})
 	// sso_cluster_policy has no default; must be set even when SSO is
 	// disabled because the validation block runs unconditionally.
 	tc.SetVar("sso_cluster_policy", "AmazonEKSViewPolicy")

@@ -35,6 +35,15 @@ CloudFormation/SAM). Consumers that copy the value onward (e.g. an RDS
 master password set from this secret) do **not** pick a rotation up
 automatically — they re-send on their own version bump (INV-0010 F4).
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract
 
 Consumers read this module's outputs from its Terraform state at the

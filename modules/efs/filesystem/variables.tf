@@ -178,9 +178,3 @@ variable "access_points" {
     error_message = "Each access point's posix_user.uid, posix_user.gid, and every secondary_gids entry must be in the range [0, 65535] (POSIX UID/GID bounds; root is permitted)."
   }
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (filesystem, mount targets where supported, access points, security group, security group rules, KMS key)."
-  type        = map(string)
-  default     = {}
-}

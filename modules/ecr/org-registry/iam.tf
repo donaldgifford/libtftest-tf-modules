@@ -19,7 +19,6 @@ resource "aws_iam_role" "ecr_template" {
   name               = local.template_role_name
   description        = "Assumed by ECR when creating repos via creation templates (managed by org-registry module)"
   assume_role_policy = data.aws_iam_policy_document.ecr_template_assume.json
-  tags               = var.tags
 }
 
 data "aws_iam_policy_document" "ecr_template" {

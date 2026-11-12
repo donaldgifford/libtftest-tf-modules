@@ -40,6 +40,17 @@ module "access_logs" {
 # => bucket access-logs-<account_id>-<region>, 90-day retention
 ```
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own. Its resources live in the
+shared `s3/internal/core` child module, which inherits the same
+provider and therefore the same `default_tags`.
+
 ## Remote-state key contract (ADR-0020)
 
 This module is a pure **producer** (it reads no remote state). Its

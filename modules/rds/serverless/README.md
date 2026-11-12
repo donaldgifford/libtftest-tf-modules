@@ -49,11 +49,6 @@ module "platform_db" {
   allowed_consumer_sg_ids = [
     "sg-0123456789abcdef0", # backend app SG
   ]
-
-  tags = {
-    Service     = "platform-api"
-    Environment = "production"
-  }
 }
 ```
 
@@ -73,8 +68,6 @@ module "analytics_db" {
   max_acu = 4
 
   allowed_consumer_sg_ids = ["sg-aaa1234567"]
-
-  tags = { Service = "analytics" }
 }
 ```
 
@@ -197,6 +190,15 @@ precondition fails the plan. Pick a stable identifier (e.g.,
 `platform-db-final-20260530`) so the snapshot is findable in the
 console / CLI later.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract (ADR-0020)
 
 This module **reads** the VPC facts at:
@@ -243,5 +245,5 @@ just tf test-localstack rds/serverless
 | `cluster.tf` | `aws_rds_cluster` (Serverless v2 mode) + 3 preconditions |
 | `instance.tf` | `aws_rds_cluster_instance` (`db.serverless`) + 1 precondition |
 | `outputs.tf` | 14 consumer-contract outputs |
-| `tests/` | Plan-only `terraform test` suite (21 runs) |
+| `tests/` | Plan-only `terraform test` suite (30 runs) |
 | `tests-localstack/` | Gap-discovery apply suite + FINDINGS.md |

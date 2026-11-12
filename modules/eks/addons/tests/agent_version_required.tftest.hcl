@@ -15,13 +15,6 @@ variables {
   remote_state_bucket = "stub-bucket"
   region              = "us-east-1"
   cluster_name        = "libtftest-cluster"
-  tags = {
-    Account     = "000000000000"
-    ClusterName = "libtftest-cluster"
-    ClusterType = "secure"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "empty_string_rejected" {

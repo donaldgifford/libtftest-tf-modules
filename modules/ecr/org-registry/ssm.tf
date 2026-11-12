@@ -26,7 +26,6 @@ resource "aws_ssm_parameter" "publisher_policy_arn" {
   value       = aws_iam_policy.oci_publisher.arn
   tier        = var.ssm_cross_account_org_id == null ? "Standard" : "Advanced"
   description = "ARN of the org-wide ECR OCI publisher IAM policy. Attach to CI / IRSA roles in the artifact-hosting account."
-  tags        = var.tags
 }
 
 resource "aws_ssm_parameter" "publisher_policy_json" {
@@ -37,7 +36,6 @@ resource "aws_ssm_parameter" "publisher_policy_json" {
   value       = data.aws_iam_policy_document.oci_publisher.json
   tier        = var.ssm_cross_account_org_id == null ? "Standard" : "Advanced"
   description = "Full JSON of the org-wide ECR OCI publisher IAM policy. Cross-account consumers read this and recreate the policy in their own accounts."
-  tags        = var.tags
 }
 
 #--------------------------------------------------------------

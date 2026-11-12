@@ -14,14 +14,12 @@ resource "aws_db_subnet_group" "this" {
   name        = "${var.identifier_prefix}-rds-cluster"
   description = "Aurora provisioned cluster ${var.identifier_prefix} subnet group"
   subnet_ids  = data.terraform_remote_state.vpc.outputs.private_subnet_ids
-  tags        = var.tags
 }
 
 resource "aws_security_group" "this" {
   name        = "${var.identifier_prefix}-rds-cluster"
   description = "Aurora provisioned cluster ${var.identifier_prefix} security group"
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
-  tags        = var.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "consumer" {
@@ -33,7 +31,6 @@ resource "aws_vpc_security_group_ingress_rule" "consumer" {
   to_port                      = local.engine_default_port
   ip_protocol                  = "tcp"
   description                  = "Ingress from consumer SG ${each.value} on the engine default port"
-  tags                         = var.tags
 }
 
 resource "aws_vpc_security_group_egress_rule" "all" {
@@ -41,5 +38,4 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
   description       = "All-outbound egress for AWS API endpoints (Secrets Manager, KMS, CloudWatch metrics)"
-  tags              = var.tags
 }

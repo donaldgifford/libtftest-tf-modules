@@ -103,11 +103,22 @@ fixture demonstrates the policy rather than proving it.
 
 `tests-localstack/fixtures/destinations/main.tf` is the worked example.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own. Its resources live in the
+shared `s3/internal/core` child module, which inherits the same
+provider and therefore the same `default_tags`.
+
 ## Tests
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` (13 runs) | plan-only, the CI gate | the notification singleton's shape (single destination, all three kinds at once, per-entry filters, EventBridge-only), the destination requirement, unique-id and non-empty-event guards, plus the inherited tri-state / ADR-0020 key / policy / naming coverage |
+| `tests/` (15 runs) | plan-only, the CI gate | the notification singleton's shape (single destination, all three kinds at once, per-entry filters, EventBridge-only), the destination requirement, unique-id and non-empty-event guards, plus the inherited tri-state / ADR-0020 key / policy / naming coverage |
 | `tests-localstack/` (3 runs) | Community apply (token-free `localstack/localstack:4.4`, `SERVICES=s3,sts,sqs,sns,events`) | notifications and the reserved-key lookup applied for real against SQS + SNS + EventBridge; see [FINDINGS.md](tests-localstack/FINDINGS.md) including the **positive** F6 probe on notification firing |
 
 `security_baseline.tftest.hcl` is byte-identical to `s3/bucket`'s

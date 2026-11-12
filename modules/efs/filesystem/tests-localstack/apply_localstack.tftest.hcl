@@ -42,6 +42,12 @@ provider "aws" {
     s3     = "http://s3.localhost.localstack.cloud:4566"
     sts    = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "efs-filesystem" }
+  }
 }
 
 # Declarations for the Terragrunt globals this file references via var.* in the
@@ -66,10 +72,6 @@ variables {
   vpc_name          = "tftest-efs-filesystem-vpc"
   cluster_name      = "tftest-efs-filesystem-eks"
   identifier_prefix = "tftest-efs"
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Setup: VPC + 3 private subnets + standalone node-SG stub + S3 bucket

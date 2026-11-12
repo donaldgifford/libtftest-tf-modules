@@ -24,8 +24,6 @@ resource "aws_eks_addon" "kube_proxy" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 
-  tags = var.tags
-
   depends_on = [aws_eks_addon.pod_identity_agent]
 }
 
@@ -37,8 +35,6 @@ resource "aws_eks_addon" "coredns" {
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
-
-  tags = var.tags
 
   depends_on = [aws_eks_addon.pod_identity_agent]
 }

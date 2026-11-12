@@ -141,7 +141,6 @@ module "core" {
   force_destroy                   = var.force_destroy
   abort_incomplete_multipart_days = var.abort_incomplete_multipart_days
   extra_lifecycle_rules           = local.ia_lifecycle_rules
-  tags                            = var.tags
 
   logging = local.logging
 

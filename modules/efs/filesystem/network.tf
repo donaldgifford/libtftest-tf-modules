@@ -22,7 +22,6 @@ resource "aws_security_group" "this" {
   name        = "${var.identifier_prefix}-efs"
   description = "EFS filesystem ${var.identifier_prefix} mount-target security group"
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
-  tags        = var.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "from_nodes" {
@@ -32,7 +31,6 @@ resource "aws_vpc_security_group_ingress_rule" "from_nodes" {
   to_port                      = local.nfs_port
   ip_protocol                  = "tcp"
   description                  = "NFS ingress from EKS node SG (EFS CSI driver pods)"
-  tags                         = var.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "from_extra" {
@@ -44,7 +42,6 @@ resource "aws_vpc_security_group_ingress_rule" "from_extra" {
   to_port                      = local.nfs_port
   ip_protocol                  = "tcp"
   description                  = "NFS ingress from additional consumer SG ${each.value}"
-  tags                         = var.tags
 }
 
 resource "aws_vpc_security_group_egress_rule" "all" {
@@ -52,5 +49,4 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
   description       = "All-outbound egress (SG spec symmetry; mount-target ENIs never initiate)"
-  tags              = var.tags
 }

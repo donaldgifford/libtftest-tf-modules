@@ -30,6 +30,12 @@ provider "aws" {
     iam = "http://localhost:4566"
     sts = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029); the verify read-back proves it reached IAM.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "iam-role" }
+  }
 }
 
 variables {
@@ -43,7 +49,6 @@ variables {
 
   managed_policy_arns  = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
   max_session_duration = 7200
-  tags                 = { ManagedBy = "terraform", Suite = "iam-role" }
 }
 
 run "setup" {
@@ -158,7 +163,7 @@ run "verify_readback" {
 
   assert {
     condition     = output.role_tags["ManagedBy"] == "terraform"
-    error_message = "IAM must have stored the caller's tags"
+    error_message = "IAM must have stored the provider default_tags"
   }
 }
 

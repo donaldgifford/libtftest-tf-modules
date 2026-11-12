@@ -33,7 +33,6 @@ resource "aws_rds_cluster_instance" "replica" {
   performance_insights_enabled = each.value.performance_insights_enabled
   promotion_tier               = each.value.promotion_tier
   publicly_accessible          = each.value.publicly_accessible
-  tags                         = var.tags
 
   lifecycle {
     # Q7-design — stale / wrong / partially-applied cluster state. If the

@@ -37,7 +37,6 @@ No modules.
 | region | AWS region. Also feeds the remote-state key convention <account\_name>/<region>/eks/<cluster\_name>/terraform.tfstate. | `string` | n/a | yes |
 | remote\_state\_bucket | S3 bucket holding the cluster module's remote state. Used by data.terraform\_remote\_state.eks per ADR-0001. | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backend reads from this region. | `string` | n/a | yes |
-| tags | AWS resource tags applied to every access entry in the module. | `map(string)` | `{}` | no |
 
 ## Outputs
 

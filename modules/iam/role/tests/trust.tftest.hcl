@@ -19,6 +19,12 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+
+  # The fleet's standard tag set arrives through provider default_tags
+  # (DESIGN-0029); the module declares no tags input of its own.
+  default_tags {
+    tags = { Owner = "platform" }
+  }
 }
 
 # Shape 1: the per-account deploy role — trusted by the hub
@@ -177,7 +183,6 @@ run "defaults_and_passthrough" {
     trusted_role_arns    = ["arn:aws:iam::000000000000:role/atlantis-pod-identity"]
     permissions_boundary = "arn:aws:iam::000000000000:policy/platform-boundary"
     max_session_duration = 7200
-    tags                 = { Owner = "platform" }
   }
 
   assert {
@@ -196,8 +201,13 @@ run "defaults_and_passthrough" {
   }
 
   assert {
-    condition     = aws_iam_role.this.tags["Owner"] == "platform"
-    error_message = "tags must pass through to the role"
+    condition     = aws_iam_role.this.tags_all["Owner"] == "platform"
+    error_message = "provider default_tags must reach the role (tags_all)"
+  }
+
+  assert {
+    condition     = length(coalesce(aws_iam_role.this.tags, {})) == 0
+    error_message = "the module must set no tags of its own on the role — the standard set is provider default_tags only"
   }
 }
 

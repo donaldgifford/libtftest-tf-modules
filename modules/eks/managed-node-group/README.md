@@ -137,7 +137,7 @@ per-cluster overlay; Argo syncs it like every other cluster-scoped object.
 
 Layout (consumer's GitOps repo):
 
-```
+```text
 clusters/<env>/<cluster-name>/
 ├── base/
 │   └── gvisor-runtimeclass/
@@ -303,6 +303,43 @@ module "node_group" {
 The `containerd_pull_through_mirror` block is separately opt-in per
 IMPL-0005 Q8 — independent from the IAM gate so callers can attach the
 policy without redirecting runtime traffic (e.g., during validation).
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The launch template is the exception, because `default_tags` cannot
+reach its `tag_specifications` (the tags EC2 puts on each launched
+instance and root volume). The module reads the provider's set back
+through `data.aws_default_tags` and merges a module-set `Name` on top:
+`<nodegroup_name>` for instances, `<nodegroup_name>-root` for
+volumes. The template's own `tags` mirror the same set. That way an
+upgrade from a version that took a `tags` input plans no `tags`
+change on the template; such a change would make the provider plan
+`latest_version`, and so the node group, as known-after-apply.
+
+**Changing `default_tags` rolls every node.** The rendered
+`tag_specifications` are launch-template data, the node group pins
+`version = latest_version`, and any content change mints a new
+version.
+
+## Upgrading to v0.27.0
+
+The node group pins `version = latest_version`, so the upgrade must
+not change launch-template content. Per stack, before bumping:
+
+1. Read the current launch template's `tag_specifications` tags from
+   state (`terraform state show aws_launch_template.node`).
+2. Set the stack's provider `default_tags` to the old `tags` input
+   **exactly**, keys and values (`Name` stays module-set). Plan at the
+   old version and expect no changes.
+3. Bump, then plan. Confirm **no** change to `aws_launch_template.node`
+   and **no** update to `aws_eks_node_group.this`. If either appears,
+   the default set differs from the old input. Fix the live config,
+   and never apply.
 
 ## Remote-state key contract (ADR-0020)
 

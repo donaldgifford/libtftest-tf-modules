@@ -14,7 +14,6 @@
 resource "aws_iam_role" "vpc_cni" {
   name               = local.vpc_cni_role_name
   assume_role_policy = data.aws_iam_policy_document.pod_identity_trust.json
-  tags               = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_cni" {
@@ -30,8 +29,6 @@ resource "aws_eks_addon" "vpc_cni" {
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
-
-  tags = var.tags
 
   pod_identity_association {
     service_account = "aws-node"

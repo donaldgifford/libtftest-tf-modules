@@ -69,7 +69,6 @@ resource "aws_eks_access_entry" "this" {
   type              = each.value.type
   kubernetes_groups = each.value.kubernetes_groups
   user_name         = each.value.user_name
-  tags              = var.tags
 
   lifecycle {
     # Cross-stack collision guard. eks/cluster owns the SSO principal's

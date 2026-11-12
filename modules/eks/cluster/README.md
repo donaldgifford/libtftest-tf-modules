@@ -100,10 +100,11 @@ terraform init -backend=false
 terraform test
 ```
 
-Runtime: ~1.2s. 13 run blocks across four files: the default plan, KMS
-external, SSO disabled/enabled, and `endpoint_fence.tftest.hcl` — the fence
+Runtime: ~1.2s. 14 run blocks across five files: the default plan, KMS
+external, SSO disabled/enabled, `endpoint_fence.tftest.hcl` — the fence
 matrix (the zero-diff default pin, literal CIDRs, prefix-list expansion, the
-de-duplicated union, the private-only spoke posture, and all four guards).
+de-duplicated union, the private-only spoke posture, and all four guards) —
+and `default_tags.tftest.hcl` (the provider default set reaches the cluster).
 Uses `override_data` to stub `data.terraform_remote_state.vpc`,
 `data.aws_caller_identity.current`, and `data.aws_ec2_managed_prefix_list`.
 
@@ -148,6 +149,31 @@ Runtime: ~45 seconds against a warm LocalStack Pro.
 Apply-time invariants land here once the libtftest harness covers
 them (kind/k3d bridge, sneakystack lifecycle). See
 [ADR-0014](../../../docs/adr/0014-use-libtftest-for-apply-time-runtime-validation-without-aws.md).
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own. The KMS key's description and
+alias are named from `var.name` (`alias/eks/<name>`).
+
+## Upgrading to v0.27.0
+
+Before bumping, set the stack's provider `default_tags` to exactly
+today's `tags` input, and plan at the old version (expect no
+changes). After bumping, expect in-place `~ tags` updates only, with
+`tags_all` unchanged.
+
+The KMS alias and key description used to come from
+`tags.ClusterName`, and now come from `name`. If the two were equal
+(the fleet convention), nothing changes. If they differed, the plan
+replaces `aws_kms_alias.cluster` (destroy + create under the new name)
+and updates the key's description in place. **The key itself is not
+replaced**, so nothing encrypted with it is affected. Anything that
+referenced the old alias name must be repointed.
 
 ## Remote-state key contract (ADR-0020)
 

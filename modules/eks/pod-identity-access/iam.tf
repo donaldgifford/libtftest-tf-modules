@@ -30,8 +30,6 @@ resource "aws_iam_role" "this" {
   name                 = local.role_name
   assume_role_policy   = data.aws_iam_policy_document.pod_identity_trust[0].json
   permissions_boundary = var.permissions_boundary
-
-  tags = var.tags
 }
 
 #--------------------------------------------------------------

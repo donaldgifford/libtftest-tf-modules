@@ -197,13 +197,6 @@ variable "additional_policy_statements" {
   nullable = false
 }
 
-variable "tags" {
-  description = "Tags applied to every taggable resource in the module."
-  type        = map(string)
-  default     = {}
-  nullable    = false
-}
-
 #--------------------------------------------------------------
 # Notification destinations (DESIGN-0019 OQ 5a — typed per-destination
 # lists rather than one untyped map: each destination kind has its own

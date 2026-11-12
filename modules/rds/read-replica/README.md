@@ -48,8 +48,6 @@ module "platform_db_readers" {
   replicas = {
     r1 = { instance_class = "db.r6g.large" }
   }
-
-  tags = { Service = "platform-api" }
 }
 ```
 
@@ -130,6 +128,15 @@ positional index. Removing a middle key does **not** renumber or replace the
 survivors — only the removed reader is destroyed. Keep keys stable across
 applies.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract (ADR-0020)
 
 This module **reads** the source cluster's state at:
@@ -169,6 +176,6 @@ just tf test-localstack-pro rds/read-replica
 | `locals.tf` | Aliased cluster remote-state outputs |
 | `replicas.tf` | `aws_rds_cluster_instance.replica` (`for_each`) + 3 preconditions |
 | `outputs.tf` | `replica_identifiers` + `replica_endpoints` maps |
-| `tests/` | Plan-only `terraform test` suite (11 runs) |
+| `tests/` | Plan-only `terraform test` suite (12 runs) |
 | `tests-localstack/` | Community `plan_smoke` + FINDINGS.md |
 | `tests-localstack-pro/` | Pro apply suite + `fixtures/cluster` (real cluster module, Q4-b) |

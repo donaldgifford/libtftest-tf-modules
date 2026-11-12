@@ -53,7 +53,6 @@ No modules.
 | region | AWS region for the filesystem + the S3 backend hosting the VPC + EKS remote states. | `string` | n/a | yes |
 | remote\_state\_bucket | S3 bucket holding both the VPC stack's terraform state (read at <account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate for vpc\_id + private\_subnet\_ids) and the EKS cluster stack's terraform state (read at <account\_name>/<region>/eks/<cluster\_name>/terraform.tfstate for node\_security\_group\_id) — per DESIGN-0008 Q1; account-scoped keys per IMPL-0015. | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backends read from this region. | `string` | n/a | yes |
-| tags | AWS resource tags applied to every taggable resource in the module (filesystem, mount targets where supported, access points, security group, security group rules, KMS key). | `map(string)` | `{}` | no |
 | throughput\_mode | EFS throughput mode — 'elastic' (default per DESIGN-0008 Q3; AWS auto-scales throughput with workload, charge-per-use), 'bursting' (legacy; baseline scales with filesystem size + credit accrual), or 'provisioned' (fixed throughput floor; requires var.provisioned\_throughput\_in\_mibps). | `string` | `"elastic"` | no |
 | vpc\_name | VPC name used to compose the VPC remote-state key. Must match the VPC stack's identifier. | `string` | n/a | yes |
 

@@ -23,7 +23,6 @@ resource "aws_s3_bucket" "this" {
   object_lock_enabled = var.object_lock.enabled
 
   force_destroy = var.force_destroy
-  tags          = var.tags
 
   lifecycle {
     precondition {

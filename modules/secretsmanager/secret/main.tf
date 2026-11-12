@@ -29,7 +29,6 @@ resource "aws_secretsmanager_secret" "this" {
   kms_key_id = var.kms_key_arn
 
   recovery_window_in_days = var.secret_recovery_window_days
-  tags                    = var.tags
 }
 
 # Local ephemeral (INV-0010 resolution 3a): opens with NO API call,

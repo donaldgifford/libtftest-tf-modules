@@ -23,13 +23,6 @@ variables {
   region                     = "us-east-1"
   cluster_name               = "libtftest-cluster"
   pod_identity_agent_version = "v1.3.0-eksbuild.1"
-  tags = {
-    Account     = "000000000000"
-    ClusterName = "libtftest-cluster"
-    ClusterType = "secure"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "default_plan" {

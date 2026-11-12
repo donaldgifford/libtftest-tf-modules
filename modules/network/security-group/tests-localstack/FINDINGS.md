@@ -173,3 +173,59 @@ other module using the provider's `name_prefix` argument and reproduces
 the behaviour exactly — with a worse consequence, since that resource
 has no `create_before_destroy` and mints a **new secret value** on
 create.
+
+## DESIGN-0029 / IMPL-0026 — provider `default_tags` (2026-11-11)
+
+The module no longer declares a `tags` input. The standard tag set
+arrives through the provider's `default_tags`, which this suite's
+provider block now sets (`ManagedBy`, `Suite`), so the apply
+exercises the real tagging path.
+
+- **Image:** token-free `localstack/localstack:4.4` (Community 4.4.0),
+  no auth token.
+- **Services:** one container for all eight Community suites in this
+  IMPL, with `SERVICES=iam,sts,ec2,s3,sqs,sns,events,secretsmanager`.
+  That is a superset of this suite's recorded list.
+- **Result:** 4/4 green.
+
+`verify_readback` now also asserts the `default_tags` pair (`ManagedBy`, `Suite`) reads back from the EC2 API next to the module's `Name` (IMPL-0026 3.4). Mutation-checked live: dropping the provider's `default_tags` reds exactly that assert.
+
+## IMPL-0026 Phase 4 probe A — upgrade diff, `v0.26.0` → working tree (2026-11-11)
+
+DESIGN-0029's rollout, run for real on this module: apply at `v0.26.0`
+with a module `tags` input, add the same set as provider `default_tags`,
+then upgrade to the tags-less module. Scratch roots under `/tmp`, a
+`git worktree` of `v0.26.0` referenced by relative path, this suite's
+`fixtures/setup` for the VPC and the account-scoped state object.
+
+- **Image:** token-free `localstack/localstack:4.4` (Community 4.4.0).
+- **Terraform** 1.15.8, **hashicorp/aws** 6.72.0.
+- **X** = `{ Environment = "probe", Owner = "platform" }`; one `corp`
+  ingress rule plus the default all-egress rule.
+
+| Step | Config | Result |
+| --- | --- | --- |
+| 0 | `v0.26.0`, `tags = X`, no `default_tags` | `3 added`; replan clean |
+| 1 | + provider `default_tags = X` (rollout step 3) | **No changes** (exit 0) |
+| 2 | working tree, no `tags` | **`0 to add, 3 to change, 0 to destroy`** |
+| 3 | apply step 2, replan | `0 added, 3 changed`; replan **No changes** |
+
+Step 2's plan, for the security group (both rules read the same way):
+
+```text
+  ~ resource "aws_security_group" "this" {
+        id                     = "sg-11791198e20fdca67"
+      ~ tags                   = {
+          - "Environment" = "probe" -> null
+            "Name"        = "probe-a"
+          - "Owner"       = "platform" -> null
+        }
+    }
+```
+
+The plan JSON confirms `tags` is the **only** changed attribute on all
+three resources, with nothing unknown, and `tags_all` identical before
+and after. After step 3 the group keeps its id, and the EC2 API reports
+exactly `Environment`, `Name`, `Owner`. **DESIGN-0029's plain-module
+expectation holds: tags-only in-place, no replacement.**
+

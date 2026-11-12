@@ -136,3 +136,19 @@ policies — DESIGN-0025 OQ 3a attach-only), and `fixtures/verify`
 holds the read-back data sources. Same env wiring as the fleet
 (`AWS_ENDPOINT_URL`, and explicit `iam`/`sts` endpoints in the
 provider block).
+
+## DESIGN-0029 / IMPL-0026 — provider `default_tags` (2026-11-11)
+
+The module no longer declares a `tags` input. The standard tag set
+arrives through the provider's `default_tags`, which this suite's
+provider block now sets (`ManagedBy`, `Suite`), so the apply
+exercises the real tagging path.
+
+- **Image:** token-free `localstack/localstack:4.4` (Community 4.4.0),
+  no auth token.
+- **Services:** one container for all eight Community suites in this
+  IMPL, with `SERVICES=iam,sts,ec2,s3,sqs,sns,events,secretsmanager`.
+  That is a superset of this suite's recorded list.
+- **Result:** 5/5 green.
+
+The `verify_readback` run (re-sourced in IMPL-0026 1.9) reads the role's tags back through `data.aws_iam_role` and asserts the provider's `default_tags` pair arrived.

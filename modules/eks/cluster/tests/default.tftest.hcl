@@ -22,13 +22,6 @@ variables {
   remote_state_bucket = "stub-bucket"
   vpc_name            = "stub-vpc"
   sso_cluster_policy  = "AmazonEKSViewPolicy"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "libtftest"
-    ClusterType = "eks"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "default_plan" {
@@ -115,6 +108,19 @@ run "default_plan" {
   assert {
     condition     = length(aws_kms_alias.cluster) == 1
     error_message = "default config must create exactly one module-managed KMS alias"
+  }
+
+  # DESIGN-0029 OQ 3a: the alias and key description name the cluster from
+  # var.name (formerly var.tags.ClusterName), like every other resource in
+  # the module and every other module's KMS alias.
+  assert {
+    condition     = aws_kms_alias.cluster[0].name == "alias/eks/libtftest"
+    error_message = "the module-managed KMS alias must be alias/eks/<var.name>"
+  }
+
+  assert {
+    condition     = aws_kms_key.cluster[0].description == "EKS envelope encryption CMK for cluster libtftest"
+    error_message = "the module-managed KMS key description must name the cluster from var.name"
   }
 
   # Node SG vpc_id resolves from the (stubbed) VPC remote state.

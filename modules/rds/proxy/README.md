@@ -60,8 +60,6 @@ module "db_proxy" {
 
   # Optional: an Aurora reader endpoint for read traffic.
   create_read_only_endpoint = true
-
-  tags = { Environment = "prod" }
 }
 ```
 
@@ -138,6 +136,15 @@ proxy. For genuinely idle clusters, consider connecting directly.
 - **Pinning.** Some session state pins a client to a backend connection,
   reducing pool efficiency. Relax with
   `session_pinning_filters = ["EXCLUDE_VARIABLE_SETS"]` where safe.
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
 
 ## Remote-state key contract (ADR-0020)
 

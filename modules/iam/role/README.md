@@ -128,8 +128,6 @@ module "deploy_role" {
   customer_managed_policy_arns = [
     "arn:aws:iam::444455556666:policy/deploy-tf",
   ]
-
-  tags = { ManagedBy = "terraform" }
 }
 ```
 
@@ -269,6 +267,15 @@ import {
 The attachment and inline addresses key by policy ARN and policy
 name, so adding or removing one entry later never churns a sibling's
 address.
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
 
 ## Remote-state key contract
 

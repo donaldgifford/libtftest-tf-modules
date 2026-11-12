@@ -32,7 +32,7 @@ resource "aws_security_group" "this" {
   description = coalesce(var.description, "Managed by Terraform - ${var.name}")
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
 
-  tags = merge(var.tags, { Name = var.name })
+  tags = { Name = var.name }
 
   lifecycle {
     create_before_destroy = true
@@ -67,7 +67,7 @@ resource "aws_vpc_security_group_ingress_rule" "this" {
   prefix_list_id               = each.value.prefix_list_id
   referenced_security_group_id = each.value.referenced_security_group_id
 
-  tags = merge(var.tags, { Name = "${var.name}-${each.key}" })
+  tags = { Name = "${var.name}-${each.key}" }
 }
 
 resource "aws_vpc_security_group_egress_rule" "this" {
@@ -85,7 +85,7 @@ resource "aws_vpc_security_group_egress_rule" "this" {
   prefix_list_id               = each.value.prefix_list_id
   referenced_security_group_id = each.value.referenced_security_group_id
 
-  tags = merge(var.tags, { Name = "${var.name}-${each.key}" })
+  tags = { Name = "${var.name}-${each.key}" }
 }
 
 # The visible all-egress default — byte-for-byte the eks/cluster
@@ -100,5 +100,5 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   ip_protocol       = "-1"
   description       = "All egress"
 
-  tags = merge(var.tags, { Name = "${var.name}-all-egress" })
+  tags = { Name = "${var.name}-all-egress" }
 }

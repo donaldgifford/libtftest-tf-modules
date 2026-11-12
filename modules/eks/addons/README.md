@@ -76,6 +76,15 @@ output `cluster_version` per [ADR-0001](../../../docs/adr/0001-use-data-terrafor
 
 [Usage docs](./USAGE.md)
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own.
+
 ## Remote-state key contract (ADR-0020)
 
 This module **reads** the cluster's state at:

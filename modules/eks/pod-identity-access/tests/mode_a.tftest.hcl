@@ -31,9 +31,6 @@ variables {
     deny-elbv2 = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"elasticloadbalancing:*\",\"Resource\":\"*\"}]}"
     deny-s3    = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":\"*\"}]}"
   }
-  tags = {
-    Environment = "test"
-  }
   association_tags = {
     Component = "cluster-autoscaler"
   }

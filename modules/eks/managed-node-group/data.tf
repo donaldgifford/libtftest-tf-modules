@@ -46,3 +46,9 @@ data "terraform_remote_state" "vpc" {
     }
   }
 }
+
+# The provider's default_tags, read back for the one place they do not
+# reach on their own (DESIGN-0029): launch-template tag_specifications,
+# which EC2 applies to the instances and volumes the node group launches.
+# Reads provider config only — no API call, plan-known offline.
+data "aws_default_tags" "this" {}

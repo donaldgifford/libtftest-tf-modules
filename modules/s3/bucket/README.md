@@ -42,6 +42,17 @@ the core, because only it knows the final name (the shard prefix is
 unknown until apply). Setting `target_bucket` or `prefix` alongside
 `enabled = false` fails at plan rather than being silently ignored.
 
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module sets no tag keys of its own. Its resources live in the
+shared `s3/internal/core` child module, which inherits the same
+provider and therefore the same `default_tags`.
+
 ## Remote-state key contract (ADR-0020)
 
 On the **default** tri-state path this module reads the access-logs
@@ -115,7 +126,7 @@ additional_policy_statements = [{
 
 | Suite | Tier | What it proves |
 |-------|------|----------------|
-| `tests/` (9 runs) | plan-only, the CI gate | all three tri-state paths (resolved target/prefix, zero data-source instances on the no-read paths), the ADR-0020 key composition, the additive policy merge + `resource_suffixes` expansion, the security baseline, and the validation guardrails |
+| `tests/` (11 runs) | plan-only, the CI gate | all three tri-state paths (resolved target/prefix, zero data-source instances on the no-read paths), the ADR-0020 key composition, the additive policy merge + `resource_suffixes` expansion, the security baseline, and the validation guardrails |
 | `tests-localstack/` (3 runs) | Community apply (token-free `localstack/localstack:4.4`, `SERVICES=s3,sts`) | the count-gated read end to end — the fixture applies the **real** `access-logs-bucket` module and seeds the reserved key, which this module reads back through `assume_role`; see [FINDINGS.md](tests-localstack/FINDINGS.md), including the negative F6 probe on log-delivery materialization |
 
 `security_baseline.tftest.hcl` is the family's **canonical** baseline

@@ -18,13 +18,6 @@ variables {
   vpc_name            = "stub-vpc"
   sso_cluster_policy  = "AmazonEKSViewPolicy"
   kms_key_arn         = "arn:aws:kms:us-east-1:000000000000:key/external-test-key"
-  tags = {
-    Account     = "libtftest"
-    ClusterName = "libtftest-ext"
-    ClusterType = "eks"
-    Environment = "test"
-    Region      = "us-east-1"
-  }
 }
 
 run "external_kms_plan" {

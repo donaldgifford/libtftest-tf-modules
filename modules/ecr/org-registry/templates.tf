@@ -73,7 +73,7 @@ resource "aws_ecr_repository_creation_template" "helm_charts" {
 
   repository_policy = data.aws_iam_policy_document.org_pull.json
 
-  resource_tags = merge(var.tags, {
+  resource_tags = merge(data.aws_default_tags.this.tags, {
     artifact_type = "helm-chart"
     managed_by    = "platform"
   })
@@ -130,7 +130,7 @@ resource "aws_ecr_repository_creation_template" "tf_modules" {
 
   repository_policy = data.aws_iam_policy_document.org_pull.json
 
-  resource_tags = merge(var.tags, {
+  resource_tags = merge(data.aws_default_tags.this.tags, {
     artifact_type = "terraform-module"
     managed_by    = "platform"
   })

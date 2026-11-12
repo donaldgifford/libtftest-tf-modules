@@ -49,7 +49,6 @@
 | shard\_prefix\_enabled | Opt-in: prepend a stable 5-character random lowercase-alphanumeric prefix to the composed bucket name for key-distribution/sharding. Toggling this after creation renames and therefore REPLACES the bucket. | `bool` | `false` | no |
 | sns\_topics | SNS destinations for bucket notifications. Same shape as sqs\_queues; the topic's access policy must allow s3.amazonaws.com to publish from this bucket's ARN (owned by the topic's stack). | ```list(object({ id = string arn = string events = list(string) filter_prefix = optional(string) filter_suffix = optional(string) }))``` | `[]` | no |
 | sqs\_queues | SQS destinations for bucket notifications. id is the notification-configuration entry name (unique per bucket). events are S3 event types (e.g. ["s3:ObjectCreated:*"]). filter\_prefix / filter\_suffix scope the trigger; null = no filter. | ```list(object({ id = string arn = string events = list(string) filter_prefix = optional(string) filter_suffix = optional(string) }))``` | `[]` | no |
-| tags | Tags applied to every taggable resource in the module. | `map(string)` | `{}` | no |
 | versioning\_enabled | Enable bucket versioning. Off by default — an explicit operator decision (INV-0009 F2). | `bool` | `false` | no |
 
 ## Outputs

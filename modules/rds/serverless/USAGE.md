@@ -69,7 +69,6 @@ No modules.
 | remote\_state\_bucket | S3 bucket holding the VPC stack's terraform state. The module reads <account\_name>/<region>/vpc/<vpc\_name>/terraform.tfstate for vpc\_id + private\_subnet\_ids (per IMPL-0007 Q1; account-scoped key per IMPL-0015). | `string` | n/a | yes |
 | remote\_state\_bucket\_region | Region of the remote-state S3 bucket — distinct from var.region (the deployment region) in production Terragrunt. The terraform\_remote\_state backend reads from this region. | `string` | n/a | yes |
 | skip\_final\_snapshot | When true, skips the final snapshot at cluster destroy. Default false — operators MUST supply var.final\_snapshot\_identifier at destroy time unless they flip this to true. | `bool` | `false` | no |
-| tags | AWS resource tags applied to every taggable resource in the module (cluster, instance, subnet group, security group, parameter groups, KMS key). | `map(string)` | `{}` | no |
 | vpc\_name | VPC name used to compose the remote-state key. Must match the VPC stack's identifier. | `string` | n/a | yes |
 
 ## Outputs

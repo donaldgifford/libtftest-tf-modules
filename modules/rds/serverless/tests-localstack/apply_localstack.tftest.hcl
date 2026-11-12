@@ -44,6 +44,12 @@ provider "aws" {
     secretsmanager = "http://localhost:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "rds-serverless" }
+  }
 }
 
 # Declarations for the Terragrunt globals this file references via var.* in the
@@ -79,11 +85,6 @@ variables {
   # null path; the plan suite (tests/secret_rotation.tftest.hcl) gates the
   # rotation surface. See FINDINGS.md.
   master_secret_rotation_days = null
-
-  tags = {
-    Environment = "test"
-    ManagedBy   = "libtftest"
-  }
 }
 
 # Setup: the shared vpc-lookup-faithful reference VPC (three-tier

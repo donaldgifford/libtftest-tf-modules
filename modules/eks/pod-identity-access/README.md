@@ -56,10 +56,6 @@ module "cluster_autoscaler_grant" {
       ]
     })
   }
-
-  tags = {
-    Component = "cluster-autoscaler"
-  }
 }
 ```
 
@@ -162,6 +158,17 @@ Terraform module does not enforce this — it is an operational property of
 the consumer's Terragrunt configuration.
 
 [Usage docs](./USAGE.md)
+
+## Tagging
+
+This module takes no generic `tags` input (DESIGN-0029). The fleet's
+standard tag set comes from the AWS provider's `default_tags`, which
+the stack's generated provider block (Terragrunt) must set. Every
+resource the module creates inherits that set through `tags_all`.
+
+The module's one tag input is `association_tags`, which is set on the
+Pod Identity association only. It merges on top of the provider
+default set, and wins on a shared key.
 
 ## Remote-state key contract (ADR-0020)
 

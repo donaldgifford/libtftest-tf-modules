@@ -136,9 +136,3 @@ variable "description" {
   type        = string
   default     = null
 }
-
-variable "tags" {
-  description = "Tags applied to the secret."
-  type        = map(string)
-  default     = {}
-}

@@ -275,9 +275,3 @@ variable "promotion_tier" {
     error_message = "promotion_tier must be in the range [0, 15]."
   }
 }
-
-variable "tags" {
-  description = "AWS resource tags applied to every taggable resource in the module (cluster, instance, subnet group, security group, parameter groups, KMS key)."
-  type        = map(string)
-  default     = {}
-}

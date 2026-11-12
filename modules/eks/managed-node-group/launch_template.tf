@@ -24,7 +24,16 @@ resource "aws_launch_template" "node" {
   # AL2023 nodeadm + gVisor install + containerd drop-in multipart MIME
   # body, rendered by templatefile() in user_data.tf at the use site.
   user_data = base64encode(local.user_data_body)
-  tags      = var.tags
+  # The template's own tags mirror the provider default set explicitly,
+  # even though default_tags would fill tags_all anyway. Through v0.26.0
+  # this was `tags = var.tags`. Dropping it would change `tags` (X -> {})
+  # on upgrade, and the provider's CustomizeDiff marks latest_version
+  # known-after-apply on ANY tags change, so the node group would plan
+  # `launch_template.version = N -> (known after apply)`. Mirroring keeps
+  # `tags` unchanged when the new default_tags equal the old var.tags
+  # (DESIGN-0029 rollout step 3), so the upgrade plans zero-diff here
+  # (IMPL-0026 Phase 4).
+  tags = data.aws_default_tags.this.tags
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.node.arn
@@ -52,14 +61,19 @@ resource "aws_launch_template" "node" {
     }
   }
 
+  # default_tags do not reach tag_specifications, so the provider's set is
+  # merged in explicitly. Name merges LAST so the module-set value wins.
+  # Keep the rendered map byte-identical across upgrades: the node group
+  # pins version = latest_version, so any change here mints a new
+  # launch-template version and rolls every node (DESIGN-0029).
   tag_specifications {
     resource_type = "instance"
-    tags          = merge(var.tags, { Name = var.nodegroup_name })
+    tags          = merge(data.aws_default_tags.this.tags, { Name = var.nodegroup_name })
   }
 
   tag_specifications {
     resource_type = "volume"
-    tags          = merge(var.tags, { Name = "${var.nodegroup_name}-root" })
+    tags          = merge(data.aws_default_tags.this.tags, { Name = "${var.nodegroup_name}-root" })
   }
 
   lifecycle {

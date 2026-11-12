@@ -35,6 +35,12 @@ provider "aws" {
     secretsmanager = "http://localhost:4566"
     sts            = "http://localhost:4566"
   }
+
+  # The standard tag set arrives through provider default_tags
+  # (DESIGN-0029), so every apply exercises the real tagging path.
+  default_tags {
+    tags = { ManagedBy = "terraform", Suite = "secretsmanager-secret" }
+  }
 }
 
 variables {
@@ -81,6 +87,13 @@ run "verify_current" {
   assert {
     condition     = output.current_version_id != ""
     error_message = "the write-only initial version must be staged AWSCURRENT"
+  }
+
+  # The module declares no tags input (DESIGN-0029): the standard set
+  # rides the provider's default_tags, read back here through metadata.
+  assert {
+    condition     = output.default_tags == { ManagedBy = "terraform", Suite = "secretsmanager-secret" }
+    error_message = "the provider default_tags must read back from Secrets Manager"
   }
 }
 
