@@ -730,16 +730,27 @@ DESIGN-0029, where OQ 6a is confirmed with that amendment.
   Completed. Run `docz update` and revert its unrelated ToC churn,
   restoring any underscore-stripped anchors (known `docz update`
   gotcha). Pass `just docs lint`.
-- [ ] 5.7 PR from `refactor/drop-module-tags-variables`:
+- [x] 5.7 PR from `refactor/drop-module-tags-variables`:
   - one commit group per phase, plus the design and IMPL docs
   - label `minor`
   - a `### RELEASE NOTES` block carrying DESIGN-0029's
     release-notes list, with the live-repo ordering **first**
   - green `ci-gate` (the full plan matrix runs, since every module
     changed)
-- [ ] 5.8 After the merge and tag (`v0.27.0`), refresh the root README
+  *As built:* PR #128. `ci-gate` is green with all 24 plan jobs, the
+  static gate, and README drift. The apply tiers skip by design
+  (`CI_RUN_LOCALSTACK_APPLY` off). The first run failed only on
+  README drift: the module table's per-module test-file counts
+  change with every new suite, so the PR regenerates the table
+  (`unreleased` rows) the way PR #123 did. Squash-merged on
+  operator approval.
+- [x] 5.8 After the merge and tag (`v0.27.0`), refresh the root README
   module table (`just readme`), following the existing post-release
   commit pattern.
+  *As built:* automated. `release.yml`'s `refresh-readme` job runs
+  `just readme` on `main` after `bump-version` cuts the tag, and
+  commits `docs(readme): refresh module table for <tag>`. The tag,
+  release notes, and that commit were checked after the merge.
 
 #### Success Criteria
 
