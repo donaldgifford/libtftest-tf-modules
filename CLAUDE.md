@@ -895,6 +895,31 @@ Tracked in git. As of this writing:
   until a concrete need), consumer-side proof (rides the RDS follow-up,
   IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
+- **`modules/kms/`** — `signing-key` (DESIGN-0031 → IMPL-0027 Phase 3,
+  implemented): an asymmetric `SIGN_VERIFY` key for cosign
+  (`ECC_NIST_P256` default, `RSA_4096` allowed) with an explicit key
+  policy and **no root delegation**. Admins get `KeyAdministration`
+  with `NotAction: kms:Sign`; signers get `AllowSign`; verifiers get an
+  optional `AllowVerify`. Signers and admins must be disjoint. Because
+  nothing delegates to account IAM, a **caller precondition** requires
+  the applying principal in `admin_principal_arns` (assumed-role ARN
+  normalized to lowercased `<account>/<role>`), or the next apply is
+  locked out. `enable_key_rotation = false` is pinned (asymmetric keys
+  can't rotate). **No `prevent_destroy`, a recorded deviation from
+  DESIGN-0031:** it would make apply-suite teardown impossible, and
+  `lifecycle` is static. The 30-day deletion window is the guard.
+  `cosign_key_ref` is `awskms:///<key ARN>`, since aliases don't
+  resolve cross-account. Tests: plan 20 runs (14 rejections
+  message-probed) + Community apply 2/2 on token-free 4.4
+  (`SERVICES=kms,sts`). The apply's provider `assume_role`s
+  `role/deploy` so the caller precondition runs live. **4.4 KMS gaps,
+  probed:** a deny-all key policy still signs (policy not enforced),
+  and `EnableKeyRotation` on an asymmetric key is accepted. So the
+  apply tier proves wiring only, and the policy shape lives in the plan
+  suite. **`terraform test` lessons:** `override_during = plan` on a
+  `mock_resource` makes mocked computed attributes known at plan; a
+  data source that depends on a pending resource (`aws_kms_public_key`)
+  stays unknown at plan even under mocks, so assert it at apply.
 - **Tagging: provider `default_tags`, no `tags` variable (DESIGN-0029 /
   IMPL-0026, releases as `v0.27.0`).** No module declares a `tags`
   variable. The fleet's standard set is derived in Terragrunt and

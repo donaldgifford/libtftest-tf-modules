@@ -285,37 +285,84 @@ through each regex and enum rule.
 
 #### Tasks
 
-- [ ] Scaffold `modules/kms/signing-key` (`aws ~> 6.2`; `.tflint.hcl`;
+- [x] Scaffold `modules/kms/signing-key` (`aws ~> 6.2`; `.tflint.hcl`;
       no `tags` variable)
-- [ ] `aws_kms_key` (`SIGN_VERIFY`, `key_spec` default
+- [x] `aws_kms_key` (`SIGN_VERIFY`, `key_spec` default
       `ECC_NIST_P256`, `RSA_4096` allowed, `enable_key_rotation =
-      false` pinned, 30-day window, `prevent_destroy`) and
-      `aws_kms_alias`
-- [ ] Key policy with `KeyAdministration` (`NotAction: kms:Sign`),
+      false` pinned, 30-day window, ~~`prevent_destroy`~~, see build
+      notes) and `aws_kms_alias`
+- [x] Key policy with `KeyAdministration` (`NotAction: kms:Sign`),
       `AllowSign` and an optional `AllowVerify`; no root delegation
-- [ ] Principal validations (the five `iam/role` rules on each list;
+- [x] Principal validations (the five `iam/role` rules on each list;
       signers and admins disjoint)
-- [ ] Precondition: the applying role (STS `assumed-role` ARN
+- [x] Precondition: the applying role (STS `assumed-role` ARN
       normalized to `<account>/<role-name>`) is in the admin list
-- [ ] `data.aws_kms_public_key` and outputs, including
+- [x] `data.aws_kms_public_key` and outputs, including
       `cosign_key_ref = awskms:///<key_arn>` and `signer_policy_json`
-- [ ] Plan suite: bare call pins; key policy decoded; outputs;
+- [x] Plan suite: bare call pins; key policy decoded; outputs;
       rejections verified per rule; positive regex runs
-- [ ] Community apply suite (`tests-localstack/`, token-free 4.4,
+- [x] Community apply suite (`tests-localstack/`, token-free 4.4,
       `SERVICES=kms,sts`): key and alias created, `public_key_pem` is a
       PEM block, spec and usage read back
-- [ ] `FINDINGS.md` leading with the two 4.4 gaps (key policy not
+- [x] `FINDINGS.md` leading with the two 4.4 gaps (key policy not
       enforced; rotation accepted on an asymmetric key)
-- [ ] `just tf docs kms/signing-key` and `just static`
+- [x] `just tf docs kms/signing-key` and `just static`
+
+**Build notes:**
+
+- **`prevent_destroy` dropped (deviation from DESIGN-0031).** It would
+  make the Community apply suite's teardown impossible, and `lifecycle`
+  arguments are static, so it cannot be switched off for tests only.
+  The guard is the 30-day deletion window (the maximum), commented at
+  the resource.
+- **`override_during = plan`** (TF >= 1.11) on the `aws_kms_key` mock
+  makes the mocked `arn` / `key_id` known at plan, so `cosign_key_ref`
+  and the alias wiring are assertable in the plan suite.
+- **`public_key_pem` stays unknown at plan** even under the mock: its
+  data source depends on the pending key and is deferred. It is
+  asserted by the apply tier instead.
+- The apply suite satisfies the caller precondition with an
+  `assume_role` provider block for `role/deploy` (LocalStack STS mints
+  credentials for any role ARN), so the `assumed-role` normalization
+  runs live, not only under the mocked caller.
+- 4.4 gaps re-probed with the AWS CLI on 2026-11-13: a deny-all key
+  policy still signs, and `EnableKeyRotation` on an asymmetric key is
+  accepted. Both recorded at the top of `FINDINGS.md`.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `name_bad_charset` | `variables.tf:9` name charset |
+| `name_reserved_aws_prefix` | `variables.tf:14` reserved `aws/` |
+| `key_spec_unsupported` | `variables.tf:27` key spec enum |
+| `admins_empty` | `variables.tf:46` non-empty |
+| `admin_account_root` | `variables.tf:51` role/user ARN |
+| `admin_wildcard` | `variables.tf:56` wildcards |
+| `admin_padded` | `variables.tf:61` whitespace |
+| `admin_duplicate_spelling` | `variables.tf:66` normalized duplicates |
+| `signers_empty` | `variables.tf:78` non-empty |
+| `signer_service_principal` | `variables.tf:83` role/user ARN |
+| `signer_duplicate` | `variables.tf:98` normalized duplicates |
+| `signer_is_admin` | `variables.tf:105` disjoint from admins |
+| `verifier_wildcard` | `variables.tf:126` wildcards |
+| `caller_not_admin` | `aws_kms_key.this` caller precondition |
+
+Positive runs (`bare_call_pins_defaults`, `rsa_key_spec_accepted`,
+`verifiers_add_a_verify_statement`, `caller_matches_path_bearing_admin`)
+let valid values through the charset, enum, ARN and caller rules.
 
 #### Success Criteria
 
 - Plan suite green, with `enable_key_rotation = false` and the
-  no-root-delegation shape asserted.
+  no-root-delegation shape asserted. **Met: 20/20 runs; 14 rejections
+  message-probed, one rule each.**
 - The Community apply passes live on 4.4, and `FINDINGS.md` records the
-  run.
+  run. **Met: 2/2 on token-free 4.4 (2026-11-13).**
 - `just changed` shows `kms/signing-key` in the plan and community
-  tiers.
+  tiers. **Met (`changed-modules.sh`: plan + community).**
 
 ### Phase 4: ecr/image-intake module and plan suite
 
