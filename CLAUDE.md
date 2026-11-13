@@ -243,6 +243,25 @@ Tracked in git. As of this writing:
   message-probed) + a real-AWS `tests-sandbox/` runbook.
   **`terraform test` gotcha found here:** `sort()` returns a typed
   list, which never `==` a tuple literal; compare with `tolist([...])`.
+  **`image-intake`** (DESIGN-0031 → IMPL-0027 Phase 4, in progress):
+  the create-on-push **creation templates** for a quarantine prefix
+  (`MUTABLE`, expire-all lifecycle, `DenyNonPipelineImageAccess`) and
+  `for_each` promoted prefixes (`IMMUTABLE_WITH_EXCLUSION` with
+  `sha256-*` so cosign's legacy `.sig`/`.att` tags stay appendable, no
+  lifecycle, `DenyNonIntakeWrites` + `DenyNonAdminPolicyChanges`), the
+  ECR-assumed template role (`aws:SourceAccount` trust), an optional
+  intake EventBridge rule, and **policy JSON outputs only** (no IAM
+  roles for writers or intake). Every Deny pairs `ArnNotLike
+  aws:PrincipalArn` with `BoolIfExists aws:PrincipalIsAWSService =
+  false`: the key is absent for service principals and `ArnNotLike`
+  on an absent key is TRUE, so without it the Deny blocks ECR's own
+  scanning. Writers same-account only (precondition). Templates only
+  reach repositories created **after** them, and their
+  `resource_tags` come from `data.aws_default_tags`. Exclusion
+  filters cap at **5** (provider `max_items`). Plan suite 52 runs, 38
+  rejections message-probed one rule each. No LocalStack tier. Padded-ARN
+  rejection runs use a **trailing** space, since a leading one also
+  fails the ARN regex.
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
   a single non-clustered `aws_db_instance` for Postgres + MySQL per DESIGN-0012;

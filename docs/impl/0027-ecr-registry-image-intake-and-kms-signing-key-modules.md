@@ -368,43 +368,106 @@ let valid values through the charset, enum, ARN and caller rules.
 
 #### Tasks
 
-- [ ] Scaffold `modules/ecr/image-intake` (`required_version >= 1.9`;
+- [x] Scaffold `modules/ecr/image-intake` (`required_version >= 1.9`;
       `.tflint.hcl`; no `tags` variable)
-- [ ] Template role (`custom_role_arn`, ECR-assumed) with
+- [x] Template role (`custom_role_arn`, ECR-assumed) with
       `CreateRepository`, `PutLifecyclePolicy`, `SetRepositoryPolicy`,
       `TagResource` on the module's prefixes, plus KMS use when
       `kms_key_arn` is set
-- [ ] Quarantine template: `MUTABLE`; expire-all lifecycle after
+- [x] Quarantine template: `MUTABLE`; expire-all lifecycle after
       `quarantine_retention_days`; `DenyNonPipelineImageAccess` with
       `ArnNotLike` + `BoolIfExists aws:PrincipalIsAWSService`
-- [ ] Promoted templates (`for_each`): `IMMUTABLE_WITH_EXCLUSION` with
+- [x] Promoted templates (`for_each`): `IMMUTABLE_WITH_EXCLUSION` with
       `sha256-*`; no lifecycle; `DenyNonIntakeWrites` and
       `DenyNonAdminPolicyChanges`
-- [ ] Encryption: AES256 default, `kms_key_arn` optional (DESIGN-0031
+- [x] Encryption: AES256 default, `kms_key_arn` optional (DESIGN-0031
       OQ 8a)
-- [ ] `resource_tags` from `data.aws_default_tags` (DESIGN-0029 pattern)
-- [ ] Validations: the five ARN rules on all three lists; writer/intake
+- [x] `resource_tags` from `data.aws_default_tags` (DESIGN-0029 pattern)
+- [x] Validations: the five ARN rules on all three lists; writer/intake
       disjoint; same-account writers (precondition); prefix grammar and
       overlap in every direction; retention range; exclusion filters;
       target `role_arn` requirement
-- [ ] Optional event rule + target; `intake_event_pattern_json` always
+- [x] Optional event rule + target; `intake_event_pattern_json` always
       exported
-- [ ] Outputs, including `promoted_prefixes` shaped for
+- [x] Outputs, including `promoted_prefixes` shaped for
       `ecr/registry`'s `pull_repository_prefixes`
-- [ ] Plan suite: bare call; quarantine template (lifecycle and policy
+- [x] Plan suite: bare call; quarantine template (lifecycle and policy
       decoded); promoted templates (two-prefix run); policy outputs
       decoded and scoped; event pattern exact; rejections verified per
       rule; positive regex runs
-- [ ] Confirm the ECR limit on exclusion filters per template and set
-      the validation to it (DESIGN-0031 noted "five, to be confirmed")
-- [ ] `just tf docs ecr/image-intake` and `just static`
+- [x] Confirm the ECR limit on exclusion filters per template and set
+      the validation to it (DESIGN-0031 noted "five, to be confirmed"):
+      **five**, from the provider schema
+      (`image_tag_mutability_exclusion_filter` `max_items = 5`, aws
+      provider in `~> 6.2`); the validation is 1 to 5
+- [x] `just tf docs ecr/image-intake` and `just static`
+
+**Build notes:**
+
+- **Two grants added beyond DESIGN-0031's table**, both inside the
+  module's own prefixes:
+  - the writer gets `ecr:BatchGetImage` on quarantine, because the
+    sync example's `crane digest` idempotency check and `cosign copy`
+    read the destination manifest;
+  - intake gets the pull actions on the promoted prefixes as well as
+    push, because `cosign sign` / `attest` read the manifest they sign.
+
+  The sandbox examples leg (Phase 7) confirms both are needed.
+- `DenyNonAdminPolicyChanges` also covers `ecr:DeleteLifecyclePolicy`:
+  promoted templates set no lifecycle policy, but a non-admin must
+  not be able to remove one an admin later adds.
+- The template role's trust carries an `aws:SourceAccount` condition
+  (confused-deputy guard), and its policy is scoped to the module's
+  prefixes.
+- `encryption_configuration.kms_key` is Optional+Computed, so it is
+  unknown at plan when unset; the AES256 run asserts only the type.
+- Padded-ARN rejection runs use a **trailing** space. A leading space
+  also fails the ARN regex, and two rules would answer for one run.
+- `name` is capped at 40 characters because it is suffixed into an
+  IAM role name (`-ecr-templates`) and an EventBridge rule name
+  (`-quarantine-push`), both capped at 64.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `name_bad_charset`, `name_too_long` | `variables.tf:9` charset and length |
+| `quarantine_prefix_bad_grammar` | `variables.tf:30` ECR grammar |
+| `retention_zero`, `retention_over_thirty`, `retention_fractional` | `variables.tf:43` whole number 1-30 |
+| `promoted_empty` | `variables.tf:59` non-empty |
+| `promoted_bad_grammar` | `variables.tf:64` ECR grammar |
+| `promoted_nested` | `variables.tf:72` no nesting |
+| `promoted_equals_quarantine`, `promoted_inside_quarantine`, `promoted_contains_quarantine` | `variables.tf:84` quarantine overlap (cross-variable) |
+| `exclusions_empty`, `exclusions_over_five` | `variables.tf:95` 1 to 5 filters |
+| `exclusion_whitespace` | `variables.tf:103` filter charset |
+| `exclusion_duplicate` | `variables.tf:112` unique filters |
+| `writers_empty` / `writer_account_root` / `writer_wildcard` / `writer_padded` / `writer_duplicate_spelling` | `variables.tf:134` / `:139` / `:144` / `:149` / `:154` |
+| `intakes_empty` / `intake_account_root` / `intake_wildcard` / `intake_padded` / `intake_duplicate_spelling` | `variables.tf:166` / `:171` / `:176` / `:181` / `:186` |
+| `writer_is_intake` | `variables.tf:193` disjoint (cross-variable) |
+| `admins_empty` / `admin_account_root` / `admin_wildcard` / `admin_padded` / `admin_duplicate_spelling` | `variables.tf:208` / `:213` / `:218` / `:223` / `:228` |
+| `kms_alias_rejected` | `variables.tf:245` key ARN |
+| `target_arn_malformed` | `variables.tf:259` target ARN |
+| `target_role_not_a_role` | `variables.tf:264` role ARN |
+| `target_bus_without_role`, `target_state_machine_without_role` | `variables.tf:271` role required |
+| `writer_cross_account` | quarantine-template precondition |
+
+Positive runs (`grammar_edge_values_accepted`,
+`retention_lower_bound_accepted`, `kms_encryption` with an `mrk-` key,
+`state_machine_target_with_role_accepted`, `intake_event_rule` with a
+role-less queue, and every shape run) let valid values through each
+regex, range and target rule.
 
 #### Success Criteria
 
 - Plan suite green, with writer and intake policy outputs proven to
-  grant nothing outside their prefixes.
-- Every rejection is recorded as firing its own rule.
-- `just static` is green.
+  grant nothing outside their prefixes. **Met: 52/52 runs;
+  `no_grant_reaches_outside_the_prefixes` checks every resource in
+  both documents.**
+- Every rejection is recorded as firing its own rule. **Met: 38
+  rejections, one rule each.**
+- `just static` is green. **Met.**
 
 ### Phase 5: LocalStack Pro apply suites
 
