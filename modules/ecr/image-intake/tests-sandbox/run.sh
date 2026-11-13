@@ -377,6 +377,13 @@ leg_cosign() {
   local key="awskms:///${KEY_ARN}" cfg="${WORKDIR}/signing-config.no-tlog.json"
   echo '{"scanner":"sandbox","result":"pass"}' >"${WORKDIR}/scan.json"
 
+  # The key policy delegates nothing to IAM and admins get NotAction
+  # kms:Sign, so the operator (a key admin, typically kms:* via IAM)
+  # must be refused, while the intake role signs below.
+  expect_denied "kms: a key admin cannot sign" \
+    reg kms sign --key-id "${KEY_ARN}" --message "c2FuZGJveA==" \
+    --message-type RAW --signing-algorithm ECDSA_SHA_256
+
   expect_ok "cosign: sign mirror (sha256-* excluded)" \
     as_reg sbx-intake cosign sign --yes --key "${key}" --signing-config "${cfg}" "${m}@${DIGEST}"
   expect_ok "cosign: attest mirror (sha256-* excluded)" \

@@ -116,6 +116,22 @@ The module creates **no** writer or intake role. Grant
 elsewhere. The signing permission comes from the signing key's own key
 policy (`kms/signing-key`), not from these documents.
 
+## Remote state
+
+The module reads no remote state, and no key is reserved for it
+(DESIGN-0031 OQ 13a). Wire `promoted_prefixes` into `ecr/registry`
+through a Terragrunt dependency, or compose both in one stack as in the
+usage example.
+
+## Related modules
+
+- [`ecr/registry`](../registry/README.md): owns the registry policy
+  that shares the promoted prefixes with consumer accounts, and denies
+  them the quarantine prefix.
+- [`kms/signing-key`](../../kms/signing-key/README.md): the key intake
+  signs promoted images with. Its signers should be the
+  `intake_principal_arns` roles.
+
 ## Sync examples
 
 [`examples/`](examples/) shows one way to drive the flow. These are

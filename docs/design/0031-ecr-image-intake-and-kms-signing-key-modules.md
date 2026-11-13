@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0031
 title: "ECR image intake and KMS signing key modules"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-11-12
 ---
@@ -338,6 +338,14 @@ It outputs identity-policy JSON for the roles the caller owns:
 The signing permission comes from the key's own key policy (below),
 not from these documents.
 
+> **Build note (IMPL-0027 Phase 4, 2026-11-13):** two grants were
+> added beyond the table, both inside the module's own prefixes. The
+> writer also gets `ecr:BatchGetImage` on quarantine, which the sync
+> example's `crane digest` idempotency check and `cosign copy` need.
+> Intake also gets the pull actions on the promoted prefixes, because
+> `cosign sign` and `attest` read the manifest they sign. The sandbox
+> examples leg confirms both.
+
 These compose directly with the fleet's existing channels:
 
 - `iam/role`'s `inline_policies`, for a role trusted by role ARNs;
@@ -387,6 +395,12 @@ stack, as with `s3/events-bucket`. The pattern is also exported as
 | `aws_kms_key.this` | `key_usage = "SIGN_VERIFY"`, `customer_master_key_spec = var.key_spec` (OQ 4), `enable_key_rotation = false` **pinned** (asymmetric keys cannot rotate; LocalStack accepts it anyway, so it is plan-asserted), `deletion_window_in_days = 30`, `lifecycle { prevent_destroy = true }` (the `org-registry` precedent) |
 | `aws_kms_alias.this` | `alias/<name>` |
 | `data.aws_kms_public_key.this` | Feeds the `public_key_pem` output |
+
+> **Build note (IMPL-0027 Phase 3, 2026-11-13):** `prevent_destroy` was
+> **dropped**. It would make the Community apply suite's teardown
+> impossible, and `lifecycle` arguments are static, so it cannot be
+> switched off for tests only. The guard is the 30-day deletion window
+> (the maximum), commented at the resource and in the README.
 
 **Key policy (OQ 3).** The policy is explicit and does **not** delegate
 to account IAM:
@@ -494,6 +508,16 @@ for that version. The README explains each step and why `crane digest`
 runs before `crane copy`: whether ECR accepts a re-push of an identical
 tag and digest to an immutable repository is a sandbox probe, and
 checking first makes the job idempotent either way.
+
+> **Build note (IMPL-0027 Phase 6, 2026-11-13):** cosign 3.1.1
+> deprecates `--tlog-upload`. The examples ship a `--signing-config`
+> file with no transparency-log services instead, and verifiers need
+> `--insecure-ignore-tlog=true`. A local smoke run against a registry
+> without the OCI referrers API showed cosign 3 rewriting a single
+> `sha256-<digest>` fallback tag on every signature and attestation,
+> so the `sha256-*` exclusion (OQ 6) covers that tag as well as the
+> legacy `.sig` / `.att` ones. ECR's own behaviour is the sandbox's
+> strict-prefix leg.
 
 **`skopeo sync` (batch alternative).** One YAML of repositories and
 tags, synced in a batch:

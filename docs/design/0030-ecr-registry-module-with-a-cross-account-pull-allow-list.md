@@ -1,7 +1,7 @@
 ---
 id: DESIGN-0030
 title: "ECR registry module with a cross-account pull allow-list"
-status: Draft
+status: Implemented
 author: Donald Gifford
 created: 2026-11-12
 ---

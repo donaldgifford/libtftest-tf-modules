@@ -37,6 +37,7 @@ ECR's own behaviour is what the strict leg asks.
 | Intake: quarantine pull, mirror push | pending | |
 | Isolation: unrelated `ecr:*` role refused on quarantine and on mirror push | pending | |
 | Isolation: consumer refused on quarantine, allowed on mirror | pending | |
+| Key policy: a key admin cannot sign | pending | |
 | cosign: sign + attest on mirror; tags written | pending | |
 | cosign, strict: default mode | pending | |
 | cosign, strict: `oci-1-1` mode | pending | |

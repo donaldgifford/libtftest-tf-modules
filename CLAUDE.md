@@ -224,7 +224,7 @@ Tracked in git. As of this writing:
   resource and re-seeds the placeholder — see the README upgrade note).
   `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
-  **`registry`** (DESIGN-0030 → IMPL-0027, in progress): the **single
+  **`registry`** (DESIGN-0030 → IMPL-0027, implemented): the **single
   owner** of a registry's registry-level singletons (registry policy,
   `REGISTRY_POLICY_SCOPE`, scanning). Two stacks owning any of them
   overwrite each other silently, so purpose modules never touch them.
@@ -240,10 +240,14 @@ Tracked in git. As of this writing:
   in a registry policy (V1 model only), lacks the account setting and
   creation templates, emits no push events, and enforces no policy
   (IMPL-0027 Phase 1). Plan suite (45 runs, every rejection
-  message-probed) + a real-AWS `tests-sandbox/` runbook.
+  message-probed) + a real-AWS `tests-sandbox/` runbook. Publishes at
+  a **flat reserved ADR-0020 key**, `<acct>/<region>/ecr/registry/`
+  (no `<name>`: a second instance per registry is a configuration
+  error), reserved ahead of any consumer. Releases still pending at
+  the end of IMPL-0027 (the PR split per OQ 1a needs the operator).
   **`terraform test` gotcha found here:** `sort()` returns a typed
   list, which never `==` a tuple literal; compare with `tolist([...])`.
-  **`image-intake`** (DESIGN-0031 → IMPL-0027 Phase 4, in progress):
+  **`image-intake`** (DESIGN-0031 → IMPL-0027, implemented):
   the create-on-push **creation templates** for a quarantine prefix
   (`MUTABLE`, expire-all lifecycle, `DenyNonPipelineImageAccess`) and
   `for_each` promoted prefixes (`IMMUTABLE_WITH_EXCLUSION` with
@@ -930,7 +934,7 @@ Tracked in git. As of this writing:
   until a concrete need), consumer-side proof (rides the RDS follow-up,
   IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
-- **`modules/kms/`** — `signing-key` (DESIGN-0031 → IMPL-0027 Phase 3,
+- **`modules/kms/`** — `signing-key` (DESIGN-0031 → IMPL-0027,
   implemented): an asymmetric `SIGN_VERIFY` key for cosign
   (`ECC_NIST_P256` default, `RSA_4096` allowed) with an explicit key
   policy and **no root delegation**. Admins get `KeyAdministration`

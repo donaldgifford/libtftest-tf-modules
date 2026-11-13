@@ -115,6 +115,68 @@ scanning = {
 }
 ```
 
+## Destroy
+
+Destroying the stack deletes the registry policy, so **every consumer
+account loses pull access at once**. Repositories and images are
+untouched. What happens to the two other singletons (the scope setting
+and the scanning configuration) is recorded by the sandbox runbook's
+destroy leg. Until that has run, check them by hand afterwards with
+`aws ecr get-account-setting --name REGISTRY_POLICY_SCOPE` and
+`aws ecr get-registry-scanning-configuration`.
+
+## Adopting an existing registry
+
+A registry that already has a policy, scope setting or scanning
+configuration is adopted with `import` blocks in the stack:
+
+```hcl
+import {
+  to = module.registry.aws_ecr_registry_policy.this[0]
+  id = "111111111111" # the registry (account) ID
+}
+
+import {
+  to = module.registry.aws_ecr_account_setting.registry_policy_scope[0]
+  id = "REGISTRY_POLICY_SCOPE"
+}
+
+import {
+  to = module.registry.aws_ecr_registry_scanning_configuration.this[0]
+  id = "111111111111"
+}
+```
+
+Import only what the inputs will manage (the policy only renders when
+`consumer_accounts` and `pull_repository_prefixes` are set; scanning
+only when `scanning` is non-null). Then **read the plan**: the module
+replaces the whole policy with its own rendering, so any statement not
+expressed in the inputs disappears on apply. Carry such statements over
+in `additional_policy_statements` first.
+
+## Remote-state key contract
+
+Published at a **flat reserved key**, with no `<name>` segment:
+
+```text
+<account_name>/<region>/ecr/registry/terraform.tfstate
+```
+
+There is exactly one instance per account and region, because every
+object the module owns is a per-registry singleton (ADR-0020, the
+`ecr/registry` reserved stack name). The key is reserved ahead of any
+consumer; nothing in this repo reads it yet. The module itself reads no
+remote state.
+
+## Related modules
+
+- [`ecr/image-intake`](../image-intake/README.md): the creation
+  templates whose `promoted_prefixes` output feeds
+  `pull_repository_prefixes`, and whose quarantine prefix this module's
+  `protected_prefixes` default keeps shut.
+- [`kms/signing-key`](../../kms/signing-key/README.md): the key that
+  signs promoted images, so consumers can verify what they pull.
+
 ## LocalStack
 
 This module has **no LocalStack apply tier**, Community or Pro

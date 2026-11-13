@@ -59,6 +59,7 @@ REGION=us-east-1 ./run.sh
 | Events | Reads the intake queue after the quarantine push, and again after the mirror push | At least one event for quarantine; none for mirror |
 | Intake | `sbx-intake` pulls from quarantine and copies to `mirror/…` by digest | Both OK |
 | Isolation | `sbx-unrelated` (identity policy `ecr:*` on `*`) pulls quarantine and pushes mirror; the consumer pulls both | Unrelated refused twice (only the repository policies stop it); consumer refused on quarantine, allowed on mirror |
+| Key policy | The operator (a key admin) calls `kms:Sign` directly | Refused: admins get `NotAction kms:Sign`, and nothing delegates to IAM |
 | cosign | `sign` and `attest` on the mirror digest with the KMS key | OK under the default `sha256-*` exclusion; the resulting tags are **recorded** |
 | cosign, strict | The same on `strict/…`, whose exclusion matches nothing cosign writes, in the default mode and with `--registry-referrers-mode=oci-1-1` | **Recorded**: does ECR's referrers support make `sha256-*` unnecessary (DESIGN-0031 OQ 6)? |
 | Re-push | `crane tag` re-PUTs the same tag and digest to the immutable mirror repository (`crane copy` would skip it) | **Recorded** |

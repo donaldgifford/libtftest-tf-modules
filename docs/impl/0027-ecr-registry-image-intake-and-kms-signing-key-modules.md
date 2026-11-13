@@ -1,7 +1,7 @@
 ---
 id: IMPL-0027
 title: "ECR registry, image intake and KMS signing key modules"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-11-12
 ---
@@ -634,31 +634,67 @@ Real AWS, two accounts (registry and consumer), operator-run.
 
 #### Tasks
 
-- [ ] READMEs for all three modules:
-  - [ ] `ecr/registry`: consumer contract, destroy and adoption,
+- [x] READMEs for all three modules:
+  - [x] `ecr/registry`: consumer contract, destroy and adoption,
         protected-prefix deny, ENHANCED-scanning cost note, LocalStack
         divergence
-  - [ ] `ecr/image-intake`: layout, pairing with `ecr/registry`,
+  - [x] `ecr/image-intake`: layout, pairing with `ecr/registry`,
         policy outputs into `iam/role` / `eks/pod-identity-access`,
         examples
-  - [ ] `kms/signing-key`: signing classes, cross-account verify, alias
+  - [x] `kms/signing-key`: signing classes, cross-account verify, alias
         caveat, rotation stance
-  - [ ] Cross-links between all three
-- [ ] ADR-0020: reserved flat key `<account_name>/<region>/ecr/registry/`
-- [ ] Repo README module table (`just readme`) and the coverage matrix
+  - [x] Cross-links between all three
+- [x] ADR-0020: reserved flat key `<account_name>/<region>/ecr/registry/`
+- [x] Repo README module table (`just readme`) and the coverage matrix
       check (`just readme --check`)
-- [ ] CLAUDE.md: the new modules, the probe findings, and the
+- [x] CLAUDE.md: the new modules, the probe findings, and the
       follow-ups
-- [ ] Mark DESIGN-0030 and DESIGN-0031 Implemented, this IMPL
+- [x] Mark DESIGN-0030 and DESIGN-0031 Implemented, this IMPL
       Completed; `docz update`, reverting unrelated ToC churn
 - [ ] Release per OQ 1, with `### RELEASE NOTES` in each PR body
+      (**awaiting operator confirmation**: pushing and opening PRs are
+      outward-facing)
+
+**Build notes:**
+
+- The READMEs were started in Phase 5 (for the "LocalStack" sections)
+  and completed here: destroy and adoption, the reserved key, and
+  cross-links between all three modules.
+- ADR-0020 gains the `ecr` shape and a second flat reserved stack name,
+  `ecr/registry`, alongside `s3/access-logs`. The reason differs:
+  `access-logs` is flat so consumers have no name to get wrong;
+  `ecr/registry` is flat because a second instance per registry is a
+  configuration error.
+- DESIGN-0031 carries three build notes (`prevent_destroy` dropped,
+  the two added grants, the cosign 3 tlog flag).
+- Writing the `kms/signing-key` README surfaced an untested claim, that
+  nothing but the signers can sign. The intake sandbox gained a leg in
+  which a key admin calls `kms:Sign` and must be refused.
+- `docz update` again mangled a code-span ToC entry (DESIGN-0030 OQ 6)
+  and rewrote unrelated ToCs. All of it was reverted, and only the
+  status lines and index tables kept.
+
+**Open follow-ups:**
+
+1. **The sandbox runs (Phase 7)**: both runbooks, operator-run. Their
+   two decision legs feed DESIGN-0031: the strict-prefix cosign leg
+   (OQ 6's long-term mutability default) and the CMK cross-account
+   pull (the README's `kms_key_arn` guidance).
+2. **A web-identity trust channel** for the GitHub OIDC writer role
+   (DESIGN-0031 OQ 9a), on `iam/role` or a sibling.
+3. **Replication** on `ecr/registry`: the registry policy and the
+   replication configuration are both registry singletons, so
+   replication belongs in this module if it is ever wanted.
 
 #### Success Criteria
 
 - `just static`, `just docs lint` and `just readme --check` are green.
+  **Met.**
 - All three modules are released, and the docs status matches.
+  **Statuses set; release awaiting operator confirmation.**
 - Open follow-ups (the `iam/role` web-identity channel, replication on
-  `ecr/registry`, any sandbox-driven changes) are recorded.
+  `ecr/registry`, any sandbox-driven changes) are recorded. **Met
+  (above).**
 
 ## File Changes
 
