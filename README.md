@@ -30,10 +30,10 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | Module | Version | Impl | Plan tests | LocalStack | Pro |
 |--------|---------|------|:----------:|:----------:|:---:|
 | [`bedrock/claude-code`](modules/bedrock/claude-code) | `v0.27.0` | IMPL-0009 | 8 | apply | — |
-| [`ecr/image-intake`](modules/ecr/image-intake) | `unreleased` | IMPL-0027 | 3 | — | — |
+| [`ecr/image-intake`](modules/ecr/image-intake) | `v0.28.0` | IMPL-0027 | 3 | — | — |
 | [`ecr/org-registry`](modules/ecr/org-registry) | `v0.27.0` | IMPL-0006 | 9 | plan-only | — |
 | [`ecr/pull-through-cache`](modules/ecr/pull-through-cache) | `v0.27.0` | IMPL-0005 | 8 | plan-only | — |
-| [`ecr/registry`](modules/ecr/registry) | `unreleased` | IMPL-0027 | 3 | — | — |
+| [`ecr/registry`](modules/ecr/registry) | `v0.28.0` | IMPL-0027 | 3 | — | — |
 | [`efs/filesystem`](modules/efs/filesystem) | `v0.27.0` | IMPL-0008 | 10 | apply | — |
 | [`eks/access-entries`](modules/eks/access-entries) | `v0.27.0` | IMPL-0020 | 4 | apply | — |
 | [`eks/addons`](modules/eks/addons) | `v0.27.0` | IMPL-0003 | 5 | apply | — |
@@ -41,7 +41,7 @@ The goal here is a fleet of **small, single-purpose, from-scratch modules**
 | [`eks/managed-node-group`](modules/eks/managed-node-group) | `v0.27.0` | IMPL-0002 | 6 | apply | — |
 | [`eks/pod-identity-access`](modules/eks/pod-identity-access) | `v0.27.0` | IMPL-0004 | 6 | apply | — |
 | [`iam/role`](modules/iam/role) | `v0.27.0` | IMPL-0022 | 5 | apply | — |
-| [`kms/signing-key`](modules/kms/signing-key) | `unreleased` | IMPL-0027 | 2 | apply | — |
+| [`kms/signing-key`](modules/kms/signing-key) | `v0.28.0` | IMPL-0027 | 2 | apply | — |
 | [`network/security-group`](modules/network/security-group) | `v0.27.0` | IMPL-0023 | 4 | apply | — |
 | [`network/vpc-lookup`](modules/network/vpc-lookup) | `v0.16.0` | IMPL-0014 | 1 | apply | — |
 | [`rds/cluster`](modules/rds/cluster) | `v0.27.0` | IMPL-0012 | 7 | plan-only | ✅ |
