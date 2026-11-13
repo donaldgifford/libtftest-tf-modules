@@ -17,47 +17,47 @@
 
 # Go
 # renovate: datasource=github-tags depName=golang/go
-go = "1.26.8"
+go = "1.26.11"
 # renovate: datasource=github-releases depName=segmentio/golines
 golines = "0.13.0"
 # renovate: datasource=go depName=golang.org/x/tools
-"go:golang.org/x/tools/cmd/goimports" = "0.49.0"
+"go:golang.org/x/tools/cmd/goimports" = "0.52.0"
 
 # Terraform
 # renovate: datasource=github-releases depName=hashicorp/terraform
-terraform = "1.15.8"
+terraform = "1.17.2"
 # renovate: datasource=github-releases depName=gruntwork-io/terragrunt
-terragrunt = "1.1.3"
+terragrunt = "1.2.2"
 # renovate: datasource=github-releases depName=terraform-linters/tflint
-tflint = "0.64.0"
+tflint = "0.66.0"
 # renovate: datasource=github-releases depName=terraform-docs/terraform-docs
-terraform-docs = "0.24.0"
+terraform-docs = "0.25.1"
 
 # Repo utilities
 # renovate: datasource=github-releases depName=casey/just
-just = "1.58.0"
+just = "1.59.0"
 # renovate: datasource=github-releases depName=localstack/lstk
-"github:localstack/lstk" = "0.22.0"
+"github:localstack/lstk" = "1.4.5"
 
 # Formatters and linters
 # renovate: datasource=github-releases depName=DavidAnson/markdownlint-cli2
-markdownlint-cli2 = "0.18.1"
+markdownlint-cli2 = "0.24.1"
 # renovate: datasource=github-releases depName=google/yamlfmt
 yamlfmt = "0.21.0"
 # renovate: datasource=github-tags depName=adrienverge/yamllint
 yamllint = "1.38.0"
 # renovate: datasource=npm depName=prettier
-prettier = "3.9.6"
+prettier = "3.10.1"
 
 # tools
 # renovate: datasource=github-releases depName=mikefarah/yq
-yq = "4.53.3"
+yq = "4.54.3"
 # jq tags releases as `jq-1.8.2`; renovate.json carries an extractVersion
 # packageRule to pull the bare version out of that.
 # renovate: datasource=github-releases depName=jqlang/jq
 jq = "1.8.2"
 # renovate: datasource=github-releases depName=donaldgifford/docz
-"github:donaldgifford/docz" = "1.1.1"
+"github:donaldgifford/docz" = "2.6.2"
 
 
 # Release tools
@@ -66,18 +66,17 @@ jq = "1.8.2"
 # go.mod directive it targets: "the Go language version (go1.26) used to
 # build golangci-lint is lower than the targeted Go version (1.27.1)".
 # Hit for real on 2026-09-13 — a 1.27.1 trial made the then-pinned
-# 2.12.2 (a go1.26 build) unrunnable outright. 2.13.2 is built with
+# 2.12.2 (a go1.26 build) unrunnable outright. 2.15.0 is built with
 # go1.27.0, so it covers the current 1.26.x pin and a future 1.27 move.
 # The constraint is one-directional: a newer build targeting an older
 # directive is fine.
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-golangci-lint = "2.13.2"
+golangci-lint = "2.15.0"
 
 # Security
 # renovate: datasource=go depName=golang.org/x/vuln
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 # Policy-as-code (IMPL-0019 Phase 4): the credential no-leak gate under
 # policy/ runs via conftest in scripts/static-check.sh.
 # renovate: datasource=github-releases depName=open-policy-agent/conftest
-conftest = "0.69.0"
-
+conftest = "0.71.1"
