@@ -478,15 +478,23 @@ otherwise, the tasks below expand into a scanning-only
 
 #### Tasks
 
-- [ ] Each ECR module's README carries a "LocalStack" section with the
+- [x] Each ECR module's README carries a "LocalStack" section with the
       Phase 1 table, naming what is not served and why there is no
       apply tier
-- [ ] `just changed` shows both ECR modules in the plan tier only
+- [x] `just changed` shows both ECR modules in the plan tier only
+      (`changed-modules.sh` over the branch: plan
+      `ecr/image-intake ecr/registry kms/signing-key`, community
+      `kms/signing-key`, pro none)
+
+**Build note:** the READMEs were created here instead of in Phase 8,
+because the "LocalStack" section needs a home. Phase 8 completes them
+(ADR-0020 key, release notes).
 
 #### Success Criteria
 
 - No `tests-localstack-pro/` directory exists for the ECR modules, and
   the reason is documented where an engineer would look for the suite.
+  **Met: both READMEs carry the probe table and the reason.**
 
 ### Phase 6: Sync examples
 
