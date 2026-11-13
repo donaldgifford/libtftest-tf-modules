@@ -1,0 +1,25 @@
+# EXAMPLE ONLY: not a supported interface, and CI in this repo does not
+# run it. The source of truth that PR review approves and Renovate bumps.
+# Every name is a placeholder.
+#
+# images: every entry is pinned by DIGEST. The tag is what consumers
+# pull, and the sync job fails if the tag no longer resolves to the
+# digest (upstream retagged it).
+images:
+  - source: registry.k8s.io/ingress-nginx/controller
+    tag: v1.12.1
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    verify: # optional: only when the publisher signs with cosign keyless
+      certificate_identity_regexp: "^https://github.com/kubernetes/.*"
+      certificate_oidc_issuer: https://token.actions.githubusercontent.com
+  - source: docker.io/library/nginx
+    tag: 1.27.4
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+
+# charts: HTTPS chart repositories have no digest, so the archive's
+# sha256 is pinned instead and checked after `helm pull`.
+charts:
+  - repo: https://charts.example.com
+    name: example-chart
+    version: 1.2.3
+    sha256: 2222222222222222222222222222222222222222222222222222222222222222

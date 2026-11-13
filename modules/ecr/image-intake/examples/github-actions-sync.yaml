@@ -1,0 +1,78 @@
+# EXAMPLE ONLY: not a supported interface, and CI in this repo does not
+# run it. Lives in the MANIFEST repository, next to manifest.yaml and a
+# copy of sync-writer.sh. Every name is a placeholder.
+#
+# Runs on merge to the manifest (PR review is the approval) and nightly
+# (drift: a tag that no longer resolves to its pinned digest fails the
+# run). Credentials: OIDC to the writer role, no stored AWS keys; the
+# writer role's trust policy for GitHub OIDC is created out of band
+# (DESIGN-0031 OQ 9a).
+#
+# Written against crane 0.20.6, cosign 3.1.1 and the action versions
+# below. Actions are pinned by commit SHA; the comment names the tag.
+name: example-image-sync
+
+on:
+  push:
+    branches: [main]
+    paths: [manifest.yaml]
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for configure-aws-credentials
+
+concurrency:
+  group: image-sync
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  REGISTRY: 111111111111.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/example-sync
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+        with:
+          version: v0.20.6
+
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.1
+
+      - name: Log in to ECR
+        run: |
+          aws ecr get-login-password | crane auth login "${REGISTRY}" -u AWS --password-stdin
+          aws ecr get-login-password | helm registry login "${REGISTRY}" -u AWS --password-stdin
+
+      # Upstream pull credentials (rate limits, private upstreams) live
+      # in a Secrets Manager secret in the registry account, shaped
+      # {"<registry-host>": {"username": "...", "password": "..."}}.
+      # Each password is masked before use.
+      - name: Log in to upstream registries
+        run: |
+          creds="$(aws secretsmanager get-secret-value \
+            --secret-id example/upstream/registry-credentials \
+            --query SecretString --output text)"
+          for host in $(jq -r 'keys[]' <<<"${creds}"); do
+            password="$(jq -r --arg h "${host}" '.[$h].password' <<<"${creds}")"
+            echo "::add-mask::${password}"
+            crane auth login "${host}" \
+              -u "$(jq -r --arg h "${host}" '.[$h].username' <<<"${creds}")" \
+              --password-stdin <<<"${password}"
+          done
+
+      - name: Sync manifest into quarantine
+        run: ./sync-writer.sh manifest.yaml

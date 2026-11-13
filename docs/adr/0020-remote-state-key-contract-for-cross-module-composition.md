@@ -17,6 +17,7 @@ created: 2026-07-29
   - [The contract table](#the-contract-table)
   - [The identifier coupling](#the-identifier-coupling)
   - [The reserved stack name (s3/access-logs)](#the-reserved-stack-name-s3access-logs)
+  - [The reserved stack name (ecr/registry)](#the-reserved-stack-name-ecrregistry)
   - [Enforcement — what is checked where](#enforcement--what-is-checked-where)
 - [Consequences](#consequences)
   - [Positive](#positive)
@@ -84,10 +85,10 @@ Every cross-module state read/publish uses the account-scoped key
   (producer: `secretsmanager/secret`, IMPL-0019), `iam`
   (producer: `iam/role`, IMPL-0022 — the platform-reserved shape from
   DESIGN-0001 §4), `sg` (producer: `network/security-group`,
-  IMPL-0023).
+  IMPL-0023), `ecr` (producer: `ecr/registry`, IMPL-0027).
 - `<name>` — the producer instance's stable identifier (see coupling below).
-  Exception: the `s3/access-logs` key is **flat** — no `<name>` segment
-  (see the reserved-stack-name note below).
+  Exceptions: the `s3/access-logs` and `ecr/registry` keys are **flat**,
+  with no `<name>` segment (see the reserved-stack-name note below).
 
 In the live repo this means the producer stack's directory **must** be
 `<account_name>/<region>/<shape>/<name>/` — the folder path IS the key.
@@ -114,6 +115,7 @@ consumer read at plan time.
 | `network/security-group` | vpc | `<acct>/<region>/vpc/<vpc_name>/…` | `network/vpc-lookup` |
 | *(reserved)* cross-account trust wiring | iam | `<acct>/<region>/iam/<name>/…` — `<name>` couples to the role's exact `var.name` (which is also what every `assume_role` block composes by name) | `iam/role` (DESIGN-0025 / IMPL-0022; no consumer wired yet) |
 | *(reserved)* cross-stack SG references | sg | `<acct>/<region>/sg/<name>/…` — `<name>` couples to the SG's `var.name` (the `name_prefix` base and the `Name` tag, **not** the suffixed physical group name) | `network/security-group` (DESIGN-0026 / IMPL-0023; no consumer wired yet — foreseeable first is a sibling SG stack's `referenced_security_group_id`, or an `eks/cluster` additional-SG input) |
+| *(reserved)* registry pull contract (`registry_url`, `pull_repository_prefixes`) | ecr registry | `<acct>/<region>/ecr/registry/…`: **flat, no `<name>` segment**. One per account and region, because every object the module owns is a per-registry singleton | `ecr/registry` (DESIGN-0030 OQ 10a / IMPL-0027; no consumer wired yet) |
 
 All 14 **unconditional** reads carry the cross-account `assume_role`
 (`arn:aws:iam::<account_id>:role/<deploy_role_name>`,
@@ -175,6 +177,17 @@ name: one sink per account/region at that path. Non-default sinks
 opt out of the contract entirely — deploy the module at any other
 folder and point consumers at it via their explicit
 `access_logging.target_bucket` override (no remote-state read).
+
+### The reserved stack name (`ecr/registry`)
+
+The same flat shape, for a different reason. `ecr/registry` owns a
+registry's **singletons** (the registry policy, `REGISTRY_POLICY_SCOPE`
+and the scanning configuration), and two stacks owning them overwrite
+each other. So there is exactly one per account and region, deployed at
+`<account_name>/<region>/ecr/registry/`. There is no `<name>` to
+couple, because a second instance is a configuration error, not a
+variant. The key is reserved ahead of any consumer (DESIGN-0030
+OQ 10a), the way `iam` and `sg` were.
 
 ### Enforcement — what is checked where
 

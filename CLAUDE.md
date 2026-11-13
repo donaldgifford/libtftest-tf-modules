@@ -224,6 +224,65 @@ Tracked in git. As of this writing:
   resource and re-seeds the placeholder — see the README upgrade note).
   `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
+  **`registry`** (DESIGN-0030 → IMPL-0027, implemented): the **single
+  owner** of a registry's registry-level singletons (registry policy,
+  `REGISTRY_POLICY_SCOPE`, scanning). Two stacks owning any of them
+  overwrite each other silently, so purpose modules never touch them.
+  Account **allow-list** (`consumer_accounts`, keyed by 12-digit id,
+  granted as `:root`, optional `aws:PrincipalArn` narrowing), a
+  fail-closed prefix allow-list, and an explicit
+  `ConsumerDenyProtected` Deny on `protected_prefixes`
+  (`["quarantine"]`) for every listed account, so an over-broad
+  pass-through can't reach quarantine. Policy is `jsonencode`d from
+  sorted inputs (no single-principal collapse). The policy
+  `depends_on` the V2 scope setting. **ECR has no LocalStack tier**:
+  token-free 4.4 serves no ECR, and Pro 2026.10.7 rejects pull grants
+  in a registry policy (V1 model only), lacks the account setting and
+  creation templates, emits no push events, and enforces no policy
+  (IMPL-0027 Phase 1). Plan suite (45 runs, every rejection
+  message-probed) + a real-AWS `tests-sandbox/` runbook. Publishes at
+  a **flat reserved ADR-0020 key**, `<acct>/<region>/ecr/registry/`
+  (no `<name>`: a second instance per registry is a configuration
+  error), reserved ahead of any consumer. All three IMPL-0027 modules
+  ship in **one** PR and one minor tag (OQ 1a's three-PR cadence
+  collapsed, as in IMPL-0020).
+  **`terraform test` gotcha found here:** `sort()` returns a typed
+  list, which never `==` a tuple literal; compare with `tolist([...])`.
+  **`image-intake`** (DESIGN-0031 → IMPL-0027, implemented):
+  the create-on-push **creation templates** for a quarantine prefix
+  (`MUTABLE`, expire-all lifecycle, `DenyNonPipelineImageAccess`) and
+  `for_each` promoted prefixes (`IMMUTABLE_WITH_EXCLUSION` with
+  `sha256-*` so cosign's legacy `.sig`/`.att` tags stay appendable, no
+  lifecycle, `DenyNonIntakeWrites` + `DenyNonAdminPolicyChanges`), the
+  ECR-assumed template role (`aws:SourceAccount` trust), an optional
+  intake EventBridge rule, and **policy JSON outputs only** (no IAM
+  roles for writers or intake). Every Deny pairs `ArnNotLike
+  aws:PrincipalArn` with `BoolIfExists aws:PrincipalIsAWSService =
+  false`: the key is absent for service principals and `ArnNotLike`
+  on an absent key is TRUE, so without it the Deny blocks ECR's own
+  scanning. Writers same-account only (precondition). Templates only
+  reach repositories created **after** them, and their
+  `resource_tags` come from `data.aws_default_tags`. Exclusion
+  filters cap at **5** (provider `max_items`). Plan suite 52 runs, 38
+  rejections message-probed one rule each. No LocalStack tier. Padded-ARN
+  rejection runs use a **trailing** space, since a leading one also
+  fails the ARN regex.
+  Both ECR modules carry a `tests-sandbox/` real-AWS runbook
+  (IMPL-0027 Phase 7): `run.sh` generates its stacks in a temp dir
+  with an absolute module source, refuses to run against a registry
+  that already has a policy or templates, and prints PASS / FAIL /
+  RECORD lines. **Authored but not yet run live** (no sandbox
+  credentials here; OQ 4a: release does not wait). Two pending
+  results feed back into DESIGN-0031: the strict-prefix cosign leg
+  (does ECR's referrers support make `sha256-*` unnecessary?) and the
+  CMK cross-account pull. `crane copy` skips an existing manifest, so
+  any re-push probe must use `crane tag`. The `examples/` (crane +
+  cosign writer, promotion, skopeo, GitHub Actions) are docs, not an
+  interface. **cosign 3.x deprecates `--tlog-upload`**: use a
+  `--signing-config` with no tlog services. Against a registry without
+  the referrers API, cosign 3 rewrites a single `sha256-<digest>`
+  fallback tag on every signature or attestation, so promoted repos
+  need that tag mutable.
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
   a single non-clustered `aws_db_instance` for Postgres + MySQL per DESIGN-0012;
@@ -876,6 +935,31 @@ Tracked in git. As of this writing:
   until a concrete need), consumer-side proof (rides the RDS follow-up,
   IMPL OQ 3a), `secretsmanager/rotation-lambda` sibling (if ever).
 
+- **`modules/kms/`** — `signing-key` (DESIGN-0031 → IMPL-0027,
+  implemented): an asymmetric `SIGN_VERIFY` key for cosign
+  (`ECC_NIST_P256` default, `RSA_4096` allowed) with an explicit key
+  policy and **no root delegation**. Admins get `KeyAdministration`
+  with `NotAction: kms:Sign`; signers get `AllowSign`; verifiers get an
+  optional `AllowVerify`. Signers and admins must be disjoint. Because
+  nothing delegates to account IAM, a **caller precondition** requires
+  the applying principal in `admin_principal_arns` (assumed-role ARN
+  normalized to lowercased `<account>/<role>`), or the next apply is
+  locked out. `enable_key_rotation = false` is pinned (asymmetric keys
+  can't rotate). **No `prevent_destroy`, a recorded deviation from
+  DESIGN-0031:** it would make apply-suite teardown impossible, and
+  `lifecycle` is static. The 30-day deletion window is the guard.
+  `cosign_key_ref` is `awskms:///<key ARN>`, since aliases don't
+  resolve cross-account. Tests: plan 20 runs (14 rejections
+  message-probed) + Community apply 2/2 on token-free 4.4
+  (`SERVICES=kms,sts`). The apply's provider `assume_role`s
+  `role/deploy` so the caller precondition runs live. **4.4 KMS gaps,
+  probed:** a deny-all key policy still signs (policy not enforced),
+  and `EnableKeyRotation` on an asymmetric key is accepted. So the
+  apply tier proves wiring only, and the policy shape lives in the plan
+  suite. **`terraform test` lessons:** `override_during = plan` on a
+  `mock_resource` makes mocked computed attributes known at plan; a
+  data source that depends on a pending resource (`aws_kms_public_key`)
+  stays unknown at plan even under mocks, so assert it at apply.
 - **Tagging: provider `default_tags`, no `tags` variable (DESIGN-0029 /
   IMPL-0026, releases as `v0.27.0`).** No module declares a `tags`
   variable. The fleet's standard set is derived in Terragrunt and

@@ -58,5 +58,5 @@ docz create impl "Your Implementation Title"
 | IMPL-0024 | IAM trust conditions and pod-identity-access validation backport | Completed | 2026-09-09 | Donald Gifford | [0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md](0024-iam-trust-conditions-and-pod-identity-access-validation-backport.md) |
 | IMPL-0025 | S3 mirror bucket purpose module | Draft | 2026-09-15 | Donald Gifford | [0025-s3-mirror-bucket-purpose-module.md](0025-s3-mirror-bucket-purpose-module.md) |
 | IMPL-0026 | Provider default_tags replace the per-module tags variable | Completed | 2026-11-11 | Donald Gifford | [0026-provider-defaulttags-replace-the-per-module-tags-variable.md](0026-provider-defaulttags-replace-the-per-module-tags-variable.md) |
-| IMPL-0027 | ECR registry, image intake and KMS signing key modules | Draft | 2026-11-12 | Donald Gifford | [0027-ecr-registry-image-intake-and-kms-signing-key-modules.md](0027-ecr-registry-image-intake-and-kms-signing-key-modules.md) |
+| IMPL-0027 | ECR registry, image intake and KMS signing key modules | Completed | 2026-11-12 | Donald Gifford | [0027-ecr-registry-image-intake-and-kms-signing-key-modules.md](0027-ecr-registry-image-intake-and-kms-signing-key-modules.md) |
 <!-- END DOCZ AUTO-GENERATED -->

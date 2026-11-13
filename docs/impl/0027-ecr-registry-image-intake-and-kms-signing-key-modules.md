@@ -1,7 +1,7 @@
 ---
 id: IMPL-0027
 title: "ECR registry, image intake and KMS signing key modules"
-status: Draft
+status: Completed
 author: Donald Gifford
 created: 2026-11-12
 ---
@@ -29,6 +29,11 @@ created: 2026-11-12
   - [Phase 6: Sync examples](#phase-6-sync-examples)
   - [Phase 7: Sandbox runbooks](#phase-7-sandbox-runbooks)
   - [Phase 8: Docs, closure and release](#phase-8-docs-closure-and-release)
+- [Post-merge live validation (operator)](#post-merge-live-validation-operator)
+  - [What you need](#what-you-need)
+  - [Steps](#steps)
+  - [What each result changes](#what-each-result-changes)
+  - [Closing out](#closing-out)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -183,133 +188,291 @@ record `CreateRepositoryCreationTemplate` returning 501 on Pro
 
 #### Tasks
 
-- [ ] Scaffold `modules/ecr/registry` (`versions.tf` with
+- [x] Scaffold `modules/ecr/registry` (`versions.tf` with
       `required_version >= 1.9` and `aws ~> 6.2`; `.tflint.hcl`; no
       `tags` variable)
-- [ ] `data.aws_caller_identity` + `data.aws_region` (DESIGN-0030 OQ 9a)
-- [ ] Variables with every validation, one rule per block:
-  - [ ] `consumer_accounts` (12-digit keys; patterns name their own
+- [x] `data.aws_caller_identity` + `data.aws_region` (DESIGN-0030 OQ 9a)
+- [x] Variables with every validation, one rule per block:
+  - [x] `consumer_accounts` (12-digit keys; patterns name their own
         account; no whitespace; no equivalent-to-none pattern)
-  - [ ] `pull_repository_prefixes` and `protected_prefixes` (ECR name
+  - [x] `pull_repository_prefixes` and `protected_prefixes` (ECR name
         grammar; no duplicates)
-  - [ ] Cross-variable: accounts require prefixes; no pull/protected
+  - [x] Cross-variable: accounts require prefixes; no pull/protected
         overlap in either direction
-  - [ ] `additional_policy_statements` (alphanumeric, unique sids;
+  - [x] `additional_policy_statements` (alphanumeric, unique sids;
         reserved `Consumer` prefix; effect enum; `ecr:` actions)
-  - [ ] `manage_registry_policy_scope` (default `true`)
-  - [ ] `scanning` (default `null`; type/frequency coherence; non-empty
+  - [x] `manage_registry_policy_scope` (default `true`)
+  - [x] `scanning` (default `null`; type/frequency coherence; non-empty
         filters)
-- [ ] Locals composing `ConsumerPull`, `ConsumerPull<id>` and
+- [x] Locals composing `ConsumerPull`, `ConsumerPull<id>` and
       `ConsumerDenyProtected` with `jsonencode`, sorted inputs
-- [ ] `aws_ecr_registry_policy` (count on "any statement renders"),
+- [x] `aws_ecr_registry_policy` (count on "any statement renders"),
       with the self-account precondition
-- [ ] `aws_ecr_account_setting` (count on the toggle, value `V2`)
-- [ ] `depends_on = [aws_ecr_account_setting.registry_policy_scope]` on
+- [x] `aws_ecr_account_setting` (count on the toggle, value `V2`)
+- [x] `depends_on = [aws_ecr_account_setting.registry_policy_scope]` on
       the registry policy, so a V1 registry is switched to V2 before the
       pull grant is written (Phase 1 finding). A comment at the resource
       records why
-- [ ] `aws_ecr_registry_scanning_configuration` (count on
+- [x] `aws_ecr_registry_scanning_configuration` (count on
       `scanning != null`)
-- [ ] All eight outputs, including `consumer_identity_policy_json`
-- [ ] Plan suite (`mock_provider`), decoding the policy statement by
+- [x] All eight outputs, including `consumer_identity_policy_json`
+- [x] Plan suite (`mock_provider`), decoding the policy statement by
       statement:
-  - [ ] Bare call (no policy, scope `V2`, no scanning resource)
-  - [ ] One plain account; two plain accounts; one narrowed account;
+  - [x] Bare call (no policy, scope `V2`, no scanning resource)
+  - [x] One plain account; two plain accounts; one narrowed account;
         mixed
-  - [ ] `ConsumerDenyProtected` names every account and is absent with
+  - [x] `ConsumerDenyProtected` names every account and is absent with
         no accounts or no protected prefixes
-  - [ ] The deny survives an over-broad pass-through statement
-  - [ ] Reordered inputs render identical JSON
-  - [ ] Additive merge order; scanning on; output values
-  - [ ] Every rejection, verified per rule by message probe or mutation
-  - [ ] A positive run for every regex-shaped rule
-- [ ] `just tf docs ecr/registry` (lock-free form) and `just static`
-- [ ] `just changed` shows `ecr/registry` in the plan tier
+  - [x] The deny survives an over-broad pass-through statement
+  - [x] Reordered inputs render identical JSON
+  - [x] Additive merge order; scanning on; output values
+  - [x] Every rejection, verified per rule by message probe or mutation
+  - [x] A positive run for every regex-shaped rule
+- [x] `just tf docs ecr/registry` (lock-free form) and `just static`
+- [x] `just changed` shows `ecr/registry` in the plan tier
+
+**Build notes:**
+
+- Extra validations beyond the design, each one rule: no duplicate
+  patterns within an account, and `principals[].type` limited to
+  `AWS` / `Service` (an unknown type would render a principal key IAM
+  rejects at apply).
+- `sort()` returns a typed **list**, which never equals a tuple
+  literal in a `terraform test` assertion (`== ["a"]` is false; use
+  `tolist([...])` or `length(...) == 0`). Two runs failed on this
+  before the module was wrong about anything.
+- Cross-run comparison (`run.<name>.registry_policy_json`) is how the
+  ordering and deny-survival runs prove byte-identical rendering.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `account_id_malformed` | `variables.tf:18` 12-digit keys |
+| `pattern_names_another_account` | `variables.tf:25` own-account prefix |
+| `pattern_with_whitespace` | `variables.tf:34` whitespace |
+| `pattern_equivalent_to_no_narrowing` | `variables.tf:46` `:*` pattern |
+| `duplicate_patterns` | `variables.tf:55` duplicates |
+| `accounts_without_prefixes` | `variables.tf:65` cross-variable |
+| `prefix_with_wildcard`, `prefix_uppercase`, `prefix_leading_slash` | `variables.tf:85` ECR grammar |
+| `prefix_duplicate` | `variables.tf:90` duplicates |
+| `prefix_equals_protected`, `prefix_inside_protected`, `prefix_contains_protected` | `variables.tf:97` overlap (cross-variable) |
+| `protected_bad_grammar` | `variables.tf:115` ECR grammar |
+| `protected_duplicate` | `variables.tf:120` duplicates |
+| `sid_not_alphanumeric` | `variables.tf:157` sid grammar |
+| `sid_duplicate` | `variables.tf:162` unique sids |
+| `sid_reserved_prefix` | `variables.tf:167` reserved `Consumer` |
+| `effect_not_enum` | `variables.tf:172` effect |
+| `action_not_ecr` | `variables.tf:177` `ecr:` actions |
+| `principal_type_not_allowed` | `variables.tf:182` principal type |
+| `scan_type_unknown` | `variables.tf:216` scan type |
+| `basic_with_continuous_scan`, `enhanced_with_manual` | `variables.tf:223` frequency coherence |
+| `scan_rule_without_filters` | `variables.tf:233` non-empty filters |
+| `self_account_rejected` | registry-policy precondition |
+
+Positive runs (`grammar_edge_values_accepted`, `basic_manual_accepted`,
+`enhanced_on_push_accepted`, plus every shape run) let valid values
+through each regex and enum rule.
 
 #### Success Criteria
 
 - The plan suite is green, and each rejection run is recorded as
-  firing its own rule (message or mutation).
+  firing its own rule (message or mutation). **Met: 45/45 runs; 26
+  rejections message-probed, one rule each.**
 - A bare call plans no registry policy and no scanning resource.
-- `just static` is green.
+  **Met (`bare_call_renders_no_policy`).**
+- `just static` is green. **Met; `just changed` shows plan tier
+  only.**
 
 ### Phase 3: kms/signing-key module
 
 #### Tasks
 
-- [ ] Scaffold `modules/kms/signing-key` (`aws ~> 6.2`; `.tflint.hcl`;
+- [x] Scaffold `modules/kms/signing-key` (`aws ~> 6.2`; `.tflint.hcl`;
       no `tags` variable)
-- [ ] `aws_kms_key` (`SIGN_VERIFY`, `key_spec` default
+- [x] `aws_kms_key` (`SIGN_VERIFY`, `key_spec` default
       `ECC_NIST_P256`, `RSA_4096` allowed, `enable_key_rotation =
-      false` pinned, 30-day window, `prevent_destroy`) and
-      `aws_kms_alias`
-- [ ] Key policy with `KeyAdministration` (`NotAction: kms:Sign`),
+      false` pinned, 30-day window, ~~`prevent_destroy`~~, see build
+      notes) and `aws_kms_alias`
+- [x] Key policy with `KeyAdministration` (`NotAction: kms:Sign`),
       `AllowSign` and an optional `AllowVerify`; no root delegation
-- [ ] Principal validations (the five `iam/role` rules on each list;
+- [x] Principal validations (the five `iam/role` rules on each list;
       signers and admins disjoint)
-- [ ] Precondition: the applying role (STS `assumed-role` ARN
+- [x] Precondition: the applying role (STS `assumed-role` ARN
       normalized to `<account>/<role-name>`) is in the admin list
-- [ ] `data.aws_kms_public_key` and outputs, including
+- [x] `data.aws_kms_public_key` and outputs, including
       `cosign_key_ref = awskms:///<key_arn>` and `signer_policy_json`
-- [ ] Plan suite: bare call pins; key policy decoded; outputs;
+- [x] Plan suite: bare call pins; key policy decoded; outputs;
       rejections verified per rule; positive regex runs
-- [ ] Community apply suite (`tests-localstack/`, token-free 4.4,
+- [x] Community apply suite (`tests-localstack/`, token-free 4.4,
       `SERVICES=kms,sts`): key and alias created, `public_key_pem` is a
       PEM block, spec and usage read back
-- [ ] `FINDINGS.md` leading with the two 4.4 gaps (key policy not
+- [x] `FINDINGS.md` leading with the two 4.4 gaps (key policy not
       enforced; rotation accepted on an asymmetric key)
-- [ ] `just tf docs kms/signing-key` and `just static`
+- [x] `just tf docs kms/signing-key` and `just static`
+
+**Build notes:**
+
+- **`prevent_destroy` dropped (deviation from DESIGN-0031).** It would
+  make the Community apply suite's teardown impossible, and `lifecycle`
+  arguments are static, so it cannot be switched off for tests only.
+  The guard is the 30-day deletion window (the maximum), commented at
+  the resource.
+- **`override_during = plan`** (TF >= 1.11) on the `aws_kms_key` mock
+  makes the mocked `arn` / `key_id` known at plan, so `cosign_key_ref`
+  and the alias wiring are assertable in the plan suite.
+- **`public_key_pem` stays unknown at plan** even under the mock: its
+  data source depends on the pending key and is deferred. It is
+  asserted by the apply tier instead.
+- The apply suite satisfies the caller precondition with an
+  `assume_role` provider block for `role/deploy` (LocalStack STS mints
+  credentials for any role ARN), so the `assumed-role` normalization
+  runs live, not only under the mocked caller.
+- 4.4 gaps re-probed with the AWS CLI on 2026-11-13: a deny-all key
+  policy still signs, and `EnableKeyRotation` on an asymmetric key is
+  accepted. Both recorded at the top of `FINDINGS.md`.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `name_bad_charset` | `variables.tf:9` name charset |
+| `name_reserved_aws_prefix` | `variables.tf:14` reserved `aws/` |
+| `key_spec_unsupported` | `variables.tf:27` key spec enum |
+| `admins_empty` | `variables.tf:46` non-empty |
+| `admin_account_root` | `variables.tf:51` role/user ARN |
+| `admin_wildcard` | `variables.tf:56` wildcards |
+| `admin_padded` | `variables.tf:61` whitespace |
+| `admin_duplicate_spelling` | `variables.tf:66` normalized duplicates |
+| `signers_empty` | `variables.tf:78` non-empty |
+| `signer_service_principal` | `variables.tf:83` role/user ARN |
+| `signer_duplicate` | `variables.tf:98` normalized duplicates |
+| `signer_is_admin` | `variables.tf:105` disjoint from admins |
+| `verifier_wildcard` | `variables.tf:126` wildcards |
+| `caller_not_admin` | `aws_kms_key.this` caller precondition |
+
+Positive runs (`bare_call_pins_defaults`, `rsa_key_spec_accepted`,
+`verifiers_add_a_verify_statement`, `caller_matches_path_bearing_admin`)
+let valid values through the charset, enum, ARN and caller rules.
 
 #### Success Criteria
 
 - Plan suite green, with `enable_key_rotation = false` and the
-  no-root-delegation shape asserted.
+  no-root-delegation shape asserted. **Met: 20/20 runs; 14 rejections
+  message-probed, one rule each.**
 - The Community apply passes live on 4.4, and `FINDINGS.md` records the
-  run.
+  run. **Met: 2/2 on token-free 4.4 (2026-11-13).**
 - `just changed` shows `kms/signing-key` in the plan and community
-  tiers.
+  tiers. **Met (`changed-modules.sh`: plan + community).**
 
 ### Phase 4: ecr/image-intake module and plan suite
 
 #### Tasks
 
-- [ ] Scaffold `modules/ecr/image-intake` (`required_version >= 1.9`;
+- [x] Scaffold `modules/ecr/image-intake` (`required_version >= 1.9`;
       `.tflint.hcl`; no `tags` variable)
-- [ ] Template role (`custom_role_arn`, ECR-assumed) with
+- [x] Template role (`custom_role_arn`, ECR-assumed) with
       `CreateRepository`, `PutLifecyclePolicy`, `SetRepositoryPolicy`,
       `TagResource` on the module's prefixes, plus KMS use when
       `kms_key_arn` is set
-- [ ] Quarantine template: `MUTABLE`; expire-all lifecycle after
+- [x] Quarantine template: `MUTABLE`; expire-all lifecycle after
       `quarantine_retention_days`; `DenyNonPipelineImageAccess` with
       `ArnNotLike` + `BoolIfExists aws:PrincipalIsAWSService`
-- [ ] Promoted templates (`for_each`): `IMMUTABLE_WITH_EXCLUSION` with
+- [x] Promoted templates (`for_each`): `IMMUTABLE_WITH_EXCLUSION` with
       `sha256-*`; no lifecycle; `DenyNonIntakeWrites` and
       `DenyNonAdminPolicyChanges`
-- [ ] Encryption: AES256 default, `kms_key_arn` optional (DESIGN-0031
+- [x] Encryption: AES256 default, `kms_key_arn` optional (DESIGN-0031
       OQ 8a)
-- [ ] `resource_tags` from `data.aws_default_tags` (DESIGN-0029 pattern)
-- [ ] Validations: the five ARN rules on all three lists; writer/intake
+- [x] `resource_tags` from `data.aws_default_tags` (DESIGN-0029 pattern)
+- [x] Validations: the five ARN rules on all three lists; writer/intake
       disjoint; same-account writers (precondition); prefix grammar and
       overlap in every direction; retention range; exclusion filters;
       target `role_arn` requirement
-- [ ] Optional event rule + target; `intake_event_pattern_json` always
+- [x] Optional event rule + target; `intake_event_pattern_json` always
       exported
-- [ ] Outputs, including `promoted_prefixes` shaped for
+- [x] Outputs, including `promoted_prefixes` shaped for
       `ecr/registry`'s `pull_repository_prefixes`
-- [ ] Plan suite: bare call; quarantine template (lifecycle and policy
+- [x] Plan suite: bare call; quarantine template (lifecycle and policy
       decoded); promoted templates (two-prefix run); policy outputs
       decoded and scoped; event pattern exact; rejections verified per
       rule; positive regex runs
-- [ ] Confirm the ECR limit on exclusion filters per template and set
-      the validation to it (DESIGN-0031 noted "five, to be confirmed")
-- [ ] `just tf docs ecr/image-intake` and `just static`
+- [x] Confirm the ECR limit on exclusion filters per template and set
+      the validation to it (DESIGN-0031 noted "five, to be confirmed"):
+      **five**, from the provider schema
+      (`image_tag_mutability_exclusion_filter` `max_items = 5`, aws
+      provider in `~> 6.2`); the validation is 1 to 5
+- [x] `just tf docs ecr/image-intake` and `just static`
+
+**Build notes:**
+
+- **Two grants added beyond DESIGN-0031's table**, both inside the
+  module's own prefixes:
+  - the writer gets `ecr:BatchGetImage` on quarantine, because the
+    sync example's `crane digest` idempotency check and `cosign copy`
+    read the destination manifest;
+  - intake gets the pull actions on the promoted prefixes as well as
+    push, because `cosign sign` / `attest` read the manifest they sign.
+
+  The sandbox examples leg (Phase 7) confirms both are needed.
+- `DenyNonAdminPolicyChanges` also covers `ecr:DeleteLifecyclePolicy`:
+  promoted templates set no lifecycle policy, but a non-admin must
+  not be able to remove one an admin later adds.
+- The template role's trust carries an `aws:SourceAccount` condition
+  (confused-deputy guard), and its policy is scoped to the module's
+  prefixes.
+- `encryption_configuration.kms_key` is Optional+Computed, so it is
+  unknown at plan when unset; the AES256 run asserts only the type.
+- Padded-ARN rejection runs use a **trailing** space. A leading space
+  also fails the ARN regex, and two rules would answer for one run.
+- `name` is capped at 40 characters because it is suffixed into an
+  IAM role name (`-ecr-templates`) and an EventBridge rule name
+  (`-quarantine-push`), both capped at 64.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `name_bad_charset`, `name_too_long` | `variables.tf:9` charset and length |
+| `quarantine_prefix_bad_grammar` | `variables.tf:30` ECR grammar |
+| `retention_zero`, `retention_over_thirty`, `retention_fractional` | `variables.tf:43` whole number 1-30 |
+| `promoted_empty` | `variables.tf:59` non-empty |
+| `promoted_bad_grammar` | `variables.tf:64` ECR grammar |
+| `promoted_nested` | `variables.tf:72` no nesting |
+| `promoted_equals_quarantine`, `promoted_inside_quarantine`, `promoted_contains_quarantine` | `variables.tf:84` quarantine overlap (cross-variable) |
+| `exclusions_empty`, `exclusions_over_five` | `variables.tf:95` 1 to 5 filters |
+| `exclusion_whitespace` | `variables.tf:103` filter charset |
+| `exclusion_duplicate` | `variables.tf:112` unique filters |
+| `writers_empty` / `writer_account_root` / `writer_wildcard` / `writer_padded` / `writer_duplicate_spelling` | `variables.tf:134` / `:139` / `:144` / `:149` / `:154` |
+| `intakes_empty` / `intake_account_root` / `intake_wildcard` / `intake_padded` / `intake_duplicate_spelling` | `variables.tf:166` / `:171` / `:176` / `:181` / `:186` |
+| `writer_is_intake` | `variables.tf:193` disjoint (cross-variable) |
+| `admins_empty` / `admin_account_root` / `admin_wildcard` / `admin_padded` / `admin_duplicate_spelling` | `variables.tf:208` / `:213` / `:218` / `:223` / `:228` |
+| `kms_alias_rejected` | `variables.tf:245` key ARN |
+| `target_arn_malformed` | `variables.tf:259` target ARN |
+| `target_role_not_a_role` | `variables.tf:264` role ARN |
+| `target_bus_without_role`, `target_state_machine_without_role` | `variables.tf:271` role required |
+| `writer_cross_account` | quarantine-template precondition |
+
+Positive runs (`grammar_edge_values_accepted`,
+`retention_lower_bound_accepted`, `kms_encryption` with an `mrk-` key,
+`state_machine_target_with_role_accepted`, `intake_event_rule` with a
+role-less queue, and every shape run) let valid values through each
+regex, range and target rule.
 
 #### Success Criteria
 
 - Plan suite green, with writer and intake policy outputs proven to
-  grant nothing outside their prefixes.
-- Every rejection is recorded as firing its own rule.
-- `just static` is green.
+  grant nothing outside their prefixes. **Met: 52/52 runs;
+  `no_grant_reaches_outside_the_prefixes` checks every resource in
+  both documents.**
+- Every rejection is recorded as firing its own rule. **Met: 38
+  rejections, one rule each.**
+- `just static` is green. **Met.**
 
 ### Phase 5: LocalStack Pro apply suites
 
@@ -320,42 +483,81 @@ otherwise, the tasks below expand into a scanning-only
 
 #### Tasks
 
-- [ ] Each ECR module's README carries a "LocalStack" section with the
+- [x] Each ECR module's README carries a "LocalStack" section with the
       Phase 1 table, naming what is not served and why there is no
       apply tier
-- [ ] `just changed` shows both ECR modules in the plan tier only
+- [x] `just changed` shows both ECR modules in the plan tier only
+      (`changed-modules.sh` over the branch: plan
+      `ecr/image-intake ecr/registry kms/signing-key`, community
+      `kms/signing-key`, pro none)
+
+**Build note:** the READMEs were created here instead of in Phase 8,
+because the "LocalStack" section needs a home. Phase 8 completes them
+(ADR-0020 key, release notes).
 
 #### Success Criteria
 
 - No `tests-localstack-pro/` directory exists for the ECR modules, and
   the reason is documented where an engineer would look for the suite.
+  **Met: both READMEs carry the probe table and the reason.**
 
 ### Phase 6: Sync examples
 
 #### Tasks
 
-- [ ] `modules/ecr/image-intake/examples/manifest.example.yaml`
-- [ ] `examples/github-actions-sync.yaml` (OIDC via
+- [x] `modules/ecr/image-intake/examples/manifest.example.yaml`
+- [x] `examples/github-actions-sync.yaml` (OIDC via
       `aws-actions/configure-aws-credentials`, actions pinned by SHA,
       Secrets Manager for upstream credentials, the `crane` + `cosign`
       loop, on merge plus nightly)
-- [ ] `examples/skopeo-sync.example.yaml`
-- [ ] README sections:
-  - [ ] The `crane` + `cosign` writer flow (digest drift check, upstream
+- [x] `examples/skopeo-sync.example.yaml`
+- [x] README sections:
+  - [x] The `crane` + `cosign` writer flow (digest drift check, upstream
         verify, idempotent copy, `cosign copy`)
-  - [ ] Intake promotion (`crane copy`, `cosign sign`, `cosign attest`
+  - [x] Intake promotion (`crane copy`, `cosign sign`, `cosign attest`
         with `awskms:///` and the transparency-log flag for the pinned
         cosign version)
-  - [ ] `skopeo sync` as the batch alternative, with its limits
-  - [ ] Chart conversion (`helm pull` → `helm push oci://`)
-- [ ] Placeholder-only naming check (OQ 7)
+  - [x] `skopeo sync` as the batch alternative, with its limits
+  - [x] Chart conversion (`helm pull` → `helm push oci://`)
+- [x] Placeholder-only naming check (OQ 7): local grep over the
+      three modules and the four IMPL-0027 source docs, clean; account
+      IDs in examples and READMEs are placeholders only
+
+**Build notes:**
+
+- **cosign 3.1.1 deprecates `--tlog-upload`.** It still parses, with a
+  deprecation warning that points to a `--signing-config` file with no
+  transparency-log services. The examples ship that file
+  (`signing-config.no-tlog.json`) and use it for both `sign` and
+  `attest`. Verifiers then need `--insecure-ignore-tlog=true`.
+- **Local smoke run, `sha256-*` evidence.** cosign 3.1.1 `sign`, two
+  `attest`s, `verify` and `verify-attestation` were run with a
+  throwaway key against `crane registry serve`, which has no OCI
+  referrers API. All three referrers landed under **one** fallback tag,
+  `sha256-<digest>`, rewritten each time. So the promoted template's
+  `sha256-*` exclusion is needed for cosign 3's referrers fallback as
+  well as the legacy `.sig` / `.att` tags. ECR's own referrers
+  behaviour is still the sandbox's question (DESIGN-0031 OQ 6).
+- The writer loop moved from inline workflow YAML into
+  `examples/sync-writer.sh`, so the README and the workflow share one
+  script. Charts are pinned by archive sha256, since an HTTPS chart
+  has no registry digest.
+- `sync-writer.sh` runs its per-entry functions under `||`, where bash
+  disables `set -e` for the whole function. Every step that must stop
+  an entry checks its exit status explicitly; without that, a failed
+  `cosign verify` would have fallen through to the copy.
+- Action SHAs were resolved from each action's latest release with
+  `gh api` (2026-11-13); the workflow passes `actionlint`, and both
+  scripts pass `shellcheck`.
 
 #### Success Criteria
 
 - Every example uses placeholder names only and states the tool
-  versions it was written against.
+  versions it was written against. **Met.**
 - The README explains each step and when to choose `skopeo sync`.
-- The examples are smoke-run in Phase 7.
+  **Met.**
+- The examples are smoke-run in Phase 7. **Pending Phase 7** (cosign
+  sign/attest/verify already smoke-run locally, above).
 
 ### Phase 7: Sandbox runbooks
 
@@ -363,72 +565,218 @@ Real AWS, two accounts (registry and consumer), operator-run.
 
 #### Tasks
 
-- [ ] `modules/ecr/registry/tests-sandbox/` runbook (two AWS CLI
+- [x] `modules/ecr/registry/tests-sandbox/` runbook (two AWS CLI
       profiles) covering:
-  - [ ] P1: pull with no repository policy succeeds on `V2`. On `V1`,
+  - [x] P1: pull with no repository policy succeeds on `V2`. On `V1`,
         record whether `PutRegistryPolicy` itself rejects the pull grant
         (as Pro does) or accepts it and the pull fails
-  - [ ] P1 ordering: from a V1 registry, one `terraform apply` switches
+  - [x] P1 ordering: from a V1 registry, one `terraform apply` switches
         to V2 and writes the policy without error (the `depends_on`)
-  - [ ] P2: consumer refused on `quarantine/*`, allowed on `mirror/*`,
+  - [x] P2: consumer refused on `quarantine/*`, allowed on `mirror/*`,
         and still refused with an over-broad pass-through statement
-  - [ ] P3: a node not built by this repo pulls by digest with no node
+  - [x] P3: a node not built by this repo pulls by digest with no node
         configuration
-  - [ ] Narrowing: matching role allowed, non-matching refused
-  - [ ] Destroy: consumer refused afterwards; scanning and scope
+  - [x] Narrowing: matching role allowed, non-matching refused
+  - [x] Destroy: consumer refused afterwards; scanning and scope
         observed and recorded
-- [ ] `modules/ecr/image-intake/tests-sandbox/` runbook covering:
-  - [ ] Writer: quarantine push OK, mirror push denied
-  - [ ] Intake: quarantine pull, mirror push (OQ 5)
-  - [ ] Isolation: unrelated role denied on quarantine; consumer
+- [x] `modules/ecr/image-intake/tests-sandbox/` runbook covering:
+  - [x] Writer: quarantine push OK, mirror push denied
+  - [x] Intake: quarantine pull, mirror push (OQ 5)
+  - [x] Isolation: unrelated role denied on quarantine; consumer
         denied on quarantine, allowed on mirror
-  - [ ] Services: scan-on-push findings appear in quarantine
-  - [ ] Events: one event per quarantine push, none for mirror
-  - [ ] cosign: `sign` then `attest` with the `sha256-*` exclusion, and
+  - [x] Services: scan-on-push findings appear in quarantine
+  - [x] Events: one event per quarantine push, none for mirror
+  - [x] cosign: `sign` then `attest` with the `sha256-*` exclusion, and
         again without it (OCI 1.1 referrers)
-  - [ ] Re-push of an identical tag and digest to an immutable repo
-  - [ ] Encryption: consumer pull with `kms_key_arn` set (INV-0012 P4)
-  - [ ] The Phase 6 examples, end to end once
+  - [x] Re-push of an identical tag and digest to an immutable repo
+  - [x] Encryption: consumer pull with `kms_key_arn` set (INV-0012 P4)
+  - [x] The Phase 6 examples, end to end once
 - [ ] Record results in each module's `tests-sandbox/FINDINGS.md`
+      (**pending operator run**: both FINDINGS carry a results table
+      with every leg marked pending; see
+      [Post-merge live validation](#post-merge-live-validation-operator))
 - [ ] Settle DESIGN-0031's revisit items from the results: the
       long-term mutability default (cosign leg) and the KMS README
-      guidance (encryption leg)
+      guidance (encryption leg) (**pending the operator run**)
+
+**Build notes:**
+
+- **Runbooks authored, not run.** This environment has no AWS
+  credentials for a sandbox account pair. Both `run.sh` scripts pass
+  `shellcheck`, and the stacks they generate pass `terraform
+  validate`. Per OQ 4a the release does not wait for the live run.
+- Each runbook generates its stacks in a temp directory with an
+  absolute module `source`, so it tests the working tree and never
+  writes state into the repo.
+- **Safety preflight.** Both refuse to start when the registry already
+  has a registry policy (`SANDBOX_FORCE=1` overrides that check in
+  both), and the intake runbook also refuses, with no override, when
+  creation templates or `quarantine/`, `mirror/` or `strict/`
+  repositories exist, since templates only reach new repositories.
+- **Two legs needed a sharper probe than the design wrote:**
+  - the V1 probe deletes the policy before switching to V1, since a
+    V1 switch with V2 actions in place may itself be refused and the
+    probe would then silently run on V2;
+  - the re-push leg uses `crane tag`, because `crane copy` skips an
+    existing manifest (Phase 1) and would never reach ECR.
+- The writer's mirror denial is IAM (no grant there). The
+  repository-policy Deny is proven by an unrelated role holding
+  `ecr:*` on `*`, which only the repository policies can stop.
+- The OQ 6 probe uses a `strict` promoted prefix whose only exclusion
+  (`no-match-*`) matches nothing cosign writes, because the module
+  requires at least one exclusion.
+- P3 (a node this repo did not build) is a manual step in the registry
+  runbook's README.
 
 #### Success Criteria
 
-- Every leg has a recorded result.
+- Every leg has a recorded result. **Not met yet: pending the
+  operator run** (OQ 4a: release does not wait).
 - Any result that contradicts a design assumption is written back to
-  the DESIGN (as a build note) and fixed in code or docs.
+  the DESIGN (as a build note) and fixed in code or docs. **Pending
+  the operator run.**
 
 ### Phase 8: Docs, closure and release
 
 #### Tasks
 
-- [ ] READMEs for all three modules:
-  - [ ] `ecr/registry`: consumer contract, destroy and adoption,
+- [x] READMEs for all three modules:
+  - [x] `ecr/registry`: consumer contract, destroy and adoption,
         protected-prefix deny, ENHANCED-scanning cost note, LocalStack
         divergence
-  - [ ] `ecr/image-intake`: layout, pairing with `ecr/registry`,
+  - [x] `ecr/image-intake`: layout, pairing with `ecr/registry`,
         policy outputs into `iam/role` / `eks/pod-identity-access`,
         examples
-  - [ ] `kms/signing-key`: signing classes, cross-account verify, alias
+  - [x] `kms/signing-key`: signing classes, cross-account verify, alias
         caveat, rotation stance
-  - [ ] Cross-links between all three
-- [ ] ADR-0020: reserved flat key `<account_name>/<region>/ecr/registry/`
-- [ ] Repo README module table (`just readme`) and the coverage matrix
+  - [x] Cross-links between all three
+- [x] ADR-0020: reserved flat key `<account_name>/<region>/ecr/registry/`
+- [x] Repo README module table (`just readme`) and the coverage matrix
       check (`just readme --check`)
-- [ ] CLAUDE.md: the new modules, the probe findings, and the
+- [x] CLAUDE.md: the new modules, the probe findings, and the
       follow-ups
-- [ ] Mark DESIGN-0030 and DESIGN-0031 Implemented, this IMPL
+- [x] Mark DESIGN-0030 and DESIGN-0031 Implemented, this IMPL
       Completed; `docz update`, reverting unrelated ToC churn
-- [ ] Release per OQ 1, with `### RELEASE NOTES` in each PR body
+- [x] Release per OQ 1, with `### RELEASE NOTES` in the PR body.
+      **OQ 1a's three-PR cadence collapsed to one PR** (operator
+      decision, 2026-11-13), as IMPL-0020 did: the later commits
+      (READMEs, sandbox runbooks, close-out docs) each touch several
+      modules, so a clean split meant rebuilding the history. One
+      minor tag carries all three modules.
+
+**Build notes:**
+
+- The READMEs were started in Phase 5 (for the "LocalStack" sections)
+  and completed here: destroy and adoption, the reserved key, and
+  cross-links between all three modules.
+- ADR-0020 gains the `ecr` shape and a second flat reserved stack name,
+  `ecr/registry`, alongside `s3/access-logs`. The reason differs:
+  `access-logs` is flat so consumers have no name to get wrong;
+  `ecr/registry` is flat because a second instance per registry is a
+  configuration error.
+- DESIGN-0031 carries three build notes (`prevent_destroy` dropped,
+  the two added grants, the cosign 3 tlog flag).
+- Writing the `kms/signing-key` README surfaced an untested claim, that
+  nothing but the signers can sign. The intake sandbox gained a leg in
+  which a key admin calls `kms:Sign` and must be refused.
+- `docz update` again mangled a code-span ToC entry (DESIGN-0030 OQ 6)
+  and rewrote unrelated ToCs. All of it was reverted, and only the
+  status lines and index tables kept.
+
+**Open follow-ups:**
+
+1. **The sandbox runs (Phase 7)**: both runbooks, operator-run. Their
+   two decision legs feed DESIGN-0031: the strict-prefix cosign leg
+   (OQ 6's long-term mutability default) and the CMK cross-account
+   pull (the README's `kms_key_arn` guidance).
+2. **A web-identity trust channel** for the GitHub OIDC writer role
+   (DESIGN-0031 OQ 9a), on `iam/role` or a sibling.
+3. **Replication** on `ecr/registry`: the registry policy and the
+   replication configuration are both registry singletons, so
+   replication belongs in this module if it is ever wanted.
 
 #### Success Criteria
 
 - `just static`, `just docs lint` and `just readme --check` are green.
+  **Met.**
 - All three modules are released, and the docs status matches.
+  **Statuses set; released as one PR (OQ 1a collapsed, above).**
 - Open follow-ups (the `iam/role` web-identity channel, replication on
-  `ecr/registry`, any sandbox-driven changes) are recorded.
+  `ecr/registry`, any sandbox-driven changes) are recorded. **Met
+  (above).**
+
+## Post-merge live validation (operator)
+
+This is the single checklist for the real-AWS work this IMPL leaves
+open: the two unchecked Phase 7 tasks. Each step links to the runbook
+that holds the detail.
+
+### What you need
+
+- Two AWS accounts you can dirty: a **registry** account and a
+  **consumer** account, with an AWS CLI profile for each. Both
+  principals must be able to create and assume IAM roles. Use a
+  dedicated sandbox registry account: the runs overwrite the
+  registry's singletons, the registry policy, the scope setting and the
+  scanning configuration (`ecr/registry` README, "One owner per
+  registry").
+- terraform >= 1.9, aws cli v2, crane, cosign 3.x, jq, mikefarah yq 4,
+  and network access to `public.ecr.aws`.
+- A checkout of the **merged release tag**. The runbooks source the
+  modules from the checkout by absolute path, so they test whatever is
+  checked out.
+- For step 3, a node (EKS or plain EC2 with containerd) in the consumer
+  account that this repo did not build.
+- Cost: a few minutes of ECR, SQS and EventBridge usage (scanning is
+  `BASIC`, so no Inspector charge), and two KMS keys billed until their
+  deletion windows close (30 days for the signing key, 7 for the
+  encryption leg's key).
+
+### Steps
+
+1. **`ecr/registry` runbook.** From an empty directory, run
+   `modules/ecr/registry/tests-sandbox/run.sh` with `KEEP=1`
+   ([README](../../modules/ecr/registry/tests-sandbox/README.md)).
+   Keep its `results.txt`.
+2. **Restore the registry's scope and scanning** if the destroy leg's
+   `RECORD` lines differ from the initial ones (registry runbook
+   README, "Restoring the registry account").
+3. **P3, manual.** Re-apply the registry stack and pull by digest from
+   the node you didn't build, then **clean up by hand**. The runbook
+   README's P3 section has the commands. The cleanup is required: the
+   next runbook refuses a registry with a policy or canary
+   repositories.
+4. **`ecr/image-intake` runbook.** From a *different* empty directory,
+   run `modules/ecr/image-intake/tests-sandbox/run.sh` with
+   `OPERATOR_ARN` set to the registry profile's role ARN, **with its
+   path** ([README](../../modules/ecr/image-intake/tests-sandbox/README.md)).
+   Keep its `results.txt`. It covers the `kms/signing-key` enforcement
+   leg too: a key admin calling `kms:Sign` must be refused.
+5. **Hand back** both `results.txt` files and the P3 outcome (pulled or
+   refused, plus the error if refused).
+
+Both scripts stop at the first `FAIL` and tear down. A `FAIL` is a
+result: hand it back as it is rather than re-running until green.
+
+### What each result changes
+
+| Result | Changes |
+| --- | --- |
+| Any `FAIL` (both runbooks) | A module defect. Open an issue and fix before the next release |
+| Registry: V1 probe | `ecr/registry` README "Registry policy scope": is a V1 grant rejected at apply, or accepted and refused at pull? |
+| Registry: scope and scanning after destroy | `ecr/registry` README "Destroy": replaces the "recorded by the sandbox" placeholder |
+| Registry: P3 | `ecr/registry` README "What each account is granted", if a node needs more than the identity policy |
+| Intake: cosign, strict (both modes) | DESIGN-0031 OQ 6: keep the `sha256-*` exclusion as the promoted default, or move to fully `IMMUTABLE` with OCI 1.1 referrers |
+| Intake: re-push to an immutable repository | `ecr/image-intake` README, writer step 3: the "still a sandbox probe" note |
+| Intake: encryption | `ecr/image-intake` README "Encryption" (written as interim guidance) and DESIGN-0031 OQ 8: the exact key-policy requirement for cross-account pulls under a CMK |
+
+### Closing out
+
+When the results are in, record them in both `tests-sandbox/FINDINGS.md`
+results tables, make the changes above, check off the two Phase 7
+tasks, and mark Phase 7's success criteria met. A result that
+contradicts DESIGN-0030 or DESIGN-0031 goes into that design as a build
+note.
 
 ## File Changes
 
