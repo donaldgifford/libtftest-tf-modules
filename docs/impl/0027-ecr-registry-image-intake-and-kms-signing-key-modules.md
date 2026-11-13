@@ -651,9 +651,12 @@ Real AWS, two accounts (registry and consumer), operator-run.
       follow-ups
 - [x] Mark DESIGN-0030 and DESIGN-0031 Implemented, this IMPL
       Completed; `docz update`, reverting unrelated ToC churn
-- [ ] Release per OQ 1, with `### RELEASE NOTES` in each PR body
-      (**awaiting operator confirmation**: pushing and opening PRs are
-      outward-facing)
+- [x] Release per OQ 1, with `### RELEASE NOTES` in the PR body.
+      **OQ 1a's three-PR cadence collapsed to one PR** (operator
+      decision, 2026-11-13), as IMPL-0020 did: the later commits
+      (READMEs, sandbox runbooks, close-out docs) each touch several
+      modules, so a clean split meant rebuilding the history. One
+      minor tag carries all three modules.
 
 **Build notes:**
 
@@ -691,7 +694,7 @@ Real AWS, two accounts (registry and consumer), operator-run.
 - `just static`, `just docs lint` and `just readme --check` are green.
   **Met.**
 - All three modules are released, and the docs status matches.
-  **Statuses set; release awaiting operator confirmation.**
+  **Statuses set; released as one PR (OQ 1a collapsed, above).**
 - Open follow-ups (the `iam/role` web-identity channel, replication on
   `ecr/registry`, any sandbox-driven changes) are recorded. **Met
   (above).**

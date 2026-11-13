@@ -243,8 +243,9 @@ Tracked in git. As of this writing:
   message-probed) + a real-AWS `tests-sandbox/` runbook. Publishes at
   a **flat reserved ADR-0020 key**, `<acct>/<region>/ecr/registry/`
   (no `<name>`: a second instance per registry is a configuration
-  error), reserved ahead of any consumer. Releases still pending at
-  the end of IMPL-0027 (the PR split per OQ 1a needs the operator).
+  error), reserved ahead of any consumer. All three IMPL-0027 modules
+  ship in **one** PR and one minor tag (OQ 1a's three-PR cadence
+  collapsed, as in IMPL-0020).
   **`terraform test` gotcha found here:** `sort()` returns a typed
   list, which never `==` a tuple literal; compare with `tolist([...])`.
   **`image-intake`** (DESIGN-0031 → IMPL-0027, implemented):
