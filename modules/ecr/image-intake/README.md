@@ -116,6 +116,127 @@ The module creates **no** writer or intake role. Grant
 elsewhere. The signing permission comes from the signing key's own key
 policy (`kms/signing-key`), not from these documents.
 
+## Sync examples
+
+[`examples/`](examples/) shows one way to drive the flow. These are
+**examples, not a supported interface**: CI in this repo does not run
+them, and nothing here is a tool to depend on. Every name in them is a
+placeholder (`example.com`, `example-…`, account `111111111111`).
+
+| File | What it is |
+| --- | --- |
+| `manifest.example.yaml` | The source of truth: images pinned by digest, charts pinned by archive sha256. PR review approves it; Renovate bumps it |
+| `sync-writer.sh` | The writer: drift check, upstream verify, idempotent copy into quarantine, signature carry-over, chart conversion |
+| `github-actions-sync.yaml` | Runs `sync-writer.sh` on merge and nightly, with OIDC to the writer role and upstream credentials from Secrets Manager |
+| `promote.sh` | The intake side for one image: scan gate, promote by digest, sign and attest with the KMS key |
+| `signing-config.no-tlog.json` | A cosign 3 signing config with no transparency-log services |
+| `skopeo-sync.example.yaml` | The batch alternative |
+
+Versions they were written against: crane 0.20.6, cosign 3.1.1,
+helm 4.2, mikefarah yq 4 and skopeo 1.25. The action SHAs in the
+workflow are pinned, with the tag in a comment. cosign sign, attest and
+verify with a no-tlog signing config were smoke-run with cosign 3.1.1
+against a local `crane registry serve`. The end-to-end run against ECR
+is the sandbox runbook's job (IMPL-0027 Phase 7).
+
+### The writer (`crane` + `cosign`)
+
+For each manifest image, `sync-writer.sh`:
+
+1. **Checks for drift.** `crane digest <source>:<tag>` must equal the
+   pinned digest. A mismatch means upstream moved the tag, and a human
+   decides what happens next, so the entry fails.
+2. **Verifies the upstream signature** with `cosign verify`, when the
+   manifest entry has a `verify` block (the publisher signs keyless).
+3. **Copies by digest, idempotently.** If quarantine already holds the
+   digest under that tag, it skips. Otherwise
+   `crane copy <source>@<digest> <quarantine>:<tag>` copies every
+   platform of a multi-arch index. The check runs first because
+   whether ECR accepts an identical re-push to an immutable repository
+   is still a sandbox probe. Checking keeps the job idempotent either
+   way. The first push to a new repository creates it from the
+   quarantine template.
+4. **Carries upstream signatures** with `cosign copy --only=sig,att`,
+   so intake can re-verify from quarantine.
+
+One failing entry doesn't stop the others, but the run fails. The
+functions run in an `|| ...` context, where bash turns `set -e` off, so
+each step that must stop an entry checks its own exit status. Keep that
+if you adapt the script.
+
+Credentials: the workflow assumes the writer role through GitHub OIDC.
+That role's trust policy is created outside this module (DESIGN-0031
+OQ 9a), and it gets `writer_policy_json`. Upstream pull credentials
+come from a Secrets Manager secret in the registry account, and each
+password is masked in the log before use.
+
+### Intake promotion
+
+`promote.sh` stands in for the intake workflow's last step:
+
+1. **Scan gate.** It waits for scan-on-push to finish, then refuses any
+   `CRITICAL` finding. This needs scanning on the quarantine prefix
+   (`ecr/registry`'s `scanning` input). A real workflow applies its own
+   policy here.
+2. **Promote by digest:** `crane copy <quarantine>@<digest>
+   <promoted>:<tag>`. The first push creates the repository from the
+   promoted template.
+3. **Sign and attest** with `cosign sign` / `cosign attest --key
+   awskms:///<key ARN>`. Use the key **ARN**: aliases do not resolve
+   across accounts. The attestation's predicate type is
+   `https://example.com/scan/v1`, a placeholder.
+
+**The transparency-log flag depends on the cosign version.** In cosign
+3.x the upload is switched off with a signing config that lists no
+transparency-log services (`--signing-config
+signing-config.no-tlog.json`). The old `--tlog-upload=false` still
+parses there but is deprecated. Verifiers must then skip the log too:
+`cosign verify --insecure-ignore-tlog=true`, or the admission
+controller's equivalent setting.
+
+**Why the `sha256-*` exclusion matters, observed.** With cosign 3.1.1
+against a registry without the OCI referrers API, signing and two
+attestations all landed under **one** fallback tag,
+`sha256-<digest>`, which cosign rewrote each time. Older cosign writes
+`sha256-<digest>.sig` and `.att` and rewrites them the same way. Both
+need the tag to stay mutable, which the promoted template's default
+exclusion allows. Whether ECR's referrers support makes the exclusion
+unnecessary is a sandbox probe (DESIGN-0031 OQ 6).
+
+### `skopeo sync` (batch alternative)
+
+```sh
+skopeo sync --src yaml --dest docker --all \
+  skopeo-sync.example.yaml \
+  "${REGISTRY}/quarantine/mirror/registry.k8s.io"
+```
+
+Use it for **bulk catch-up**, such as seeding quarantine with many
+images at once. Its limits:
+
+- images only, no charts;
+- no cosign signature carry-over: run `cosign verify` and `cosign copy`
+  separately for signed images;
+- no drift check: the digests in its YAML are written by hand;
+- images synced by digest arrive **without a tag**.
+
+For day-to-day syncing, prefer the manifest and `sync-writer.sh`.
+
+### Charts
+
+HTTPS chart repositories are converted to OCI:
+
+```sh
+helm pull example-chart --repo https://charts.example.com --version 1.2.3
+helm push example-chart-1.2.3.tgz \
+  "oci://${REGISTRY}/quarantine/mirror/charts.example.com"
+```
+
+`helm push` appends the chart name, so the repository is
+`quarantine/mirror/charts.example.com/example-chart`. Chart archives
+have no registry digest before they are pushed, so the manifest pins
+the archive's sha256 and the script checks it after `helm pull`.
+
 ## LocalStack
 
 This module has **no LocalStack apply tier**, Community or Pro

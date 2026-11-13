@@ -500,28 +500,59 @@ because the "LocalStack" section needs a home. Phase 8 completes them
 
 #### Tasks
 
-- [ ] `modules/ecr/image-intake/examples/manifest.example.yaml`
-- [ ] `examples/github-actions-sync.yaml` (OIDC via
+- [x] `modules/ecr/image-intake/examples/manifest.example.yaml`
+- [x] `examples/github-actions-sync.yaml` (OIDC via
       `aws-actions/configure-aws-credentials`, actions pinned by SHA,
       Secrets Manager for upstream credentials, the `crane` + `cosign`
       loop, on merge plus nightly)
-- [ ] `examples/skopeo-sync.example.yaml`
-- [ ] README sections:
-  - [ ] The `crane` + `cosign` writer flow (digest drift check, upstream
+- [x] `examples/skopeo-sync.example.yaml`
+- [x] README sections:
+  - [x] The `crane` + `cosign` writer flow (digest drift check, upstream
         verify, idempotent copy, `cosign copy`)
-  - [ ] Intake promotion (`crane copy`, `cosign sign`, `cosign attest`
+  - [x] Intake promotion (`crane copy`, `cosign sign`, `cosign attest`
         with `awskms:///` and the transparency-log flag for the pinned
         cosign version)
-  - [ ] `skopeo sync` as the batch alternative, with its limits
-  - [ ] Chart conversion (`helm pull` → `helm push oci://`)
-- [ ] Placeholder-only naming check (OQ 7)
+  - [x] `skopeo sync` as the batch alternative, with its limits
+  - [x] Chart conversion (`helm pull` → `helm push oci://`)
+- [x] Placeholder-only naming check (OQ 7): local grep over the
+      three modules and the four IMPL-0027 source docs, clean; account
+      IDs in examples and READMEs are placeholders only
+
+**Build notes:**
+
+- **cosign 3.1.1 deprecates `--tlog-upload`.** It still parses, with a
+  deprecation warning that points to a `--signing-config` file with no
+  transparency-log services. The examples ship that file
+  (`signing-config.no-tlog.json`) and use it for both `sign` and
+  `attest`. Verifiers then need `--insecure-ignore-tlog=true`.
+- **Local smoke run, `sha256-*` evidence.** cosign 3.1.1 `sign`, two
+  `attest`s, `verify` and `verify-attestation` were run with a
+  throwaway key against `crane registry serve`, which has no OCI
+  referrers API. All three referrers landed under **one** fallback tag,
+  `sha256-<digest>`, rewritten each time. So the promoted template's
+  `sha256-*` exclusion is needed for cosign 3's referrers fallback as
+  well as the legacy `.sig` / `.att` tags. ECR's own referrers
+  behaviour is still the sandbox's question (DESIGN-0031 OQ 6).
+- The writer loop moved from inline workflow YAML into
+  `examples/sync-writer.sh`, so the README and the workflow share one
+  script. Charts are pinned by archive sha256, since an HTTPS chart
+  has no registry digest.
+- `sync-writer.sh` runs its per-entry functions under `||`, where bash
+  disables `set -e` for the whole function. Every step that must stop
+  an entry checks its exit status explicitly; without that, a failed
+  `cosign verify` would have fallen through to the copy.
+- Action SHAs were resolved from each action's latest release with
+  `gh api` (2026-11-13); the workflow passes `actionlint`, and both
+  scripts pass `shellcheck`.
 
 #### Success Criteria
 
 - Every example uses placeholder names only and states the tool
-  versions it was written against.
+  versions it was written against. **Met.**
 - The README explains each step and when to choose `skopeo sync`.
-- The examples are smoke-run in Phase 7.
+  **Met.**
+- The examples are smoke-run in Phase 7. **Pending Phase 7** (cosign
+  sign/attest/verify already smoke-run locally, above).
 
 ### Phase 7: Sandbox runbooks
 
