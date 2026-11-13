@@ -146,5 +146,6 @@ have nothing to reach and the module has no tag inputs (DESIGN-0029).
 | Suite | Tier | What it proves |
 | --- | --- | --- |
 | `tests/` | plan (the gate), 45 runs | The policy decoded statement by statement (plain and narrowed grants, `ConsumerDenyProtected`, additional statements), input-order stability, the scope setting and its ordering, both scanning types, the consumer-contract outputs, and 26 rejections, each verified by isolated message probe to fire its own rule |
+| `tests-sandbox/` | real AWS, operator-run | Cross-account enforcement: P1 (including the V1 ordering and the V1 probe), P2 with and without an over-broad pass-through, narrowing, destroy, and a manual P3 on a node this repo did not build. Live run pending: see `tests-sandbox/FINDINGS.md` |
 
 Full variable and output reference: [USAGE.md](USAGE.md).

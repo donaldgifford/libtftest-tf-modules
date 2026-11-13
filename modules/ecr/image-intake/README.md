@@ -269,5 +269,6 @@ as `resource_tags`, read back through `data "aws_default_tags"`.
 | Suite | Tier | What it proves |
 | --- | --- | --- |
 | `tests/` | plan (the gate), 52 runs | Every default pinned by a bare call; both templates' policies and the quarantine lifecycle decoded; two promoted prefixes rendering independent templates; the template role's trust and scope; the event pattern exact; writer and intake policies granting nothing outside their prefixes; 38 rejections, each verified by isolated message probe to fire its own rule |
+| `tests-sandbox/` | real AWS, operator-run | Templates, repository-policy enforcement, push events, cosign against real ECR (including the OQ 6 referrers question), the examples end to end, and a cross-account pull under a CMK. Live run pending: see `tests-sandbox/FINDINGS.md` |
 
 Full variable and output reference: [USAGE.md](USAGE.md).

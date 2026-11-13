@@ -262,6 +262,22 @@ Tracked in git. As of this writing:
   rejections message-probed one rule each. No LocalStack tier. Padded-ARN
   rejection runs use a **trailing** space, since a leading one also
   fails the ARN regex.
+  Both ECR modules carry a `tests-sandbox/` real-AWS runbook
+  (IMPL-0027 Phase 7): `run.sh` generates its stacks in a temp dir
+  with an absolute module source, refuses to run against a registry
+  that already has a policy or templates, and prints PASS / FAIL /
+  RECORD lines. **Authored but not yet run live** (no sandbox
+  credentials here; OQ 4a: release does not wait). Two pending
+  results feed back into DESIGN-0031: the strict-prefix cosign leg
+  (does ECR's referrers support make `sha256-*` unnecessary?) and the
+  CMK cross-account pull. `crane copy` skips an existing manifest, so
+  any re-push probe must use `crane tag`. The `examples/` (crane +
+  cosign writer, promotion, skopeo, GitHub Actions) are docs, not an
+  interface. **cosign 3.x deprecates `--tlog-upload`**: use a
+  `--signing-config` with no tlog services. Against a registry without
+  the referrers API, cosign 3 rewrites a single `sha256-<digest>`
+  fallback tag on every signature or attestation, so promoted repos
+  need that tag mutable.
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
   a single non-clustered `aws_db_instance` for Postgres + MySQL per DESIGN-0012;

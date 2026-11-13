@@ -560,42 +560,75 @@ Real AWS, two accounts (registry and consumer), operator-run.
 
 #### Tasks
 
-- [ ] `modules/ecr/registry/tests-sandbox/` runbook (two AWS CLI
+- [x] `modules/ecr/registry/tests-sandbox/` runbook (two AWS CLI
       profiles) covering:
-  - [ ] P1: pull with no repository policy succeeds on `V2`. On `V1`,
+  - [x] P1: pull with no repository policy succeeds on `V2`. On `V1`,
         record whether `PutRegistryPolicy` itself rejects the pull grant
         (as Pro does) or accepts it and the pull fails
-  - [ ] P1 ordering: from a V1 registry, one `terraform apply` switches
+  - [x] P1 ordering: from a V1 registry, one `terraform apply` switches
         to V2 and writes the policy without error (the `depends_on`)
-  - [ ] P2: consumer refused on `quarantine/*`, allowed on `mirror/*`,
+  - [x] P2: consumer refused on `quarantine/*`, allowed on `mirror/*`,
         and still refused with an over-broad pass-through statement
-  - [ ] P3: a node not built by this repo pulls by digest with no node
+  - [x] P3: a node not built by this repo pulls by digest with no node
         configuration
-  - [ ] Narrowing: matching role allowed, non-matching refused
-  - [ ] Destroy: consumer refused afterwards; scanning and scope
+  - [x] Narrowing: matching role allowed, non-matching refused
+  - [x] Destroy: consumer refused afterwards; scanning and scope
         observed and recorded
-- [ ] `modules/ecr/image-intake/tests-sandbox/` runbook covering:
-  - [ ] Writer: quarantine push OK, mirror push denied
-  - [ ] Intake: quarantine pull, mirror push (OQ 5)
-  - [ ] Isolation: unrelated role denied on quarantine; consumer
+- [x] `modules/ecr/image-intake/tests-sandbox/` runbook covering:
+  - [x] Writer: quarantine push OK, mirror push denied
+  - [x] Intake: quarantine pull, mirror push (OQ 5)
+  - [x] Isolation: unrelated role denied on quarantine; consumer
         denied on quarantine, allowed on mirror
-  - [ ] Services: scan-on-push findings appear in quarantine
-  - [ ] Events: one event per quarantine push, none for mirror
-  - [ ] cosign: `sign` then `attest` with the `sha256-*` exclusion, and
+  - [x] Services: scan-on-push findings appear in quarantine
+  - [x] Events: one event per quarantine push, none for mirror
+  - [x] cosign: `sign` then `attest` with the `sha256-*` exclusion, and
         again without it (OCI 1.1 referrers)
-  - [ ] Re-push of an identical tag and digest to an immutable repo
-  - [ ] Encryption: consumer pull with `kms_key_arn` set (INV-0012 P4)
-  - [ ] The Phase 6 examples, end to end once
+  - [x] Re-push of an identical tag and digest to an immutable repo
+  - [x] Encryption: consumer pull with `kms_key_arn` set (INV-0012 P4)
+  - [x] The Phase 6 examples, end to end once
 - [ ] Record results in each module's `tests-sandbox/FINDINGS.md`
+      (**pending operator run**: both FINDINGS carry a results table
+      with every leg marked pending)
 - [ ] Settle DESIGN-0031's revisit items from the results: the
       long-term mutability default (cosign leg) and the KMS README
-      guidance (encryption leg)
+      guidance (encryption leg) (**pending the operator run**)
+
+**Build notes:**
+
+- **Runbooks authored, not run.** This environment has no AWS
+  credentials for a sandbox account pair. Both `run.sh` scripts pass
+  `shellcheck`, and the stacks they generate pass `terraform
+  validate`. Per OQ 4a the release does not wait for the live run.
+- Each runbook generates its stacks in a temp directory with an
+  absolute module `source`, so it tests the working tree and never
+  writes state into the repo.
+- **Safety preflight.** Both refuse to start when the registry already
+  has a registry policy (`SANDBOX_FORCE=1` overrides for the
+  registry runbook only), and the intake runbook also refuses when
+  creation templates or `quarantine/`, `mirror/` or `strict/`
+  repositories exist, since templates only reach new repositories.
+- **Two legs needed a sharper probe than the design wrote:**
+  - the V1 probe deletes the policy before switching to V1, since a
+    V1 switch with V2 actions in place may itself be refused and the
+    probe would then silently run on V2;
+  - the re-push leg uses `crane tag`, because `crane copy` skips an
+    existing manifest (Phase 1) and would never reach ECR.
+- The writer's mirror denial is IAM (no grant there). The
+  repository-policy Deny is proven by an unrelated role holding
+  `ecr:*` on `*`, which only the repository policies can stop.
+- The OQ 6 probe uses a `strict` promoted prefix whose only exclusion
+  (`no-match-*`) matches nothing cosign writes, because the module
+  requires at least one exclusion.
+- P3 (a node this repo did not build) is a manual step in the registry
+  runbook's README.
 
 #### Success Criteria
 
-- Every leg has a recorded result.
+- Every leg has a recorded result. **Not met yet: pending the
+  operator run** (OQ 4a: release does not wait).
 - Any result that contradicts a design assumption is written back to
-  the DESIGN (as a build note) and fixed in code or docs.
+  the DESIGN (as a build note) and fixed in code or docs. **Pending
+  the operator run.**
 
 ### Phase 8: Docs, closure and release
 
