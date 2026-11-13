@@ -58,6 +58,9 @@ types:
     dir: plan
     id_prefix: PLAN
     id_width: 4
+    # docz 2.x dropped plan as a built-in type; without this label the
+    # index heading renders "All Plan".
+    plural_label: Plans
     statuses:
       - Draft
       - In Progress

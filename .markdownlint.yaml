@@ -59,3 +59,13 @@ MD030: false
 # https://github.com/DavidAnson/markdownlint/blob/main/doc/md033.md
 MD033: false
 # allowed_elements: ["a", "img", "div"]
+
+# Table column style
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/md060.md
+# New in markdownlint 0.39 (markdownlint-cli2 0.19+), where it reported ~890
+# findings across the repo. Disabled because spacing is cosmetic and the mixed
+# styles are spread across ~56 hand-written docs plus the generated module
+# table in README.md, which scripts/gen-readme.sh writes with `|---|`
+# separators under `| a |` headers. (docz 2.x index tables already conform.)
+# Re-enable only together with a gen-readme.sh change and a one-time sweep.
+MD060: false
