@@ -183,55 +183,103 @@ record `CreateRepositoryCreationTemplate` returning 501 on Pro
 
 #### Tasks
 
-- [ ] Scaffold `modules/ecr/registry` (`versions.tf` with
+- [x] Scaffold `modules/ecr/registry` (`versions.tf` with
       `required_version >= 1.9` and `aws ~> 6.2`; `.tflint.hcl`; no
       `tags` variable)
-- [ ] `data.aws_caller_identity` + `data.aws_region` (DESIGN-0030 OQ 9a)
-- [ ] Variables with every validation, one rule per block:
-  - [ ] `consumer_accounts` (12-digit keys; patterns name their own
+- [x] `data.aws_caller_identity` + `data.aws_region` (DESIGN-0030 OQ 9a)
+- [x] Variables with every validation, one rule per block:
+  - [x] `consumer_accounts` (12-digit keys; patterns name their own
         account; no whitespace; no equivalent-to-none pattern)
-  - [ ] `pull_repository_prefixes` and `protected_prefixes` (ECR name
+  - [x] `pull_repository_prefixes` and `protected_prefixes` (ECR name
         grammar; no duplicates)
-  - [ ] Cross-variable: accounts require prefixes; no pull/protected
+  - [x] Cross-variable: accounts require prefixes; no pull/protected
         overlap in either direction
-  - [ ] `additional_policy_statements` (alphanumeric, unique sids;
+  - [x] `additional_policy_statements` (alphanumeric, unique sids;
         reserved `Consumer` prefix; effect enum; `ecr:` actions)
-  - [ ] `manage_registry_policy_scope` (default `true`)
-  - [ ] `scanning` (default `null`; type/frequency coherence; non-empty
+  - [x] `manage_registry_policy_scope` (default `true`)
+  - [x] `scanning` (default `null`; type/frequency coherence; non-empty
         filters)
-- [ ] Locals composing `ConsumerPull`, `ConsumerPull<id>` and
+- [x] Locals composing `ConsumerPull`, `ConsumerPull<id>` and
       `ConsumerDenyProtected` with `jsonencode`, sorted inputs
-- [ ] `aws_ecr_registry_policy` (count on "any statement renders"),
+- [x] `aws_ecr_registry_policy` (count on "any statement renders"),
       with the self-account precondition
-- [ ] `aws_ecr_account_setting` (count on the toggle, value `V2`)
-- [ ] `depends_on = [aws_ecr_account_setting.registry_policy_scope]` on
+- [x] `aws_ecr_account_setting` (count on the toggle, value `V2`)
+- [x] `depends_on = [aws_ecr_account_setting.registry_policy_scope]` on
       the registry policy, so a V1 registry is switched to V2 before the
       pull grant is written (Phase 1 finding). A comment at the resource
       records why
-- [ ] `aws_ecr_registry_scanning_configuration` (count on
+- [x] `aws_ecr_registry_scanning_configuration` (count on
       `scanning != null`)
-- [ ] All eight outputs, including `consumer_identity_policy_json`
-- [ ] Plan suite (`mock_provider`), decoding the policy statement by
+- [x] All eight outputs, including `consumer_identity_policy_json`
+- [x] Plan suite (`mock_provider`), decoding the policy statement by
       statement:
-  - [ ] Bare call (no policy, scope `V2`, no scanning resource)
-  - [ ] One plain account; two plain accounts; one narrowed account;
+  - [x] Bare call (no policy, scope `V2`, no scanning resource)
+  - [x] One plain account; two plain accounts; one narrowed account;
         mixed
-  - [ ] `ConsumerDenyProtected` names every account and is absent with
+  - [x] `ConsumerDenyProtected` names every account and is absent with
         no accounts or no protected prefixes
-  - [ ] The deny survives an over-broad pass-through statement
-  - [ ] Reordered inputs render identical JSON
-  - [ ] Additive merge order; scanning on; output values
-  - [ ] Every rejection, verified per rule by message probe or mutation
-  - [ ] A positive run for every regex-shaped rule
-- [ ] `just tf docs ecr/registry` (lock-free form) and `just static`
-- [ ] `just changed` shows `ecr/registry` in the plan tier
+  - [x] The deny survives an over-broad pass-through statement
+  - [x] Reordered inputs render identical JSON
+  - [x] Additive merge order; scanning on; output values
+  - [x] Every rejection, verified per rule by message probe or mutation
+  - [x] A positive run for every regex-shaped rule
+- [x] `just tf docs ecr/registry` (lock-free form) and `just static`
+- [x] `just changed` shows `ecr/registry` in the plan tier
+
+**Build notes:**
+
+- Extra validations beyond the design, each one rule: no duplicate
+  patterns within an account, and `principals[].type` limited to
+  `AWS` / `Service` (an unknown type would render a principal key IAM
+  rejects at apply).
+- `sort()` returns a typed **list**, which never equals a tuple
+  literal in a `terraform test` assertion (`== ["a"]` is false; use
+  `tolist([...])` or `length(...) == 0`). Two runs failed on this
+  before the module was wrong about anything.
+- Cross-run comparison (`run.<name>.registry_policy_json`) is how the
+  ordering and deny-survival runs prove byte-identical rendering.
+
+**Message-probe transcript (2026-11-13).** Each rejection run in
+isolation, `expect_failures` removed, the real error read. Every run
+fired exactly **one** error, at its own rule:
+
+| Run | Rule that fired |
+| --- | --- |
+| `account_id_malformed` | `variables.tf:18` 12-digit keys |
+| `pattern_names_another_account` | `variables.tf:25` own-account prefix |
+| `pattern_with_whitespace` | `variables.tf:34` whitespace |
+| `pattern_equivalent_to_no_narrowing` | `variables.tf:46` `:*` pattern |
+| `duplicate_patterns` | `variables.tf:55` duplicates |
+| `accounts_without_prefixes` | `variables.tf:65` cross-variable |
+| `prefix_with_wildcard`, `prefix_uppercase`, `prefix_leading_slash` | `variables.tf:85` ECR grammar |
+| `prefix_duplicate` | `variables.tf:90` duplicates |
+| `prefix_equals_protected`, `prefix_inside_protected`, `prefix_contains_protected` | `variables.tf:97` overlap (cross-variable) |
+| `protected_bad_grammar` | `variables.tf:115` ECR grammar |
+| `protected_duplicate` | `variables.tf:120` duplicates |
+| `sid_not_alphanumeric` | `variables.tf:157` sid grammar |
+| `sid_duplicate` | `variables.tf:162` unique sids |
+| `sid_reserved_prefix` | `variables.tf:167` reserved `Consumer` |
+| `effect_not_enum` | `variables.tf:172` effect |
+| `action_not_ecr` | `variables.tf:177` `ecr:` actions |
+| `principal_type_not_allowed` | `variables.tf:182` principal type |
+| `scan_type_unknown` | `variables.tf:216` scan type |
+| `basic_with_continuous_scan`, `enhanced_with_manual` | `variables.tf:223` frequency coherence |
+| `scan_rule_without_filters` | `variables.tf:233` non-empty filters |
+| `self_account_rejected` | registry-policy precondition |
+
+Positive runs (`grammar_edge_values_accepted`, `basic_manual_accepted`,
+`enhanced_on_push_accepted`, plus every shape run) let valid values
+through each regex and enum rule.
 
 #### Success Criteria
 
 - The plan suite is green, and each rejection run is recorded as
-  firing its own rule (message or mutation).
+  firing its own rule (message or mutation). **Met: 45/45 runs; 26
+  rejections message-probed, one rule each.**
 - A bare call plans no registry policy and no scanning resource.
-- `just static` is green.
+  **Met (`bare_call_renders_no_policy`).**
+- `just static` is green. **Met; `just changed` shows plan tier
+  only.**
 
 ### Phase 3: kms/signing-key module
 

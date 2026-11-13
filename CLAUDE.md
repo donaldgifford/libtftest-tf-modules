@@ -224,6 +224,25 @@ Tracked in git. As of this writing:
   resource and re-seeds the placeholder — see the README upgrade note).
   `org-registry` (IMPL-0006,
   implemented — the fleet-wide OCI artifact registry per RFC-0002 / ADR-0016).
+  **`registry`** (DESIGN-0030 → IMPL-0027, in progress): the **single
+  owner** of a registry's registry-level singletons (registry policy,
+  `REGISTRY_POLICY_SCOPE`, scanning). Two stacks owning any of them
+  overwrite each other silently, so purpose modules never touch them.
+  Account **allow-list** (`consumer_accounts`, keyed by 12-digit id,
+  granted as `:root`, optional `aws:PrincipalArn` narrowing), a
+  fail-closed prefix allow-list, and an explicit
+  `ConsumerDenyProtected` Deny on `protected_prefixes`
+  (`["quarantine"]`) for every listed account, so an over-broad
+  pass-through can't reach quarantine. Policy is `jsonencode`d from
+  sorted inputs (no single-principal collapse). The policy
+  `depends_on` the V2 scope setting. **ECR has no LocalStack tier**:
+  token-free 4.4 serves no ECR, and Pro 2026.10.7 rejects pull grants
+  in a registry policy (V1 model only), lacks the account setting and
+  creation templates, emits no push events, and enforces no policy
+  (IMPL-0027 Phase 1). Plan suite (45 runs, every rejection
+  message-probed) + a real-AWS `tests-sandbox/` runbook.
+  **`terraform test` gotcha found here:** `sort()` returns a typed
+  list, which never `==` a tuple literal; compare with `tolist([...])`.
 - **`modules/rds/`** — `serverless` (IMPL-0007, implemented — Aurora Serverless
   v2 for Postgres + MySQL per DESIGN-0007). `instance` (IMPL-0011, implemented —
   a single non-clustered `aws_db_instance` for Postgres + MySQL per DESIGN-0012;
