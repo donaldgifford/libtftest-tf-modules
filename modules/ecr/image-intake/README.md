@@ -64,6 +64,17 @@ attestation can be an untagged artifact. An untagged-expiry rule would
 silently strip a promoted image of its signature. Revocation happens at
 admission, not by deleting images.
 
+### Encryption
+
+Leave `kms_key_arn` unset (AES256) unless you need a customer-managed
+key. **Cross-account pulls from a CMK-encrypted repository are not yet
+proven** (INV-0012 P4). It is unknown whether a consumer can pull under
+the key's default key policy, or whether the key policy must also
+grant the consumer accounts. The sandbox runbook's encryption leg
+answers that, and this section will then give the exact key-policy
+requirement. Until then, test a CMK with one consumer account before
+relying on it.
+
 ### The service-principal exemption
 
 Every Deny pairs `ArnNotLike aws:PrincipalArn` with `BoolIfExists

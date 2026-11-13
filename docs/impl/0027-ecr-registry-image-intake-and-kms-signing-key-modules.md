@@ -29,6 +29,11 @@ created: 2026-11-12
   - [Phase 6: Sync examples](#phase-6-sync-examples)
   - [Phase 7: Sandbox runbooks](#phase-7-sandbox-runbooks)
   - [Phase 8: Docs, closure and release](#phase-8-docs-closure-and-release)
+- [Post-merge live validation (operator)](#post-merge-live-validation-operator)
+  - [What you need](#what-you-need)
+  - [Steps](#steps)
+  - [What each result changes](#what-each-result-changes)
+  - [Closing out](#closing-out)
 - [File Changes](#file-changes)
 - [Testing Plan](#testing-plan)
 - [Dependencies](#dependencies)
@@ -588,7 +593,8 @@ Real AWS, two accounts (registry and consumer), operator-run.
   - [x] The Phase 6 examples, end to end once
 - [ ] Record results in each module's `tests-sandbox/FINDINGS.md`
       (**pending operator run**: both FINDINGS carry a results table
-      with every leg marked pending)
+      with every leg marked pending; see
+      [Post-merge live validation](#post-merge-live-validation-operator))
 - [ ] Settle DESIGN-0031's revisit items from the results: the
       long-term mutability default (cosign leg) and the KMS README
       guidance (encryption leg) (**pending the operator run**)
@@ -603,8 +609,8 @@ Real AWS, two accounts (registry and consumer), operator-run.
   absolute module `source`, so it tests the working tree and never
   writes state into the repo.
 - **Safety preflight.** Both refuse to start when the registry already
-  has a registry policy (`SANDBOX_FORCE=1` overrides for the
-  registry runbook only), and the intake runbook also refuses when
+  has a registry policy (`SANDBOX_FORCE=1` overrides that check in
+  both), and the intake runbook also refuses, with no override, when
   creation templates or `quarantine/`, `mirror/` or `strict/`
   repositories exist, since templates only reach new repositories.
 - **Two legs needed a sharper probe than the design wrote:**
@@ -698,6 +704,79 @@ Real AWS, two accounts (registry and consumer), operator-run.
 - Open follow-ups (the `iam/role` web-identity channel, replication on
   `ecr/registry`, any sandbox-driven changes) are recorded. **Met
   (above).**
+
+## Post-merge live validation (operator)
+
+This is the single checklist for the real-AWS work this IMPL leaves
+open: the two unchecked Phase 7 tasks. Each step links to the runbook
+that holds the detail.
+
+### What you need
+
+- Two AWS accounts you can dirty: a **registry** account and a
+  **consumer** account, with an AWS CLI profile for each. Both
+  principals must be able to create and assume IAM roles. Use a
+  dedicated sandbox registry account: the runs overwrite the
+  registry's singletons, the registry policy, the scope setting and the
+  scanning configuration (`ecr/registry` README, "One owner per
+  registry").
+- terraform >= 1.9, aws cli v2, crane, cosign 3.x, jq, mikefarah yq 4,
+  and network access to `public.ecr.aws`.
+- A checkout of the **merged release tag**. The runbooks source the
+  modules from the checkout by absolute path, so they test whatever is
+  checked out.
+- For step 3, a node (EKS or plain EC2 with containerd) in the consumer
+  account that this repo did not build.
+- Cost: a few minutes of ECR, SQS and EventBridge usage (scanning is
+  `BASIC`, so no Inspector charge), and two KMS keys billed until their
+  deletion windows close (30 days for the signing key, 7 for the
+  encryption leg's key).
+
+### Steps
+
+1. **`ecr/registry` runbook.** From an empty directory, run
+   `modules/ecr/registry/tests-sandbox/run.sh` with `KEEP=1`
+   ([README](../../modules/ecr/registry/tests-sandbox/README.md)).
+   Keep its `results.txt`.
+2. **Restore the registry's scope and scanning** if the destroy leg's
+   `RECORD` lines differ from the initial ones (registry runbook
+   README, "Restoring the registry account").
+3. **P3, manual.** Re-apply the registry stack and pull by digest from
+   the node you didn't build, then **clean up by hand**. The runbook
+   README's P3 section has the commands. The cleanup is required: the
+   next runbook refuses a registry with a policy or canary
+   repositories.
+4. **`ecr/image-intake` runbook.** From a *different* empty directory,
+   run `modules/ecr/image-intake/tests-sandbox/run.sh` with
+   `OPERATOR_ARN` set to the registry profile's role ARN, **with its
+   path** ([README](../../modules/ecr/image-intake/tests-sandbox/README.md)).
+   Keep its `results.txt`. It covers the `kms/signing-key` enforcement
+   leg too: a key admin calling `kms:Sign` must be refused.
+5. **Hand back** both `results.txt` files and the P3 outcome (pulled or
+   refused, plus the error if refused).
+
+Both scripts stop at the first `FAIL` and tear down. A `FAIL` is a
+result: hand it back as it is rather than re-running until green.
+
+### What each result changes
+
+| Result | Changes |
+| --- | --- |
+| Any `FAIL` (both runbooks) | A module defect. Open an issue and fix before the next release |
+| Registry: V1 probe | `ecr/registry` README "Registry policy scope": is a V1 grant rejected at apply, or accepted and refused at pull? |
+| Registry: scope and scanning after destroy | `ecr/registry` README "Destroy": replaces the "recorded by the sandbox" placeholder |
+| Registry: P3 | `ecr/registry` README "What each account is granted", if a node needs more than the identity policy |
+| Intake: cosign, strict (both modes) | DESIGN-0031 OQ 6: keep the `sha256-*` exclusion as the promoted default, or move to fully `IMMUTABLE` with OCI 1.1 referrers |
+| Intake: re-push to an immutable repository | `ecr/image-intake` README, writer step 3: the "still a sandbox probe" note |
+| Intake: encryption | `ecr/image-intake` README "Encryption" (written as interim guidance) and DESIGN-0031 OQ 8: the exact key-policy requirement for cross-account pulls under a CMK |
+
+### Closing out
+
+When the results are in, record them in both `tests-sandbox/FINDINGS.md`
+results tables, make the changes above, check off the two Phase 7
+tasks, and mark Phase 7's success criteria met. A result that
+contradicts DESIGN-0030 or DESIGN-0031 goes into that design as a build
+note.
 
 ## File Changes
 

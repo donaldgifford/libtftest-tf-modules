@@ -47,7 +47,33 @@ OPERATOR_ARN=arn:aws:iam::<registry-account>:role/<path>/<name> \
 REGION=us-east-1 ./run.sh
 ```
 
-`results.txt` collects every line. `KEEP=1` skips the teardown.
+Run it from a checkout of the merged release tag: the generated stacks
+source all three modules by absolute path from this checkout.
+
+`results.txt` is written to the **current directory** and truncated at
+the start of each run. Run each sandbox from its own directory, so this
+run doesn't overwrite the `ecr/registry` results.
+
+The script stops at the first `FAIL`. Its `EXIT` trap then tears down:
+it deletes every repository under the three prefixes and destroys both
+stacks.
+
+**Run the `ecr/registry` runbook first and clean up after it.** Its
+canary repositories, or a registry stack you re-applied for its P3 leg,
+make this run's preflight refuse to start.
+
+### Options
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `REGISTRY_PROFILE` | required | AWS CLI profile for the registry account |
+| `CONSUMER_PROFILE` | required | AWS CLI profile for the consumer account |
+| `OPERATOR_ARN` | required | The role behind `REGISTRY_PROFILE`, with its path (see Prerequisites) |
+| `REGION` | `us-east-1` | Region for both accounts |
+| `UPSTREAM` | `public.ecr.aws/docker/library/alpine:3.20` | The image the writer mirrors |
+| `KEEP` | `0` | `1` skips the teardown. Clean up by hand: delete every repository under `quarantine/`, `mirror/` and `strict/`, then `terraform destroy` the `consumer` and `registry` stacks in the directory named on the last line of `results.txt` |
+| `SANDBOX_FORCE` | `0` | `1` skips only the existing-policy check. The template and repository checks still apply |
+| `SETTLE_SECONDS` | `15` | Wait after applies and pushes before asserting. Raise it if the events or scanning legs fail on timing |
 
 ## Legs
 
