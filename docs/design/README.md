@@ -60,4 +60,6 @@ docz create design "Your Design Title"
 | DESIGN-0027 | IAM trust conditions and the shared policy-channel validation surface | Implemented | 2026-09-09 | Donald Gifford | [0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md](0027-iam-trust-conditions-and-the-shared-policy-channel-validation.md) |
 | DESIGN-0028 | S3 mirror bucket purpose module | Draft | 2026-09-15 | Donald Gifford | [0028-s3-mirror-bucket-purpose-module.md](0028-s3-mirror-bucket-purpose-module.md) |
 | DESIGN-0029 | Provider default_tags replace the per-module tags variable | Implemented | 2026-11-11 | Donald Gifford | [0029-provider-defaulttags-replace-the-per-module-tags-variable.md](0029-provider-defaulttags-replace-the-per-module-tags-variable.md) |
+| DESIGN-0030 | ECR registry module with a cross-account pull allow-list | Draft | 2026-11-12 | Donald Gifford | [0030-ecr-registry-module-with-a-cross-account-pull-allow-list.md](0030-ecr-registry-module-with-a-cross-account-pull-allow-list.md) |
+| DESIGN-0031 | ECR image intake and KMS signing key modules | Draft | 2026-11-12 | Donald Gifford | [0031-ecr-image-intake-and-kms-signing-key-modules.md](0031-ecr-image-intake-and-kms-signing-key-modules.md) |
 <!-- END DOCZ AUTO-GENERATED -->
